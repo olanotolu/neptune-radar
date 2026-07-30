@@ -113,7 +113,7 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 	k.ResearchNotes = strings.TrimSpace(k.ResearchNotes + "\n\n--- Detective run " + time.Now().UTC().Format(time.RFC3339) + " ---\n" +
 		fmt.Sprintf("Provider: %s · status: %s · candidates: %d\n", res.Provider, st, len(cands)) +
 		fmt.Sprintf("Query: %s %s · %s, %s\n", firstA, lastA, q.City, q.Region) +
-		"Pick a candidate in the UI, then Verify address. Configure PDL_API_KEY or MELISSA_LICENSE_KEY for street hits.")
+		"Pick a candidate in the UI, then Verify address. Configure TRESTLE_API_KEY or PDL_API_KEY for street hits.")
 
 	// Mark detective step done in research steps
 	steps := k.ResearchSteps

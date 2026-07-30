@@ -31,7 +31,7 @@ func (h *Heuristic) Search(ctx context.Context, q Query) (Result, error) {
 		name = q.FirstName
 	}
 	conf := 0.30
-	note := "City/region only — configure PDL_API_KEY or MELISSA_LICENSE_KEY for street candidates."
+	note := "City/region only — configure TRESTLE_API_KEY or PDL_API_KEY for street candidates."
 	if q.LastName != "" {
 		conf = 0.40
 		note = fmt.Sprintf("Market hit for %s in %s, %s. Street requires people-data provider.", name, city, region)

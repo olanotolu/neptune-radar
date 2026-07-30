@@ -13,4 +13,5 @@ build/
 # Agent internals
 .opencode/
 .claude/
+.firecrawl/
 

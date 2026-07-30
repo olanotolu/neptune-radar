@@ -1,5 +1,5 @@
 // Package records finds mailing-address candidates from name + market signals.
-// Implementations: People Data Labs, Melissa (optional), deterministic heuristic fallback.
+// Implementations: Trestle IQ (primary), People Data Labs, Cleanlist, deterministic heuristic fallback.
 package records
 
 import (
@@ -55,30 +55,56 @@ type Provider interface {
 }
 
 // NewProvider picks the best configured people-search backend.
+// Cascade: Trestle → PDL → Cleanlist → Heuristic.
 func NewProvider() Provider {
+	if k := strings.TrimSpace(os.Getenv("TRESTLE_API_KEY")); k != "" {
+		return &Trestle{APIKey: k}
+	}
 	if k := strings.TrimSpace(os.Getenv("PDL_API_KEY")); k != "" {
 		return &PDL{APIKey: k}
 	}
-	if k := strings.TrimSpace(os.Getenv("MELISSA_LICENSE_KEY")); k != "" {
-		return &Melissa{LicenseKey: k}
+	if k := strings.TrimSpace(os.Getenv("CLEANLIST_API_KEY")); k != "" {
+		return &Cleanlist{APIKey: k}
 	}
 	return &Heuristic{}
 }
 
-// Multi tries primary then falls back to heuristic so UI always gets something useful.
+// Multi tries primary → secondary → heuristic so UI always gets something useful.
 type Multi struct {
-	Primary Provider
-	Fallback Provider
+	Primary   Provider
+	Fallback  Provider
+	Secondary Provider // optional second-tier provider before heuristic
 }
 
 func NewMulti() *Multi {
 	p := NewProvider()
-	return &Multi{Primary: p, Fallback: &Heuristic{}}
+	// Second tier: pick the next best provider that isn't the primary
+	var second Provider
+	switch p.(type) {
+	case *Trestle:
+		if k := strings.TrimSpace(os.Getenv("PDL_API_KEY")); k != "" {
+			second = &PDL{APIKey: k}
+		} else if k := strings.TrimSpace(os.Getenv("CLEANLIST_API_KEY")); k != "" {
+			second = &Cleanlist{APIKey: k}
+		}
+	case *PDL:
+		if k := strings.TrimSpace(os.Getenv("CLEANLIST_API_KEY")); k != "" {
+			second = &Cleanlist{APIKey: k}
+		}
+	case *Cleanlist:
+		if k := strings.TrimSpace(os.Getenv("PDL_API_KEY")); k != "" {
+			second = &PDL{APIKey: k}
+		}
+	}
+	return &Multi{Primary: p, Secondary: second, Fallback: &Heuristic{}}
 }
 
 func (m *Multi) Name() string {
 	if m.Primary != nil && m.Primary.Available() {
 		return m.Primary.Name()
+	}
+	if m.Secondary != nil && m.Secondary.Available() {
+		return m.Secondary.Name()
 	}
 	return "heuristic"
 }
@@ -86,18 +112,30 @@ func (m *Multi) Name() string {
 func (m *Multi) Available() bool { return true }
 
 func (m *Multi) Search(ctx context.Context, q Query) (Result, error) {
+	// Tier 1: primary provider
 	if m.Primary != nil && m.Primary.Available() {
 		res, err := m.Primary.Search(ctx, q)
 		if err == nil && len(res.Candidates) > 0 {
 			return res, nil
 		}
-		// Fall back so operators always get market-level guidance.
+		// Tier 2: secondary provider (if primary empty/errored)
+		if m.Secondary != nil && m.Secondary.Available() {
+			res2, err2 := m.Secondary.Search(ctx, q)
+			if err2 == nil && len(res2.Candidates) > 0 {
+				if res.Error != "" {
+					res2.Candidates[0].Note = strings.TrimSpace(res2.Candidates[0].Note + " | primary(" + m.Primary.Name() + "): " + res.Error)
+				}
+				res2.Status = "ok"
+				return res2, nil
+			}
+		}
+		// Tier 3: heuristic fallback
 		fb, fbErr := m.Fallback.Search(ctx, q)
 		if fbErr == nil && len(fb.Candidates) > 0 {
 			if res.Error != "" && len(fb.Candidates) > 0 {
-				fb.Candidates[0].Note = strings.TrimSpace(fb.Candidates[0].Note + " | primary: " + res.Error)
+				fb.Candidates[0].Note = strings.TrimSpace(fb.Candidates[0].Note + " | primary(" + m.Primary.Name() + "): " + res.Error)
 			} else if err != nil && len(fb.Candidates) > 0 {
-				fb.Candidates[0].Note = strings.TrimSpace(fb.Candidates[0].Note + " | primary: " + err.Error())
+				fb.Candidates[0].Note = strings.TrimSpace(fb.Candidates[0].Note + " | primary(" + m.Primary.Name() + "): " + err.Error())
 			}
 			fb.Status = "ok"
 			return fb, nil
@@ -106,6 +144,13 @@ func (m *Multi) Search(ctx context.Context, q Query) (Result, error) {
 			return res, err
 		}
 		return res, nil
+	}
+	// No primary — try secondary directly
+	if m.Secondary != nil && m.Secondary.Available() {
+		res, err := m.Secondary.Search(ctx, q)
+		if err == nil && len(res.Candidates) > 0 {
+			return res, nil
+		}
 	}
 	return m.Fallback.Search(ctx, q)
 }

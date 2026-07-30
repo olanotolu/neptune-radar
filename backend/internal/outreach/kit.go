@@ -21,7 +21,7 @@ import (
 type Agent struct {
 	Store   *store.Store
 	LLM     llm.Interpreter
-	Records records.Provider // people-search (PDL / Melissa / heuristic)
+	Records records.Provider // people-search (Trestle / PDL / Cleanlist / heuristic)
 	Mail    *mail.Client     // Lob verify + send (optional)
 }
 

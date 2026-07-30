@@ -98,7 +98,7 @@ func main() {
 	if p := records.NewProvider(); p.Available() {
 		log.Printf("records provider: %s", p.Name())
 	} else {
-		log.Println("records provider: heuristic only — set PDL_API_KEY or MELISSA_LICENSE_KEY for street hits")
+		log.Println("records provider: heuristic only — set TRESTLE_API_KEY or PDL_API_KEY for street hits")
 	}
 	handler := api.Wrap(api.NewRouter(s, worker, agent), adminToken, origin)
 	// In the deployed single-service image the Go server also serves the
