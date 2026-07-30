@@ -1,0 +1,12 @@
+# Keep dev-machine secrets and junk out of every docker build context.
+# NOTE: frontend/dist and build/ are NOT excluded — Dockerfile.deploy builds
+# FROM those prebuilt artifacts (that's the whole point of the deploy path).
+**/.env
+**/.env.*
+!**/.env.example
+!frontend/.env.production
+**/node_modules
+frontend/dist/**/.cache
+**/.git
+**/*.log
+**/.DS_Store

@@ -1,0 +1,14 @@
+# Neptune Radar — nightly backup timer (systemd user units on the EC2 box).
+# Install: cp deploy/systemd/neptune-backup.* ~/.config/systemd/user/ &&
+#          systemctl --user daemon-reload &&
+#          systemctl --user enable --now neptune-backup.timer
+# (Requires: loginctl enable-linger ec2-user — already set.)
+#
+# The service pulls the DB password from the live container's own env — no
+# secret copy lives in this repo.
+[Unit]
+Description=Neptune Radar Postgres backup
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "PGPASS=$(/usr/bin/docker inspect neptune-pg --format \"{{range .Config.Env}}{{println .}}{{end}}\" | grep ^POSTGRES_PASSWORD= | cut -d= -f2-) && /usr/bin/docker run --rm --network neptune-net -e PGPASSWORD=$PGPASS -v %h/backups:/backups postgres:17-alpine sh /backups/run-backup.sh"

@@ -1,0 +1,32 @@
+app = "neptune-radar"
+primary_region = "iad"
+
+[build]
+
+[env]
+  STATIC_DIR = "/app/public"
+  DASHBOARD_ORIGIN = "https://neptune-radar.fly.dev"
+
+# Secrets to set with `fly secrets set`:
+#   DATABASE_URL         — managed Postgres connection string
+#   NEPTUNE_ADMIN_TOKEN  — dashboard/API bearer token
+#   APIFY_TOKEN          — scraping provider
+#   BASETEN_API_KEY      — LLM + vision
+#   BASETEN_MODEL        — analyst/copy model id
+#   BASETEN_VISION_MODEL — multimodal model id for ring/proposal detection
+# Optional env: ACTIVE_MARKETS (e.g. "nyc,brooklyn,centralpark"),
+# DAILY_BUDGET_CAP (default 500), POLL interval via -poll-interval.
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/api/health"

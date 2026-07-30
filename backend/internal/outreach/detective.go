@@ -1,0 +1,326 @@
+package outreach
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
+
+	"neptune-social-radar/backend/internal/mail"
+	"neptune-social-radar/backend/internal/records"
+	"neptune-social-radar/backend/internal/store"
+)
+
+// RunDetective calls people-search providers and writes address candidates onto the kit.
+func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.CongratulateKit, error) {
+	k, err := a.Store.GetCongratulateKit(kitID)
+	if err != nil {
+		return k, err
+	}
+	prov := a.Records
+	if prov == nil {
+		prov = records.NewMulti()
+	}
+
+	// Prefer structured kit fields (operator-editable), then person_a_name split
+	firstA := firstNonEmpty(k.FirstNameA, splitNameFirst(k.PersonAName))
+	lastA := firstNonEmpty(k.LastNameA, splitNameLast(k.PersonAName))
+	firstB := firstNonEmpty(k.FirstNameB, splitNameFirst(k.PersonBName))
+	lastB := firstNonEmpty(k.LastNameB, splitNameLast(k.PersonBName))
+
+	q := records.Query{
+		FirstName:    firstA,
+		LastName:     lastA,
+		PartnerFirst: firstB,
+		PartnerLast:  lastB,
+		City:         firstNonEmpty(k.AddressCity, k.MarketCity),
+		Region:       firstNonEmpty(k.AddressRegion, k.MarketRegion),
+		Handle:       k.HandleA,
+	}
+	// Stronger note when last names missing
+	if lastA == "" && lastB == "" {
+		k.ResearchNotes = strings.TrimSpace(k.ResearchNotes + "\n\n⚠ Detective: no last names — street hits unlikely. Fill Last name A/B and re-run.")
+	}
+	res, err := prov.Search(ctx, q)
+	// Also try partner as primary if first search empty and partner named
+	if (err != nil || len(res.Candidates) == 0) && firstB != "" {
+		q2 := q
+		q2.FirstName, q2.LastName = firstB, lastB
+		q2.PartnerFirst, q2.PartnerLast = firstA, lastA
+		q2.Handle = k.HandleB
+		if res2, err2 := prov.Search(ctx, q2); err2 == nil && len(res2.Candidates) > 0 {
+			res = res2
+			err = nil
+		}
+	}
+
+	// Persist audit row
+	qJSON, _ := json.Marshal(q)
+	cJSON, _ := json.Marshal(res.Candidates)
+	st := res.Status
+	if st == "" {
+		st = "ok"
+	}
+	if err != nil && st == "ok" {
+		st = "error"
+	}
+	_, _ = a.Store.InsertAddressLookup(store.AddressLookup{
+		KitID: k.ID, CoupleID: k.CoupleID, Provider: res.Provider,
+		QueryJSON: string(qJSON), ResponseJSON: res.RawJSON,
+		CandidatesJSON: string(cJSON), Status: st,
+		ErrorMessage: res.Error, CostCents: res.CostCents,
+	})
+	if err != nil && len(res.Candidates) == 0 {
+		return k, fmt.Errorf("detective search: %w", err)
+	}
+
+	// Map to store candidates
+	var cands []store.AddressCandidate
+	bestConf := 0.0
+	for _, c := range res.Candidates {
+		cands = append(cands, store.AddressCandidate{
+			Line1: c.Line1, Line2: c.Line2, City: c.City, Region: c.Region,
+			Postal: c.Postal, Country: firstNonEmpty(c.Country, "US"),
+			Confidence: c.Confidence, Source: c.Source, Note: c.Note,
+		})
+		if c.Confidence > bestConf {
+			bestConf = c.Confidence
+		}
+	}
+	k.AddressCandidates = cands
+	if bestConf > k.AddressConfidence {
+		k.AddressConfidence = bestConf
+	}
+	k.AddressSource = res.Provider
+	// Prefill city from top candidate without claiming street until user picks
+	if len(cands) > 0 {
+		top := cands[0]
+		if k.AddressCity == "" {
+			k.AddressCity = top.City
+		}
+		if k.AddressRegion == "" {
+			k.AddressRegion = top.Region
+		}
+		// Only auto-fill street when confidence is strong AND line present
+		// Still require human verify before mail.
+		if top.Line1 != "" && top.Confidence >= 0.5 && k.AddressLine1 == "" {
+			// leave street for user pick in UI — do not auto-write line1
+		}
+	}
+
+	// Research notes append
+	k.ResearchNotes = strings.TrimSpace(k.ResearchNotes + "\n\n--- Detective run " + time.Now().UTC().Format(time.RFC3339) + " ---\n" +
+		fmt.Sprintf("Provider: %s · status: %s · candidates: %d\n", res.Provider, st, len(cands)) +
+		fmt.Sprintf("Query: %s %s · %s, %s\n", firstA, lastA, q.City, q.Region) +
+		"Pick a candidate in the UI, then Verify address. Configure PDL_API_KEY or MELISSA_LICENSE_KEY for street hits.")
+
+	// Mark detective step done in research steps
+	steps := k.ResearchSteps
+	found := false
+	for i := range steps {
+		if steps[i].ID == "people" || steps[i].ID == "detective" {
+			steps[i].Status = "done"
+			steps[i].Detail = fmt.Sprintf("Ran %s → %d candidates", res.Provider, len(cands))
+			found = true
+		}
+	}
+	if !found {
+		steps = append([]store.ResearchStep{{
+			ID: "detective", Label: "Detective run",
+			Detail: fmt.Sprintf("%s returned %d candidates", res.Provider, len(cands)),
+			Status: "done",
+		}}, steps...)
+	}
+	k.ResearchSteps = steps
+	k.PostcardHTML = RenderPostcardHTML(k)
+	k.MailPayload = mailPayload(k)
+	if k.Status == "draft" {
+		k.Status = "ready_review"
+	}
+	return a.Store.UpsertCongratulateKit(k)
+}
+
+// ApplyCandidate copies one ranked candidate onto the kit mailing fields (not yet verified).
+func (a *Agent) ApplyCandidate(kitID string, idx int) (store.CongratulateKit, error) {
+	k, err := a.Store.GetCongratulateKit(kitID)
+	if err != nil {
+		return k, err
+	}
+	if idx < 0 || idx >= len(k.AddressCandidates) {
+		return k, fmt.Errorf("candidate index %d out of range", idx)
+	}
+	c := k.AddressCandidates[idx]
+	k.AddressLine1 = c.Line1
+	k.AddressLine2 = c.Line2
+	k.AddressCity = c.City
+	k.AddressRegion = c.Region
+	k.AddressPostal = c.Postal
+	k.AddressCountry = firstNonEmpty(c.Country, "US")
+	k.AddressConfidence = c.Confidence
+	k.AddressSource = c.Source
+	k.PostcardHTML = RenderPostcardHTML(k)
+	k.MailPayload = mailPayload(k)
+	return a.Store.UpsertCongratulateKit(k)
+}
+
+// VerifyAndConfirm runs Lob USPS verify when available, then marks address_verified.
+func (a *Agent) VerifyAndConfirm(ctx context.Context, kitID, verifiedBy string) (store.CongratulateKit, error) {
+	k, err := a.Store.GetCongratulateKit(kitID)
+	if err != nil {
+		return k, err
+	}
+	if k.AddressLine1 == "" || k.AddressCity == "" {
+		return k, fmt.Errorf("street and city required — pick a candidate or type an address first")
+	}
+	if k.AddressPostal == "" && a.Mail != nil && a.Mail.Available() {
+		// allow verify without zip — Lob may fill it
+	} else if k.AddressPostal == "" {
+		return k, fmt.Errorf("postal code required to verify")
+	}
+
+	if a.Mail != nil && a.Mail.Available() {
+		vr, err := a.Mail.VerifyAddress(ctx, mail.Address{
+			Name:           strings.TrimSpace(k.PersonAName + " & " + k.PersonBName),
+			AddressLine1:   k.AddressLine1,
+			AddressLine2:   k.AddressLine2,
+			AddressCity:    k.AddressCity,
+			AddressState:   k.AddressRegion,
+			AddressZip:     k.AddressPostal,
+			AddressCountry: firstNonEmpty(k.AddressCountry, "US"),
+		})
+		if err != nil {
+			return k, fmt.Errorf("address verify: %w", err)
+		}
+		// Apply standardized components
+		k.AddressLine1 = firstNonEmpty(vr.Address.AddressLine1, k.AddressLine1)
+		k.AddressLine2 = vr.Address.AddressLine2
+		k.AddressCity = firstNonEmpty(vr.Address.AddressCity, k.AddressCity)
+		k.AddressRegion = firstNonEmpty(vr.Address.AddressState, k.AddressRegion)
+		k.AddressPostal = firstNonEmpty(vr.Address.AddressZip, k.AddressPostal)
+		k.AddressSource = "lob_verified"
+		if vr.Deliverable {
+			k.AddressConfidence = 0.95
+		} else {
+			k.AddressConfidence = 0.7
+			k.ResearchNotes += "\nLob deliverability uncertain — review carefully."
+		}
+	}
+
+	return a.UpdateKitAddress(kitID, k, true, verifiedBy)
+}
+
+// SendPostcard mails via Lob when configured. Requires address_verified or ready_to_mail.
+func (a *Agent) SendPostcard(ctx context.Context, kitID string) (store.CongratulateKit, error) {
+	k, err := a.Store.GetCongratulateKit(kitID)
+	if err != nil {
+		return k, err
+	}
+	if k.Status != "address_verified" && k.Status != "ready_to_mail" {
+		return k, fmt.Errorf("verify address before sending (status=%s)", k.Status)
+	}
+	if k.AddressLine1 == "" || k.AddressPostal == "" {
+		return k, fmt.Errorf("complete mailing address required")
+	}
+	if a.Mail == nil || !a.Mail.Available() {
+		return k, fmt.Errorf("LOB_API_KEY not configured — set key + LOB_FROM_* return address")
+	}
+
+	// Ensure ready_to_mail
+	if k.Status == "address_verified" {
+		k, err = a.MarkReadyToMail(kitID)
+		if err != nil {
+			return k, err
+		}
+	}
+
+	front := postcardFrontHTML(k)
+	back := postcardBackHTML(k)
+	to := mail.Address{
+		Name:           strings.TrimSpace(k.PersonAName + " & " + k.PersonBName),
+		AddressLine1:   k.AddressLine1,
+		AddressLine2:   k.AddressLine2,
+		AddressCity:    k.AddressCity,
+		AddressState:   k.AddressRegion,
+		AddressZip:     k.AddressPostal,
+		AddressCountry: firstNonEmpty(k.AddressCountry, "US"),
+	}
+	res, err := a.Mail.SendPostcard(ctx, to, front, back, fmt.Sprintf("Neptune congratulate %s & %s", k.PersonAName, k.PersonBName))
+	toJSON, _ := json.Marshal(to)
+	ms := store.MailSend{
+		KitID: k.ID, CoupleID: k.CoupleID, Provider: "lob",
+		ExternalID: res.ExternalID, Status: firstNonEmpty(res.Status, "created"),
+		ToAddressJSON: string(toJSON), RawResponse: res.RawJSON,
+		CostCents: res.CostCents, ExpectedDeliveryDate: res.ExpectedDeliveryDate,
+	}
+	if err != nil {
+		ms.Status = "error"
+		ms.ErrorMessage = err.Error()
+		_, _ = a.Store.InsertMailSend(ms)
+		return k, err
+	}
+	_, _ = a.Store.InsertMailSend(ms)
+
+	// Mark mailed
+	k, err = a.MarkMailed(kitID)
+	if err != nil {
+		return k, err
+	}
+	k.InternalNote = strings.TrimSpace(k.InternalNote + "\n\nLob postcard id: " + res.ExternalID +
+		" expected_delivery: " + res.ExpectedDeliveryDate)
+	// Best-effort store external id if column exists
+	_, _ = a.Store.DB.Exec(`UPDATE congratulate_kits SET mail_external_id = $2, mail_provider = 'lob', updated_at = now() WHERE id = $1`,
+		k.ID, res.ExternalID)
+	return a.Store.UpsertCongratulateKit(k)
+}
+
+func splitName(full string) (first, last string) {
+	full = strings.TrimSpace(full)
+	if full == "" {
+		return "", ""
+	}
+	parts := strings.Fields(full)
+	if len(parts) == 1 {
+		return firstNameOnly(parts[0]), ""
+	}
+	return firstNameOnly(parts[0]), parts[len(parts)-1]
+}
+
+func splitNameFirst(full string) string {
+	f, _ := splitName(full)
+	return f
+}
+
+func splitNameLast(full string) string {
+	_, l := splitName(full)
+	return l
+}
+
+func postcardFrontHTML(k store.CongratulateKit) string {
+	// Lob accepts HTML for front; keep simple and print-safe.
+	nameA := htmlEscape(firstNameOnly(k.PersonAName))
+	nameB := htmlEscape(firstNameOnly(k.PersonBName))
+	return fmt.Sprintf(`<html><body style="margin:0;font-family:Georgia,serif;background:#1a3a3c;color:#faf7f2;text-align:center;padding:40px 20px">
+<h1 style="font-weight:500;letter-spacing:0.04em">%s</h1>
+<p style="font-style:italic;font-size:18px">%s &amp; %s</p>
+<p style="font-size:12px;opacity:0.7;text-transform:uppercase;letter-spacing:0.08em">%s</p>
+</body></html>`, htmlEscape(firstNonEmpty(k.Headline, "Congratulations")), nameA, nameB,
+		htmlEscape(strings.Trim(k.MarketCity+", "+k.MarketRegion, ", ")))
+}
+
+func postcardBackHTML(k store.CongratulateKit) string {
+	body := htmlEscape(k.BodyMessage)
+	body = strings.ReplaceAll(body, "\n", "<br/>")
+	return fmt.Sprintf(`<html><body style="margin:0;font-family:Georgia,serif;padding:24px;font-size:13px;line-height:1.5;color:#1c1917">
+%s
+<p style="margin-top:20px;font-size:12px;color:#57534e">Neptune · with care</p>
+</body></html>`, body)
+}
+
+func htmlEscape(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, `"`, "&quot;")
+	return s
+}

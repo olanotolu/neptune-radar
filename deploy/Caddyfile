@@ -1,0 +1,7 @@
+# Neptune Radar — Caddy config (tracked copy).
+# Live copy on the EC2 box is bind-mounted from ~/Caddyfile; `make deploy`
+# rsyncs this file over it. The domain encodes the instance's public IP —
+# if the box ever gets an Elastic IP / real DNS name, update BOTH here.
+54.196.158.87.sslip.io {
+	reverse_proxy neptune-radar:8080
+}

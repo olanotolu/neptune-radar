@@ -1,0 +1,16 @@
+.DS_Store
+
+# Environment files (credentials)
+.env
+
+# Build artifacts
+node_modules/
+frontend/dist/
+backend/server
+backend/cmd/server/server
+build/
+
+# Agent internals
+.opencode/
+.claude/
+

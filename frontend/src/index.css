@@ -1,0 +1,71 @@
+:root {
+  /* Surfaces — linen, white, hairlines */
+  --bg: #f1f2ec;
+  --bg-alt: #ececeb;
+  --surface: #ffffff;
+  --surface-hover: #fafafa;
+  --chip: #f2f2f2;
+  --border: #ececeb;
+  --border-strong: #d7d6d4;
+
+  /* Ink */
+  --ink: #161514;
+  --ink-soft: #71706f;
+  --ink-dim: #888980;
+  --ink-faint: #c8c7c4;
+
+  /* Brand accents (Natural palette) */
+  --mesa: #f3813f;
+  --mesa-deep: #be5915;
+  --mesa-soft: #ffe9df;
+  --cove: #d7f4f5;
+  --cove-deep: #008285;
+  --cove-ink: #0070a9;
+
+  /* Status */
+  --red: #e24848;
+  --green: #008285;
+
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  --sans: "Space Grotesk", "Inter", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  color-scheme: light;
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--mesa-soft);
+  color: var(--mesa-deep);
+}

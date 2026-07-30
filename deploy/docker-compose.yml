@@ -1,0 +1,71 @@
+# Neptune Radar — production topology (EC2 i-0a7a301139acb9e87).
+# This file is the tracked source of truth for the three containers.
+# The live stack predates this file (created by hand); `make deploy` still
+# rebuilds/restarts the app container via raw docker — compose is the
+# recovery + audit path, and the backup cron reads from here.
+#
+# Recreate the full stack on a fresh box:
+#   cp deploy/neptune-radar.env.example ~/neptune-radar.env  # fill secrets
+#   docker network create neptune-net
+#   docker compose -f deploy/docker-compose.yml --env-file ~/neptune-radar.env up -d pg caddy
+#   make deploy   # builds + runs the app container
+name: neptune
+
+networks:
+  net:
+    name: neptune-net
+    external: true
+
+volumes:
+  pgdata:
+    name: neptune-pgdata
+  caddy_data:
+    name: caddy_data
+
+services:
+  pg:
+    image: postgres:17-alpine
+    container_name: neptune-pg
+    restart: always
+    networks: [net]
+    # NOT published to the host — reachable only on neptune-net.
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-neptune}
+      POSTGRES_USER: ${POSTGRES_USER:-neptune}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in ~/neptune-radar.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-neptune} -d ${POSTGRES_DB:-neptune}"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: always
+    networks: [net]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      pg:
+        condition: service_healthy
+
+  # Nightly logical backup of the Postgres volume to ~/backups on the host,
+  # 14-day retention. (Off-box copy is a separate cron — see backups.sh.)
+  backup:
+    image: postgres:17-alpine
+    container_name: neptune-backup
+    networks: [net]
+    profiles: ["backup"]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - ${BACKUP_DIR:-/home/ec2-user/backups}:/backups
+    entrypoint: ["sh", "/backups/run-backup.sh"]
