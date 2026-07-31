@@ -55,7 +55,7 @@ type Provider interface {
 }
 
 // NewProvider picks the best configured people-search backend.
-// Cascade: Trestle → PDL → Cleanlist → Heuristic.
+// Cascade: Trestle → PDL → Cleanlist → Google Search → Heuristic.
 func NewProvider() Provider {
 	if k := strings.TrimSpace(os.Getenv("TRESTLE_API_KEY")); k != "" {
 		return &Trestle{APIKey: k}
@@ -65,6 +65,12 @@ func NewProvider() Provider {
 	}
 	if k := strings.TrimSpace(os.Getenv("CLEANLIST_API_KEY")); k != "" {
 		return &Cleanlist{APIKey: k}
+	}
+	if k := strings.TrimSpace(os.Getenv("GOOGLE_SEARCH_API_KEY")); k != "" {
+		cx := strings.TrimSpace(os.Getenv("GOOGLE_SEARCH_CX"))
+		if cx != "" {
+			return &GoogleSearch{APIKey: k, Cx: cx}
+		}
 	}
 	return &Heuristic{}
 }
@@ -94,6 +100,15 @@ func NewMulti() *Multi {
 	case *Cleanlist:
 		if k := strings.TrimSpace(os.Getenv("PDL_API_KEY")); k != "" {
 			second = &PDL{APIKey: k}
+		}
+	}
+	// If primary is heuristic (no API keys), try Google Search as secondary
+	if _, isHeuristic := p.(*Heuristic); isHeuristic {
+		if k := strings.TrimSpace(os.Getenv("GOOGLE_SEARCH_API_KEY")); k != "" {
+			cx := strings.TrimSpace(os.Getenv("GOOGLE_SEARCH_CX"))
+			if cx != "" {
+				second = &GoogleSearch{APIKey: k, Cx: cx}
+			}
 		}
 	}
 	return &Multi{Primary: p, Secondary: second, Fallback: &Heuristic{}}

@@ -88,6 +88,50 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 			bestConf = c.Confidence
 		}
 	}
+
+	// Lob verification post-step: verify each candidate with a street address
+	if a.Mail != nil && a.Mail.Available() && len(cands) > 0 {
+		for i := range cands {
+			c := &cands[i]
+			if c.Line1 == "" || c.City == "" {
+				continue
+			}
+			vr, err := a.Mail.VerifyAddress(ctx, mail.Address{
+				Name:           strings.TrimSpace(k.PersonAName + " & " + k.PersonBName),
+				AddressLine1:   c.Line1,
+				AddressLine2:   c.Line2,
+				AddressCity:    c.City,
+				AddressState:   c.Region,
+				AddressZip:     c.Postal,
+				AddressCountry: firstNonEmpty(c.Country, "US"),
+			})
+			if err != nil {
+				continue // skip verification errors silently
+			}
+			// Apply verified components
+			if vr.Address.AddressLine1 != "" {
+				c.Line1 = vr.Address.AddressLine1
+			}
+			if vr.Address.AddressCity != "" {
+				c.City = vr.Address.AddressCity
+			}
+			if vr.Address.AddressState != "" {
+				c.Region = vr.Address.AddressState
+			}
+			if vr.Address.AddressZip != "" {
+				c.Postal = vr.Address.AddressZip
+			}
+			if vr.Deliverable {
+				c.Confidence = 0.90
+				c.Note = "Lob verified deliverable — safe to mail."
+			} else {
+				c.Confidence = 0.65
+				c.Note = "Lob verified but deliverability uncertain — review."
+			}
+			c.Source = "lob_verified_" + c.Source
+		}
+	}
+
 	k.AddressCandidates = cands
 	if bestConf > k.AddressConfidence {
 		k.AddressConfidence = bestConf
