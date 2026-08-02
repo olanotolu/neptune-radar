@@ -10,7 +10,7 @@ import {
   useSuppressCouple,
 } from "../api/hooks";
 import { mediaURL } from "../api/media";
-import type { BrandAction, CoupleDossier, DossierEvidence } from "../api/types";
+import type { BrandAction, DossierEvidence } from "../api/types";
 import { useToast } from "../components/Toast";
 import { EmptyState } from "../components/EmptyState";
 import { LoadingState } from "../components/LoadingState";

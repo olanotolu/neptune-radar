@@ -791,6 +791,7 @@ export interface UserSummary {
 
 // Pipeline run ledger — one summary row per orchestrator ProcessEvent call.
 // Per-stage detail (audit events, timings) is joinable by observation_id.
+export interface PipelineRun {
   id: string;
   observation_id: string;
   agent_name: string;

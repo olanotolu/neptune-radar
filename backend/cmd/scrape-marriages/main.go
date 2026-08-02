@@ -20,9 +20,11 @@ import (
 	"time"
 
 	"neptune-social-radar/backend/internal/connectors"
+	"neptune-social-radar/backend/internal/packs"
 )
 
 func main() {
+	state := flag.String("state", "", "USPS state code (e.g. TX)")
 	fips := flag.String("fips", "", "5-digit county FIPS code (e.g. 48113)")
 	searchURL := flag.String("url", "", "override: search portal URL (skips pack lookup)")
 	namePrefix := flag.String("name", "", "optional: name prefix to narrow results")
@@ -34,12 +36,31 @@ func main() {
 		log.Fatal("-fips is required (5-digit county FIPS)")
 	}
 
-	// Resolve the search URL: -url is required (pack lookup not available
-	// from a separate command — use bootstrap-state to seed the registry first).
+	// Resolve the search URL: explicit -url wins, otherwise look up from the
+	// verified govSource packs by state + FIPS.
 	url := *searchURL
 	var courtName, note string
 	if url == "" {
-		log.Fatal("-url is required (the search portal URL, e.g. https://dallas.tx.publicsearch.us/)")
+		if *state == "" {
+			log.Fatal("-state is required when -url is not given")
+		}
+		pack := packs.PackFor(*state)
+		if pack == nil {
+			log.Fatalf("no source pack found for state %s", *state)
+		}
+		found := false
+		for _, g := range pack.Government {
+			if g.CountyFIPS == *fips {
+				url = g.SearchURL
+				courtName = g.CourtName
+				note = g.Note
+				found = true
+				break
+			}
+		}
+		if !found {
+			log.Fatalf("no government source found for FIPS %s in state %s", *fips, *state)
+		}
 	}
 
 	// Parse optional date bounds.

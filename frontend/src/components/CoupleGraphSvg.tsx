@@ -115,7 +115,6 @@ export function CoupleGraphSvg({ graph, confidence }: { graph: CoupleGraph; conf
         const fromLeft = e.from === accountA.id;
         const x1 = fromLeft ? aX + 60 : bX - 60;
         const x2 = fromLeft ? bX - 60 : aX + 60;
-        const sweep = fromLeft ? 1 : 0;
         const lift = 60 + i * 26;
         const mx = (x1 + x2) / 2;
         const my = accountY + 28 + lift;

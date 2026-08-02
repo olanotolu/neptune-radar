@@ -37,11 +37,12 @@ export function OpsView() {
 
   const busy = enrich.isPending || backfill.isPending || janitor.isPending || pause.isPending || resume.isPending;
 
-  function run(
-    mut: ReturnType<typeof useEnrichMissing>,
+  function run<T, V>(
+    mut: { mutate: (vars: V, opts?: { onSuccess?: (r: T) => void; onError?: (e: Error) => void }) => void },
     label: string,
+    vars: V,
   ) {
-    mut.mutate(50, {
+    mut.mutate(vars, {
       onSuccess: (r) => toast.push(`${label}: ${JSON.stringify(r)}`, "ok"),
       onError: (e) => toast.push((e as Error).message, "err"),
     });
@@ -99,13 +100,13 @@ export function OpsView() {
       <section className="trust-panel">
         <h3 className="trust-panel__title">Quick actions</h3>
         <div className="ops-actions">
-          <button type="button" className="btn" disabled={busy} onClick={() => run(enrich, "Enrich")}>
+          <button type="button" className="btn" disabled={busy} onClick={() => run(enrich, "Enrich", 50)}>
             {enrich.isPending ? "Enriching…" : "Enrich Missing Profiles"}
           </button>
-          <button type="button" className="btn" disabled={busy} onClick={() => run(backfill, "Backfill")}>
+          <button type="button" className="btn" disabled={busy} onClick={() => run(backfill, "Backfill", 50)}>
             {backfill.isPending ? "Backfilling…" : "Backfill Locations"}
           </button>
-          <button type="button" className="btn" disabled={busy} onClick={() => run(janitor, "Janitor")}>
+          <button type="button" className="btn" disabled={busy} onClick={() => run(janitor, "Janitor", undefined)}>
             {janitor.isPending ? "Running…" : "Run Janitor"}
           </button>
           {paused ? (

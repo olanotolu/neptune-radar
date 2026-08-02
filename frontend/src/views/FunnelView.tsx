@@ -92,8 +92,6 @@ export function FunnelView() {
     },
   ];
 
-  const maxCount = Math.max(...stages.map((s) => s.count), 1);
-
   return (
     <div className="view view--funnel">
       {/* Hero header */}

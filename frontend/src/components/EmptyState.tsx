@@ -3,7 +3,7 @@ interface EmptyStateProps {
   title: string;
   message?: string;
   action?: { label: string; onClick: () => void };
-  variant?: "default" | "success" | "warning" | "empty";
+  variant?: "default" | "success" | "warning" | "empty" | "info";
 }
 
 export function EmptyState({
