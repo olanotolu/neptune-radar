@@ -814,3 +814,13 @@ func (s *Server) runJanitor(w http.ResponseWriter, r *http.Request) {
 	res := j.Run(r.Context())
 	writeJSON(w, http.StatusOK, res)
 }
+
+// kitStats returns the celebration operations pipeline summary.
+func (s *Server) kitStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := s.Store.GetKitStats()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, stats)
+}

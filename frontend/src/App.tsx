@@ -349,6 +349,7 @@ function Shell() {
 
   return (
     <div className="app-shell">
+      <a href="#app-main" className="skip-link">Skip to content</a>
       <header className="app-header" role="banner">
         <div className="app-header__top">
           <div className="app-header__brand">
@@ -395,7 +396,7 @@ function Shell() {
           })}
         </nav>
       </header>
-      <main className={`app-main ${route.tab === "work" || route.tab === "sources" || route.tab === "map" ? "app-main--wide" : ""}`} role="main" data-testid="app-main">
+      <main id="app-main" className={`app-main ${route.tab === "work" || route.tab === "sources" || route.tab === "map" ? "app-main--wide" : ""}`} role="main" data-testid="app-main">
         <Suspense fallback={<div className="empty-state">Loading…</div>}>
           {body}
         </Suspense>

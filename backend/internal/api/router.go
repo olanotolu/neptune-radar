@@ -185,6 +185,9 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	// Attorney handoff packet — evidence-cited alignment narrative export.
 	mux.HandleFunc("GET /api/couples/{id}/packet", srv.handoffPacket)
 
+	// Celebration operations — kit pipeline stats.
+	mux.HandleFunc("GET /api/kits/stats", srv.kitStats)
+
 	return mux
 }
 
