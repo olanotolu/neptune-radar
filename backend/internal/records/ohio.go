@@ -367,3 +367,55 @@ func normalizeOhioCity(city string) string {
 	}
 	return city
 }
+
+// parsePostLocationCity extracts a city from an Instagram venue tag like
+// "The Joseph Hotel, Columbus OH" or "Schumacher Place, Columbus, Ohio".
+func parsePostLocationCity(loc string) (city, region string, ok bool) {
+	loc = strings.TrimSpace(loc)
+	if loc == "" {
+		return "", "", false
+	}
+	// Try "Venue Name, City, ST" or "Venue Name, City ST" patterns
+	lower := strings.ToLower(loc)
+	// Known Ohio cities in venue tags
+	ohioCities := []string{
+		"columbus", "cleveland", "cincinnati", "dayton", "akron", "toledo",
+		"youngstown", "canton", "springfield", "mansfield", "findlay",
+		"delaware", "dublin", "westerville", "hilliard", "gahanna",
+		"worthington", "bexley", "grove city", "pickerington",
+		"new albany", "powell", "marion", "chillicothe", "zanesville",
+		"lima", "sandusky", "bowling green", "perrysburg", "maumee",
+		"norwood", "blue ash", "madeira", "kettering", "beavercreek",
+		"centerville", "mason", "west chester", "hamilton", "middletown",
+	}
+	for _, c := range ohioCities {
+		if strings.Contains(lower, c) {
+			// Try to extract state after the city
+			idx := strings.Index(lower, c)
+			rest := loc[idx+len(c):]
+			rest = strings.TrimLeft(rest, " ,")
+			if len(rest) >= 2 {
+				if rest[:2] == "OH" || strings.HasPrefix(strings.ToLower(rest), "ohio") {
+					return c, "OH", true
+				}
+			}
+			return c, "OH", true
+		}
+	}
+	// Generic "City, ST" pattern
+	re := strings.LastIndex(loc, ",")
+	if re > 0 {
+		after := strings.TrimSpace(loc[re+1:])
+		parts := strings.Fields(after)
+		if len(parts) >= 2 {
+			st := parts[len(parts)-1]
+			if len(st) == 2 && strings.ToUpper(st) == st {
+				cityGuess := strings.TrimSpace(strings.Join(parts[:len(parts)-1], " "))
+				if cityGuess != "" {
+					return cityGuess, st, true
+				}
+			}
+		}
+	}
+	return "", "", false
+}

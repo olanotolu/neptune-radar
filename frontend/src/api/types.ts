@@ -1,3 +1,11 @@
+export type LiveEventType = "couple_detected" | "stage_transition" | "action_created" | "alert";
+
+export interface LiveEvent {
+  type: LiveEventType;
+  data: Record<string, unknown>;
+  time: string;
+}
+
 export interface Signal {
   id: string;
   observation_type: string;
@@ -466,6 +474,35 @@ export type ProspectColumnId =
   | "ready_outreach"
   | "approved_paused";
 
+export interface ICPFit {
+  score: number;
+  tags: string[];
+  labels: string[];
+  employers?: string[];
+  roles?: string[];
+  market_priority: number;
+  market_label: string;
+}
+
+export interface WeddingRunway {
+  date?: string;
+  raw?: string;
+  source?: string;
+  days_until?: number;
+  band: "green" | "amber" | "red" | "past" | "unknown" | string;
+  factor: number;
+  suppress_outreach?: boolean;
+  confidence?: number;
+}
+
+export type ConciergeQueue =
+  | "congratulate"
+  | "detective"
+  | "runway_urgent"
+  | "risk"
+  | "action"
+  | "other";
+
 export interface ProspectCard {
   couple_id: string;
   column: ProspectColumnId;
@@ -491,6 +528,12 @@ export interface ProspectCard {
   needs_location?: boolean;
   needs_action?: boolean;
   created_at: string;
+  icp?: ICPFit;
+  runway?: WeddingRunway;
+  runway_label?: string;
+  neptune_rank?: number;
+  journey_stage?: string;
+  queue?: ConciergeQueue;
 }
 
 export interface OpsSummary {
@@ -509,6 +552,169 @@ export interface OpsSummary {
   provider_available?: boolean;
   running?: boolean;
   poll_interval?: string;
+  queue_congratulate?: number;
+  queue_detective?: number;
+  queue_runway_urgent?: number;
+  queue_risk?: number;
+  kits_ready_to_mail?: number;
+  kits_mailed?: number;
+  funnel_chat_started_7d?: number;
+  funnel_consult_booked_7d?: number;
+  funnel_closed_won_7d?: number;
+  funnel_handoffs_issued?: number;
+  funnel_chat_rate?: number;
+  funnel_book_rate?: number;
+}
+
+export interface FunnelEvent {
+  id: string;
+  couple_id?: string;
+  event_type: string;
+  external_id?: string;
+  handoff_code?: string;
+  source: string;
+  payload_json?: string;
+  journey_stage_before?: string;
+  journey_stage_after?: string;
+  matched_by?: string;
+  occurred_at: string;
+  created_at: string;
+}
+
+export interface FunnelStats {
+  chat_started_7d: number;
+  consult_booked_7d: number;
+  closed_won_7d: number;
+  closed_lost_7d: number;
+  handoffs_issued: number;
+  chat_rate: number;
+  book_rate: number;
+}
+
+export interface AutopsyCase {
+  couple_id?: string;
+  kind: string;
+  reason: string;
+  handles?: string[];
+  labels?: string[];
+  score?: number;
+  action_type?: string;
+  lesson: string;
+  occurred_at?: string;
+  hypothesis_id?: string;
+}
+
+export interface AutopsySummary {
+  period_start: string;
+  period_end: string;
+  suppressed_couples: number;
+  ignored_actions: number;
+  rejected_hypotheses: number;
+  approved_actions: number;
+  pending_actions: number;
+  human_reject_rate: number;
+  by_reason: Record<string, number>;
+  by_action_type_ignored: Record<string, number>;
+  top_failure_modes: string[];
+  funnel: FunnelStats;
+  notes: string[];
+}
+
+export interface AutopsyReport {
+  id: string;
+  period_start: string;
+  period_end: string;
+  summary: AutopsySummary;
+  cases: AutopsyCase[];
+  generated_by: string;
+  created_at: string;
+}
+
+export interface DossierEvidence {
+  id: string;
+  kind: string;
+  description: string;
+  weight: number;
+  points: number;
+  confirmed: boolean;
+  created_at?: string;
+}
+
+export interface DossierIdentity {
+  kind: string;
+  description: string;
+  strength: string;
+}
+
+export interface JourneyStep {
+  id: string;
+  label: string;
+  description: string;
+  status: "done" | "current" | "upcoming" | "blocked" | string;
+}
+
+export interface BrandAction {
+  id: string;
+  title: string;
+  body: string;
+  tone: "celebrate" | "soft_invite" | "internal" | "risk" | string;
+  allowed: boolean;
+  block_reason?: string;
+}
+
+export interface DossierPost {
+  id: string;
+  caption?: string;
+  image_url?: string;
+  post_url?: string;
+  location?: string;
+  source_handle?: string;
+  tags?: string[];
+  observed_at?: string;
+}
+
+export interface CoupleDossier {
+  couple_id: string;
+  handle_a?: string;
+  handle_b?: string;
+  person_a_name?: string;
+  person_b_name?: string;
+  bio_a?: string;
+  bio_b?: string;
+  profile_pic_a?: string;
+  profile_pic_b?: string;
+  city?: string;
+  region?: string;
+  stage?: string;
+  automation_paused?: boolean;
+  has_case?: boolean;
+  engagement_score: number;
+  partner_score?: number;
+  hypothesis_score: number;
+  icp: ICPFit;
+  runway: WeddingRunway;
+  runway_label?: string;
+  neptune_rank: number;
+  deliverability: number;
+  evidence: DossierEvidence[];
+  identity: DossierIdentity[];
+  pending_action_id?: string;
+  pending_action_type?: string;
+  proposed_payload?: string;
+  hypothesis_id?: string;
+  journey_stage: string;
+  journey_steps: JourneyStep[];
+  handoff_code?: string;
+  handoff_url?: string;
+  handoff_utm?: string;
+  brand_actions: BrandAction[];
+  celebrate_copy: string;
+  soft_invite_copy: string;
+  observations: DossierPost[];
+  latest_kit_id?: string;
+  latest_kit_status?: string;
+  audit_trail: AuditEvent[];
+  why_now: string[];
 }
 
 export interface ProspectBoard {
@@ -531,4 +737,50 @@ export interface ProspectPin {
   lng?: number;
   stage?: string;
   column?: ProspectColumnId;
+}
+
+export interface StateCoverage {
+  state_id: string;
+  name: string;
+  county_count: number;
+  counties_configured: number;
+  cities: number;
+  government_sources: number;
+  church_sources: number;
+  social_sources: number;
+  watched_sources: number;
+  alive_score: number;
+}
+
+// --- Universal search / DLQ / admin ----------------------------------------
+
+// Reuses the existing CoupleSummary, CRMLead, and NeptuneCase types rather
+// than inventing parallel *Summary aliases — the search endpoint returns the
+// same shapes the list endpoints already produce.
+export interface SearchResult {
+  couples: CoupleSummary[];
+  leads: CRMLead[];
+  cases: NeptuneCase[];
+}
+
+export interface DLQItem {
+  id: string;
+  source: string;
+  monitor?: string;
+  external_id?: string;
+  raw_payload?: string;
+  error_message: string;
+  retries: number;
+  last_retry_at?: string;
+  status: string;
+  created_at: string;
+}
+
+export interface UserSummary {
+  id: string;
+  email: string;
+  role: string;
+  last_seen_at?: string;
+  api_key_masked?: string;
+  disabled?: boolean;
 }

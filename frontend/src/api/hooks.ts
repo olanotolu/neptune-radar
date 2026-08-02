@@ -1,5 +1,6 @@
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "./client";
+import { api, getToken } from "./client";
 import type {
   AuditEvent,
   ConfidenceBreakdown,
@@ -21,13 +22,23 @@ import type {
   OpsSummary,
   SourcePost,
   CongratulateKit,
+  CoupleDossier,
+  FunnelEvent,
+  FunnelStats,
+  AutopsyReport,
+  StateCoverage,
   WatchedSource,
+  SearchResult,
+  DLQItem,
+  UserSummary,
+  LiveEvent,
 } from "./types";
 
 const keys = {
   signals: (monitor?: string) => ["signals", monitor] as const,
   coupleGraph: (coupleId?: string) => ["couple", coupleId, "graph"] as const,
   relationship: (coupleId?: string) => ["couple", coupleId, "relationship"] as const,
+  dossier: (coupleId?: string) => ["couple", coupleId, "dossier"] as const,
   evidence: (hypId?: string) => ["hypothesis", hypId, "evidence"] as const,
   confidence: (hypId?: string) => ["hypothesis", hypId, "confidence"] as const,
   cases: ["cases"] as const,
@@ -42,10 +53,20 @@ const keys = {
   prospectBoard: ["prospects", "board"] as const,
   prospectPins: ["map", "prospects"] as const,
   ingestStatus: ["ingest", "status"] as const,
-  ohioOverview: ["map", "ohio", "overview"] as const,
-  ohioGovernment: ["map", "ohio", "government"] as const,
-  ohioChurches: ["map", "ohio", "churches"] as const,
-  ohioSocial: ["map", "ohio", "social"] as const,
+  mapCoverage: ["map", "coverage"] as const,
+  stateOverview: (st: string) => ["map", "states", st, "overview"] as const,
+  stateGovernment: (st: string) => ["map", "states", st, "government"] as const,
+  stateChurches: (st: string) => ["map", "states", st, "churches"] as const,
+  stateSocial: (st: string) => ["map", "states", st, "social"] as const,
+  // legacy aliases
+  ohioOverview: ["map", "states", "OH", "overview"] as const,
+  ohioGovernment: ["map", "states", "OH", "government"] as const,
+  ohioChurches: ["map", "states", "OH", "churches"] as const,
+  ohioSocial: ["map", "states", "OH", "social"] as const,
+  search: (q: string, type: string) => ["search", q, type] as const,
+  dlq: (status: string, limit: number) => ["dlq", status, limit] as const,
+  scanJobs: (limit: number, status: string) => ["scan-jobs", limit, status] as const,
+  users: ["users"] as const,
 };
 
 function useInvalidateAll() {
@@ -534,43 +555,295 @@ export function useRunJanitor() {
   });
 }
 
-// --- Ohio source registry: real government/church/social connectors --------
-// Gated by `enabled` so nothing fetches until Ohio is actually selected on
-// the map. All four fetch together once Ohio is selected (not per-tab) so
-// switching layer tabs is instant, not a fresh spinner each time.
+export function useCoupleDossier(coupleId?: string) {
+  return useQuery({
+    queryKey: keys.dossier(coupleId),
+    queryFn: () => api.get<CoupleDossier>(`/api/couples/${encodeURIComponent(coupleId!)}/dossier`),
+    enabled: !!coupleId,
+  });
+}
 
+export function useCreateHandoff() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (coupleId: string) =>
+      api.post<{ couple_id: string; handoff_code: string; handoff_url: string; handoff_utm: string; journey_stage: string }>(
+        `/api/couples/${encodeURIComponent(coupleId)}/handoff`,
+      ),
+    onSuccess: (_d, coupleId) => {
+      qc.invalidateQueries({ queryKey: keys.dossier(coupleId) });
+      qc.invalidateQueries({ queryKey: keys.prospectBoard });
+      qc.invalidateQueries({ queryKey: ["ops"] });
+    },
+  });
+}
+
+export function useSetJourneyStage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ coupleId, stage }: { coupleId: string; stage: string }) =>
+      api.post<{ couple_id: string; journey_stage: string }>(
+        `/api/couples/${encodeURIComponent(coupleId)}/journey`,
+        { stage },
+      ),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: keys.dossier(vars.coupleId) });
+      qc.invalidateQueries({ queryKey: keys.prospectBoard });
+      qc.invalidateQueries({ queryKey: ["ops"] });
+    },
+  });
+}
+
+export function useFunnelStats() {
+  return useQuery({
+    queryKey: ["funnel", "stats"],
+    queryFn: () => api.get<FunnelStats>("/api/funnel/stats"),
+    staleTime: 30_000,
+  });
+}
+
+export function useFunnelEvents(coupleId?: string) {
+  return useQuery({
+    queryKey: ["funnel", "events", coupleId ?? "all"],
+    queryFn: () =>
+      api.get<FunnelEvent[]>(
+        `/api/funnel/events${coupleId ? `?couple_id=${encodeURIComponent(coupleId)}` : ""}`,
+      ),
+    staleTime: 15_000,
+  });
+}
+
+export function useAutopsies() {
+  return useQuery({
+    queryKey: ["trust", "autopsies"],
+    queryFn: () => api.get<AutopsyReport[]>("/api/trust/autopsies"),
+    staleTime: 30_000,
+  });
+}
+
+export function useGenerateAutopsy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args?: { days?: number }) =>
+      api.post<AutopsyReport>("/api/trust/autopsy", {
+        days: args?.days ?? 7,
+        generated_by: "human:concierge",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["trust"] });
+      qc.invalidateQueries({ queryKey: ["audit"] });
+    },
+  });
+}
+
+// --- National source registry map (any USPS state) ------------------------
+// Gated by `enabled` so nothing fetches until a state is selected.
+// All four fetch together so layer tab switches are instant.
+
+export function useNationalCoverage(enabled = true) {
+  return useQuery({
+    queryKey: keys.mapCoverage,
+    queryFn: () => api.get<StateCoverage[]>("/api/map/coverage"),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useStateOverview(state: string | undefined, enabled: boolean) {
+  const st = (state || "").toUpperCase();
+  return useQuery({
+    queryKey: keys.stateOverview(st),
+    queryFn: () => api.get<OverviewCityView[]>(`/api/map/states/${st}/overview`),
+    enabled: enabled && st.length === 2,
+    staleTime: 60_000,
+  });
+}
+
+export function useStateGovernment(state: string | undefined, enabled: boolean) {
+  const st = (state || "").toUpperCase();
+  return useQuery({
+    queryKey: keys.stateGovernment(st),
+    queryFn: () => api.get<CountyGovernmentView[]>(`/api/map/states/${st}/government`),
+    enabled: enabled && st.length === 2,
+    staleTime: 60_000,
+  });
+}
+
+export function useStateChurches(state: string | undefined, enabled: boolean) {
+  const st = (state || "").toUpperCase();
+  return useQuery({
+    queryKey: keys.stateChurches(st),
+    queryFn: () => api.get<DioceseView[]>(`/api/map/states/${st}/churches`),
+    enabled: enabled && st.length === 2,
+    staleTime: 60_000,
+  });
+}
+
+export function useStateSocial(state: string | undefined, enabled: boolean) {
+  const st = (state || "").toUpperCase();
+  return useQuery({
+    queryKey: keys.stateSocial(st),
+    queryFn: async () => {
+      const raw = await api.get<SocialMarketView | SocialMarketView[]>(`/api/map/states/${st}/social`);
+      // OH may still return a single market object; normalize to array.
+      if (Array.isArray(raw)) return raw;
+      return raw ? [raw] : [];
+    },
+    enabled: enabled && st.length === 2,
+    staleTime: 60_000,
+  });
+}
+
+/** @deprecated use useStateOverview("OH", enabled) */
 export function useOhioOverview(enabled: boolean) {
-  return useQuery({
-    queryKey: keys.ohioOverview,
-    queryFn: () => api.get<OverviewCityView[]>("/api/map/states/OH/overview"),
-    enabled,
-    staleTime: 60_000,
-  });
+  return useStateOverview("OH", enabled);
 }
-
+/** @deprecated use useStateGovernment("OH", enabled) */
 export function useOhioGovernment(enabled: boolean) {
-  return useQuery({
-    queryKey: keys.ohioGovernment,
-    queryFn: () => api.get<CountyGovernmentView[]>("/api/map/states/OH/government"),
-    enabled,
-    staleTime: 60_000,
-  });
+  return useStateGovernment("OH", enabled);
 }
-
+/** @deprecated use useStateChurches("OH", enabled) */
 export function useOhioChurches(enabled: boolean) {
+  return useStateChurches("OH", enabled);
+}
+/** @deprecated use useStateSocial — returns array */
+export function useOhioSocial(enabled: boolean) {
+  const q = useStateSocial("OH", enabled);
+  return {
+    ...q,
+    data: q.data?.[0] as SocialMarketView | undefined,
+  };
+}
+
+// --- Universal search / DLQ / job queue / admin ---------------------------
+
+export function useSearch(query: string, type = "all") {
   return useQuery({
-    queryKey: keys.ohioChurches,
-    queryFn: () => api.get<DioceseView[]>("/api/map/states/OH/churches"),
-    enabled,
-    staleTime: 60_000,
+    queryKey: keys.search(query, type),
+    queryFn: () =>
+      api.get<SearchResult>(
+        `/api/search?q=${encodeURIComponent(query)}&type=${encodeURIComponent(type)}`,
+      ),
+    enabled: query.trim().length > 0,
+    staleTime: 15_000,
   });
 }
 
-export function useOhioSocial(enabled: boolean) {
+export function useDLQ(status = "pending", limit = 50) {
   return useQuery({
-    queryKey: keys.ohioSocial,
-    queryFn: () => api.get<SocialMarketView>("/api/map/states/OH/social"),
-    enabled,
-    staleTime: 60_000,
+    queryKey: keys.dlq(status, limit),
+    queryFn: () =>
+      api.get<DLQItem[]>(`/api/dlq?status=${encodeURIComponent(status)}&limit=${limit}`),
+    refetchInterval: 30_000,
   });
+}
+
+export function useReplayDLQ() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/api/dlq/${encodeURIComponent(id)}/replay`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dlq"] }),
+  });
+}
+
+export function useScanJobs(limit = 50, status = "all") {
+  return useQuery({
+    queryKey: keys.scanJobs(limit, status),
+    queryFn: () =>
+      api.get<import("./types").ScanJob[]>(
+        `/api/scan-jobs?limit=${limit}&status=${encodeURIComponent(status)}`,
+      ),
+    // ponytail: poll every 10s — running jobs finish in seconds-to-minutes,
+    // so 10s is responsive without hammering. Upgrade: websocket when added.
+    refetchInterval: 10_000,
+  });
+}
+
+export function useUsers() {
+  return useQuery({
+    queryKey: keys.users,
+    queryFn: () => api.get<UserSummary[]>("/api/users"),
+    staleTime: 30_000,
+  });
+}
+
+export function useRotateAPIKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/api/users/${encodeURIComponent(id)}/rotate-key`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.users }),
+  });
+}
+
+export function useDisableUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/api/users/${encodeURIComponent(id)}/disable`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.users }),
+  });
+}
+
+export function useEnableUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/api/users/${encodeURIComponent(id)}/enable`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.users }),
+  });
+}
+
+// SSE live feed. EventSource can't set headers, so the bearer token rides as
+// a query param. Reconnects with exponential backoff (1s → 2s → 4s … capped 30s).
+const BASE_URL = import.meta.env.VITE_API_URL ?? "";
+
+export function useLiveEvents() {
+  const [events, setEvents] = useState<LiveEvent[]>([]);
+  const [connected, setConnected] = useState(false);
+  const esRef = useRef<EventSource | null>(null);
+  const backoff = useRef(1_000);
+
+  useEffect(() => {
+    let stopped = false;
+
+    const connect = () => {
+      if (stopped) return;
+      const token = getToken();
+      const url = `${BASE_URL}/api/events/stream${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+      const es = new EventSource(url);
+      esRef.current = es;
+
+      es.onopen = () => {
+        setConnected(true);
+        backoff.current = 1_000;
+      };
+
+      es.onmessage = (e) => {
+        try {
+          const evt = JSON.parse(e.data) as LiveEvent;
+          setEvents((prev) => [...prev.slice(-49), evt]);
+        } catch {
+          /* malformed frame — drop */
+        }
+      };
+
+      es.onerror = () => {
+        setConnected(false);
+        es.close();
+        esRef.current = null;
+        // ponytail: capped exponential backoff; EventSource auto-reconnects,
+        // but we manage it ourselves so a bad token doesn't spin a tight loop.
+        const delay = Math.min(backoff.current, 30_000);
+        backoff.current = Math.min(backoff.current * 2, 30_000);
+        window.setTimeout(connect, delay);
+      };
+    };
+
+    connect();
+    return () => {
+      stopped = true;
+      esRef.current?.close();
+      esRef.current = null;
+    };
+  }, []);
+
+  return { events, connected };
 }

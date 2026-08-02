@@ -131,6 +131,18 @@ func (s *Store) UpdateAccountLocation(accountID, city, region, source string) er
 	return err
 }
 
+// UpdateAccountBusinessAddress stores the street address from an Instagram business profile.
+func (s *Store) UpdateAccountBusinessAddress(accountID, street, city, state, postal string) error {
+	if street == "" {
+		return nil
+	}
+	_, err := s.DB.Exec(
+		`UPDATE social_accounts SET business_street = $1, business_city = $2, business_state = $3, business_postal = $4 WHERE id = $5`,
+		nullIfEmpty(street), nullIfEmpty(city), nullIfEmpty(state), nullIfEmpty(postal), accountID,
+	)
+	return err
+}
+
 func (s *Store) SetAccountPersonID(accountID, personID string) error {
 	_, err := s.DB.Exec(`UPDATE social_accounts SET person_id = $1 WHERE id = $2`, personID, accountID)
 	return err

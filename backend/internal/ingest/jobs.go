@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"time"
 
@@ -187,4 +188,52 @@ func (w *Worker) GetScanJob(id string) (*ScanJob, bool) {
 		return nil, false
 	}
 	return w.jobs.get(id)
+}
+
+// ListScanJobs returns all jobs newest-first, optionally filtered by status.
+// status maps the API's running|completed|failed onto the internal job states
+// (running|done|failed). ponytail: ceiling — in-memory map, O(n) scan; fine
+// while job volume stays in the low thousands (jobs are ephemeral, not persisted).
+func (w *Worker) ListScanJobs(status string, limit int) []ScanJob {
+	if w.jobs == nil {
+		return nil
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	// API status → internal job status.
+	switch status {
+	case "completed":
+		status = "done"
+	case "":
+		// no filter
+	default:
+		// "running" / "failed" pass through unchanged
+	}
+	return w.jobs.list(status, limit)
+}
+
+// list returns a snapshot of all jobs, newest-first, optionally filtered by
+// status and bounded by limit.
+func (j *jobStore) list(status string, limit int) []ScanJob {
+	j.mu.RLock()
+	defer j.mu.RUnlock()
+	out := make([]ScanJob, 0, len(j.jobs))
+	for _, job := range j.jobs {
+		if status != "" && job.Status != status {
+			continue
+		}
+		out = append(out, *job)
+	}
+	// Newest-first by UpdatedAt (then CreatedAt as tiebreaker).
+	sort.Slice(out, func(i, k int) bool {
+		if !out[i].UpdatedAt.Equal(out[k].UpdatedAt) {
+			return out[i].UpdatedAt.After(out[k].UpdatedAt)
+		}
+		return out[i].CreatedAt.After(out[k].CreatedAt)
+	})
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out
 }

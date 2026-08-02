@@ -7,6 +7,8 @@ package store
 
 import (
 	"database/sql"
+	"sort"
+	"strings"
 
 	"neptune-social-radar/backend/internal/ontology"
 )
@@ -32,6 +34,261 @@ func (s *Store) UpsertState(id, name string) error {
 		`INSERT INTO states (id, name) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`,
 		id, name)
 	return err
+}
+
+func (s *Store) GetState(id string) (ontology.State, error) {
+	var st ontology.State
+	err := s.DB.QueryRow(`SELECT id, name FROM states WHERE id = $1`, id).Scan(&st.ID, &st.Name)
+	return st, err
+}
+
+func (s *Store) ListStates() ([]ontology.State, error) {
+	rows, err := s.DB.Query(`SELECT id, name FROM states ORDER BY name ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ontology.State
+	for rows.Next() {
+		var st ontology.State
+		if err := rows.Scan(&st.ID, &st.Name); err != nil {
+			return nil, err
+		}
+		out = append(out, st)
+	}
+	return out, rows.Err()
+}
+
+// StateCoverage is national map choropleth / coverage strip data.
+type StateCoverage struct {
+	StateID            string `json:"state_id"`
+	Name               string `json:"name"`
+	CountyCount        int    `json:"county_count"`
+	CountiesConfigured int    `json:"counties_configured"` // gov marriage endpoints present
+	Cities             int    `json:"cities"`
+	GovernmentSources  int    `json:"government_sources"`
+	ChurchSources      int    `json:"church_sources"`
+	SocialSources      int    `json:"social_sources"`
+	WatchedSources     int    `json:"watched_sources"`
+	// AliveScore 0–1 for UI choropleth (social-weighted: radar value first).
+	AliveScore float64 `json:"alive_score"`
+	// DenominationBreakdown counts dioceses/parishes per denomination
+	// (defaults to "catholic" when metadata.denomination is NULL/empty).
+	DenominationBreakdown map[string]int `json:"denomination_breakdown"` // {"catholic": N, "episcopal": N, ...}
+	// SourceClassBreakdown counts social vendors per social_sources.category.
+	SourceClassBreakdown map[string]int `json:"source_class_breakdown"` // {"engagement_photographer": N, ...}
+	// ConnectorHealth summarizes connector status for the state's sources.
+	ConnectorHealth ConnectorHealthSummary `json:"connector_health"`
+}
+
+// ConnectorHealthSummary counts connectors by status for a state.
+type ConnectorHealthSummary struct {
+	Healthy  int `json:"healthy"`
+	Degraded int `json:"degraded"`
+	Offline  int `json:"offline"`
+	Setup    int `json:"setup"`
+}
+
+// ListStateCoverage returns one row per state with real source counts.
+func (s *Store) ListStateCoverage() ([]StateCoverage, error) {
+	states, err := s.ListStates()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]StateCoverage, 0, len(states))
+	for _, st := range states {
+		c := StateCoverage{
+			StateID:               st.ID,
+			Name:                  st.Name,
+			DenominationBreakdown: map[string]int{},
+			SourceClassBreakdown:  map[string]int{},
+		}
+		_ = s.DB.QueryRow(`SELECT COUNT(*) FROM counties WHERE state_id = $1`, st.ID).Scan(&c.CountyCount)
+		_ = s.DB.QueryRow(`SELECT COUNT(*) FROM cities WHERE state_id = $1`, st.ID).Scan(&c.Cities)
+		_ = s.DB.QueryRow(`
+			SELECT COUNT(DISTINCT o.county_id) FROM source_organizations o
+			JOIN counties c ON c.id = o.county_id
+			WHERE c.state_id = $1 AND o.org_type = 'government_office' AND o.data_mode != 'fixture'
+			  AND o.county_id IS NOT NULL AND o.county_id <> ''`, st.ID).Scan(&c.CountiesConfigured)
+		_ = s.DB.QueryRow(`
+			SELECT COUNT(*) FROM source_organizations o
+			LEFT JOIN counties c ON c.id = o.county_id
+			LEFT JOIN cities ci ON ci.id = o.city_id
+			WHERE o.org_type = 'government_office' AND o.data_mode != 'fixture'
+			  AND (c.state_id = $1 OR ci.state_id = $1)`, st.ID).Scan(&c.GovernmentSources)
+		_ = s.DB.QueryRow(`
+			SELECT COUNT(*) FROM source_organizations o
+			LEFT JOIN cities ci ON ci.id = o.city_id
+			WHERE o.org_type IN ('diocese','parish') AND o.data_mode != 'fixture'
+			  AND ci.state_id = $1`, st.ID).Scan(&c.ChurchSources)
+		_ = s.DB.QueryRow(`
+			SELECT COUNT(*) FROM source_organizations o
+			LEFT JOIN cities ci ON ci.id = o.city_id
+			WHERE o.org_type = 'business' AND o.data_mode != 'fixture'
+			  AND ci.state_id = $1`, st.ID).Scan(&c.SocialSources)
+		_ = s.DB.QueryRow(`
+			SELECT COUNT(*) FROM watched_sources WHERE active AND upper(state) = upper($1)`, st.ID).Scan(&c.WatchedSources)
+
+		// Denomination breakdown: dioceses/parishes grouped by metadata.denomination
+		// (defaulting to "catholic" when NULL/empty).
+		if rows, err := s.DB.Query(`
+			SELECT COALESCE(o.metadata::json->>'denomination','catholic'), COUNT(*)
+			FROM source_organizations o
+			LEFT JOIN cities ci ON ci.id = o.city_id
+			WHERE o.org_type IN ('diocese','parish') AND o.data_mode != 'fixture'
+			  AND ci.state_id = $1
+			GROUP BY 1`, st.ID); err == nil {
+			for rows.Next() {
+				var denom string
+				var n int
+				if err := rows.Scan(&denom, &n); err == nil {
+					c.DenominationBreakdown[strings.ToLower(denom)] = n
+				}
+			}
+			rows.Close()
+		}
+
+		// SourceClass breakdown: social vendors grouped by social_sources.category.
+		if rows, err := s.DB.Query(`
+			SELECT ss.category, COUNT(*)
+			FROM social_sources ss
+			JOIN cities ci ON ci.id = ss.city_market_id
+			WHERE ci.state_id = $1
+			GROUP BY 1`, st.ID); err == nil {
+			for rows.Next() {
+				var cat string
+				var n int
+				if err := rows.Scan(&cat, &n); err == nil {
+					c.SourceClassBreakdown[cat] = n
+				}
+			}
+			rows.Close()
+		}
+
+		// Connector health: connectors for this state's sources grouped by status.
+		if rows, err := s.DB.Query(`
+			SELECT c.status, COUNT(*)
+			FROM connectors c
+			JOIN source_endpoints se ON se.id = c.source_endpoint_id
+			JOIN source_organizations o ON o.id = se.organization_id
+			LEFT JOIN cities ci ON ci.id = o.city_id
+			LEFT JOIN counties co ON co.id = o.county_id
+			WHERE ci.state_id = $1 OR co.state_id = $1
+			GROUP BY 1`, st.ID); err == nil {
+			for rows.Next() {
+				var status string
+				var n int
+				if err := rows.Scan(&status, &n); err == nil {
+					switch status {
+					case "healthy":
+						c.ConnectorHealth.Healthy = n
+					case "degraded":
+						c.ConnectorHealth.Degraded = n
+					case "offline":
+						c.ConnectorHealth.Offline = n
+					default:
+						c.ConnectorHealth.Setup += n
+					}
+				}
+			}
+			rows.Close()
+		}
+		// Score: any social/watched lights the state; gov/church add depth.
+		score := 0.0
+		if c.WatchedSources > 0 || c.SocialSources > 0 {
+			score = 0.55 + 0.05*float64(min(c.WatchedSources, 8))
+		}
+		if c.GovernmentSources > 0 {
+			score += 0.15
+		}
+		if c.ChurchSources > 0 {
+			score += 0.1
+		}
+		if c.Cities > 0 {
+			score += 0.05
+		}
+		if score > 1 {
+			score = 1
+		}
+		c.AliveScore = score
+		out = append(out, c)
+	}
+	return out, nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// CoverageSummary is the national coverage dashboard widget: aggregate counts,
+// denomination/SourceClass breakdowns, connector health, and top states.
+type CoverageSummary struct {
+	StatesCovered          int                    `json:"states_covered"`
+	TotalGovernmentSources int                    `json:"total_government_sources"`
+	TotalChurchSources     int                    `json:"total_church_sources"`
+	TotalSocialSources     int                    `json:"total_social_sources"`
+	TotalWatchedSources    int                    `json:"total_watched_sources"`
+	AvgAliveScore          float64                `json:"avg_alive_score"`
+	DenominationBreakdown  map[string]int         `json:"denomination_breakdown"`
+	SourceClassBreakdown   map[string]int         `json:"source_class_breakdown"`
+	ConnectorHealth        ConnectorHealthSummary `json:"connector_health"`
+	TopStates              []topState             `json:"top_states"`
+}
+
+type topState struct {
+	StateID    string  `json:"state_id"`
+	Name       string  `json:"name"`
+	AliveScore float64 `json:"alive_score"`
+}
+
+// CoverageSummary aggregates national coverage stats by reusing
+// ListStateCoverage and summing in Go — no duplicate SQL.
+func (s *Store) CoverageSummary() (*CoverageSummary, error) {
+	states, err := s.ListStateCoverage()
+	if err != nil {
+		return nil, err
+	}
+	sum := &CoverageSummary{
+		DenominationBreakdown: map[string]int{},
+		SourceClassBreakdown:  map[string]int{},
+		TopStates:             []topState{},
+	}
+	if len(states) == 0 {
+		return sum, nil
+	}
+	for _, st := range states {
+		sum.StatesCovered++
+		sum.TotalGovernmentSources += st.GovernmentSources
+		sum.TotalChurchSources += st.ChurchSources
+		sum.TotalSocialSources += st.SocialSources
+		sum.TotalWatchedSources += st.WatchedSources
+		sum.AvgAliveScore += st.AliveScore
+		sum.ConnectorHealth.Healthy += st.ConnectorHealth.Healthy
+		sum.ConnectorHealth.Degraded += st.ConnectorHealth.Degraded
+		sum.ConnectorHealth.Offline += st.ConnectorHealth.Offline
+		sum.ConnectorHealth.Setup += st.ConnectorHealth.Setup
+		for d, n := range st.DenominationBreakdown {
+			sum.DenominationBreakdown[d] += n
+		}
+		for c, n := range st.SourceClassBreakdown {
+			sum.SourceClassBreakdown[c] += n
+		}
+	}
+	sum.AvgAliveScore /= float64(sum.StatesCovered)
+	// Top states by alive score (descending).
+	top := make([]topState, len(states))
+	for i, st := range states {
+		top[i] = topState{StateID: st.StateID, Name: st.Name, AliveScore: st.AliveScore}
+	}
+	sort.SliceStable(top, func(i, j int) bool { return top[i].AliveScore > top[j].AliveScore })
+	if len(top) > 5 {
+		top = top[:5]
+	}
+	sum.TopStates = top
+	return sum, nil
 }
 
 func (s *Store) UpsertCounty(id, stateID, name string) error {

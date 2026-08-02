@@ -125,14 +125,23 @@ that context changed. Respond with
 ONLY a JSON object: {"confidence": 0.0-1.0, "proposed_stage": "engaged"|"status_uncertain"|"unknown", "rationale": "one sentence"}`
 
 func formatSignalPrompt(req SignalRequest) string {
-	prompt := fmt.Sprintf(
-		"Candidate event type: %s\nObservation type: %s\nText under consideration: %q\nHandle: %s\nPartner handle: %s\nPrior relationship stage: %s\nExisting evidence: %v",
-		req.CandidateEventType, req.ObservationType, req.Text, req.Handle, req.PartnerHandle, req.PriorStage, req.ExistingEvidence,
-	)
-	if req.SignalContext != "" {
-		prompt += "\nDeterministic signal-vocabulary matches: " + req.SignalContext
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Candidate event type: %s\nObservation type: %s\n", req.CandidateEventType, req.ObservationType))
+	if text := fence("caption_or_bio", req.Text); text != "" {
+		sb.WriteString(text + "\n")
 	}
-	return prompt
+	sb.WriteString(fmt.Sprintf("Handle: %s\nPartner handle: %s\nPrior relationship stage: %s\n", req.Handle, req.PartnerHandle, req.PriorStage))
+	if len(req.ExistingEvidence) > 0 {
+		sanitized := make([]string, len(req.ExistingEvidence))
+		for i, e := range req.ExistingEvidence {
+			sanitized[i] = sanitizeLLMInput(e)
+		}
+		sb.WriteString(fmt.Sprintf("Existing evidence: %v\n", sanitized))
+	}
+	if req.SignalContext != "" {
+		sb.WriteString("Deterministic signal-vocabulary matches: " + sanitizeLLMInput(req.SignalContext))
+	}
+	return sb.String()
 }
 
 func (c *ClaudeInterpreter) InterpretSignal(ctx context.Context, req SignalRequest) (Interpretation, error) {

@@ -102,6 +102,23 @@ func migrate(db *sql.DB) error {
 	return nil
 }
 
+// leaderLockKey is a fixed advisory-lock key for the watch-loop worker.
+// Session-level: auto-released when the DB connection closes (process death),
+// so a crashed replica's lock frees without a lease-renewal heartbeat.
+const leaderLockKey int64 = 0x4E657074756E65 // "Neptune" as 7 ASCII bytes packed into int64
+
+// TryAcquireLeaderLock attempts to acquire a session-level Postgres advisory
+// lock. Returns true if this connection is now the leader (the only replica
+// that should spend provider budget). Returns false if another replica already
+// holds it — the caller should idle its poll loop but stay alive for API/Resume.
+// The lock auto-releases when the connection closes, so no lease renewal is
+// needed and a crashed worker frees the lock on disconnect.
+func (s *Store) TryAcquireLeaderLock() (bool, error) {
+	var acquired bool
+	err := s.DB.QueryRow(`SELECT pg_try_advisory_lock($1)`, leaderLockKey).Scan(&acquired)
+	return acquired, err
+}
+
 // isUniqueViolation reports whether err is a Postgres unique-constraint
 // violation (SQLSTATE 23505) — the idempotency signal for duplicate event
 // delivery from the provider.

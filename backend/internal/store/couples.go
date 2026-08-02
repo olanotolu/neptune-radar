@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"neptune-social-radar/backend/internal/ontology"
@@ -18,8 +19,8 @@ func (s *Store) EnsureCouple(personAID, personBID string) (ontology.Couple, erro
 	}
 	var c ontology.Couple
 	err := s.DB.QueryRow(
-		`SELECT id, person_a_id, person_b_id, created_at FROM couples WHERE person_a_id = $1 AND person_b_id = $2`, a, b,
-	).Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt)
+		`SELECT id, person_a_id, person_b_id, created_at, mistaken FROM couples WHERE person_a_id = $1 AND person_b_id = $2`, a, b,
+	).Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt, &c.Mistaken)
 	if err == nil {
 		return c, nil
 	}
@@ -37,8 +38,8 @@ func (s *Store) EnsureCouple(personAID, personBID string) (ontology.Couple, erro
 	if err == sql.ErrNoRows {
 		// We lost the race — fetch the winner's row (and its real id).
 		err = s.DB.QueryRow(
-			`SELECT id, person_a_id, person_b_id, created_at FROM couples WHERE person_a_id = $1 AND person_b_id = $2`, a, b,
-		).Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt)
+			`SELECT id, person_a_id, person_b_id, created_at, mistaken FROM couples WHERE person_a_id = $1 AND person_b_id = $2`, a, b,
+		).Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt, &c.Mistaken)
 	}
 	if err != nil {
 		return c, err
@@ -50,7 +51,8 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 	rows, err := s.DB.Query(
 		`SELECT id, person_a_id, person_b_id, created_at,
 		        COALESCE(inferred_city,''), COALESCE(inferred_region,''),
-		        inferred_lat, inferred_lng, COALESCE(location_source,'')
+		        inferred_lat, inferred_lng, COALESCE(location_source,''),
+		        mistaken, COALESCE(mistaken_reason,''), COALESCE(mistaken_by,''), mistaken_at
 		 FROM couples ORDER BY created_at ASC, id ASC`)
 	if err != nil {
 		return nil, err
@@ -60,8 +62,10 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 	for rows.Next() {
 		var c ontology.Couple
 		var lat, lng sql.NullFloat64
+		var mistakenAt sql.NullTime
 		if err := rows.Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt,
-			&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource); err != nil {
+			&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource,
+			&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt); err != nil {
 			return nil, err
 		}
 		if lat.Valid {
@@ -72,6 +76,10 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 			v := lng.Float64
 			c.InferredLng = &v
 		}
+		if mistakenAt.Valid {
+			t := mistakenAt.Time
+			c.MistakenAt = &t
+		}
 		out = append(out, c)
 	}
 	return out, rows.Err()
@@ -80,13 +88,16 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 func (s *Store) GetCouple(id string) (ontology.Couple, error) {
 	var c ontology.Couple
 	var lat, lng sql.NullFloat64
+	var mistakenAt sql.NullTime
 	err := s.DB.QueryRow(
 		`SELECT id, person_a_id, person_b_id, created_at,
 		        COALESCE(inferred_city,''), COALESCE(inferred_region,''),
-		        inferred_lat, inferred_lng, COALESCE(location_source,'')
+		        inferred_lat, inferred_lng, COALESCE(location_source,''),
+		        mistaken, COALESCE(mistaken_reason,''), COALESCE(mistaken_by,''), mistaken_at
 		 FROM couples WHERE id = $1`, id,
 	).Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt,
-		&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource)
+		&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource,
+		&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt)
 	if err != nil {
 		return c, err
 	}
@@ -98,9 +109,36 @@ func (s *Store) GetCouple(id string) (ontology.Couple, error) {
 		v := lng.Float64
 		c.InferredLng = &v
 	}
+	if mistakenAt.Valid {
+		t := mistakenAt.Time
+		c.MistakenAt = &t
+	}
 	return c, nil
 }
 
+// MarkCoupleMistaken is the human override path: a concierge marks a couple
+// as NOT actually a couple (identity resolution was wrong). The scorer
+// checks this before creating new hypotheses for the couple, so the
+// override is respected permanently — not just for the current hypothesis.
+func (s *Store) MarkCoupleMistaken(coupleID, reason, decidedBy string) error {
+	_, err := s.DB.Exec(
+		`UPDATE couples SET mistaken = TRUE, mistaken_reason = $2, mistaken_by = $3, mistaken_at = now() WHERE id = $1`,
+		coupleID, reason, decidedBy)
+	if err != nil {
+		return err
+	}
+	// Also reject all pending hypotheses for this couple — a mistaken couple
+	// has no valid hypotheses.
+	_, err = s.DB.Exec(
+		`UPDATE life_event_hypotheses SET status = 'rejected' WHERE couple_id = $1 AND status NOT IN ('rejected','expired')`,
+		coupleID)
+	if err != nil {
+		return fmt.Errorf("mark couple mistaken: reject hypotheses: %w", err)
+	}
+	s.Audit("couple", coupleID, "marked_mistaken",
+		map[string]any{"reason": reason, "decided_by": decidedBy}, decidedBy, -1)
+	return nil
+}
 
 // GetCoupleForAccountPair returns the couple linking the persons behind two
 // accounts, or sql.ErrNoRows if either account is person-less or no couple
@@ -125,8 +163,8 @@ func (s *Store) GetCoupleForAccountPair(accountAID, accountBID string) (ontology
 	}
 	var c ontology.Couple
 	err = s.DB.QueryRow(
-		`SELECT id, person_a_id, person_b_id, created_at FROM couples WHERE person_a_id = $1 AND person_b_id = $2`, x, y,
-	).Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt)
+		`SELECT id, person_a_id, person_b_id, created_at, mistaken FROM couples WHERE person_a_id = $1 AND person_b_id = $2`, x, y,
+	).Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt, &c.Mistaken)
 	if err != nil {
 		return c, err
 	}
@@ -212,6 +250,30 @@ func (s *Store) SetAutomationPaused(coupleID string, paused bool) (ontology.Rela
 		return ontology.Relationship{}, err
 	}
 	return s.TransitionRelationship(coupleID, current.Stage, current.Confidence, current.VisibilityScope, paused)
+}
+
+// BulkUpdateCouples applies the same action to many couples at once.
+// action is "pause", "resume", or "suppress". Returns the number of couples
+// successfully updated. Failures on individual couples are counted as skipped
+// (not an error) so a single bad id doesn't abort the batch.
+func (s *Store) BulkUpdateCouples(ids []string, action string, reason string) (int, error) {
+	n := 0
+	for _, id := range ids {
+		var err error
+		switch action {
+		case "pause":
+			_, err = s.SetAutomationPaused(id, true)
+		case "resume":
+			_, err = s.SetAutomationPaused(id, false)
+		case "suppress":
+			err = s.SuppressCouple(id, reason)
+		}
+		if err != nil {
+			continue
+		}
+		n++
+	}
+	return n, nil
 }
 
 func (s *Store) RelationshipHistory(coupleID string) ([]ontology.Relationship, error) {

@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"neptune-social-radar/backend/internal/ontology"
@@ -77,6 +78,26 @@ func (s *Store) UpdateHypothesisStatus(id string, status ontology.HypothesisStat
 	_, err := s.DB.Exec(`UPDATE life_event_hypotheses SET status = $1, updated_at = $2 WHERE id = $3`,
 		status, time.Now().UTC(), id)
 	return err
+}
+
+// RejectHypothesis is the human override path: a concierge marks a
+// hypothesis as rejected (the event didn't happen, or was misidentified).
+// This is permanent — the scorer won't re-surface it. Also cancels any
+// pending recommended_actions for the hypothesis.
+func (s *Store) RejectHypothesis(id, reason, decidedBy string) error {
+	if err := s.UpdateHypothesisStatus(id, ontology.HypothesisRejected); err != nil {
+		return err
+	}
+	_, err := s.DB.Exec(
+		`UPDATE recommended_actions SET status = 'rejected', decided_at = now(), decided_by = $3, decision_reason = $2
+		  WHERE hypothesis_id = $1 AND status = 'pending'`,
+		id, reason, decidedBy)
+	if err != nil {
+		return fmt.Errorf("reject hypothesis: cancel actions: %w", err)
+	}
+	s.Audit("hypothesis", id, "rejected_by_human",
+		map[string]any{"reason": reason, "decided_by": decidedBy}, decidedBy, -1)
+	return nil
 }
 
 func (s *Store) UpdateHypothesisModelRule(id, modelOrRule string) error {

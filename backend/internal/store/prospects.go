@@ -3,11 +3,13 @@ package store
 import (
 	"database/sql"
 	"encoding/json"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"neptune-social-radar/backend/internal/ontology"
+	"neptune-social-radar/backend/internal/signals"
 )
 
 // SourcePost is a vendor observation shaped for the Sources detail UI.
@@ -145,6 +147,13 @@ type ProspectCard struct {
 	NeedsLocation     bool    `json:"needs_location"`
 	NeedsAction       bool    `json:"needs_action"`
 	CreatedAt         string  `json:"created_at"`
+	// Growth OS (Meet Neptune) ranking surfaces
+	ICP          signals.ICPFit        `json:"icp"`
+	Runway       signals.WeddingRunway `json:"runway"`
+	RunwayLabel  string                `json:"runway_label,omitempty"`
+	NeptuneRank  float64               `json:"neptune_rank"`
+	JourneyStage string                `json:"journey_stage,omitempty"`
+	Queue        string                `json:"queue,omitempty"` // congratulate | detective | runway_urgent | risk | action | other
 }
 
 // Prospect columns used by the board UI.
@@ -166,6 +175,7 @@ func (s *Store) ListProspectBoard(limit int) ([]ProspectCard, error) {
 		SELECT
 		  c.id, c.person_a_id, c.person_b_id, c.created_at,
 		  COALESCE(c.inferred_city,''), COALESCE(c.inferred_region,''),
+		  COALESCE(c.journey_stage,'detected'),
 		  COALESCE(pa.display_name,''), COALESCE(pb.display_name,''),
 		  COALESCE(aa.handle,''), COALESCE(ab.handle,''),
 		  COALESCE(aa.profile_pic_url,''), COALESCE(ab.profile_pic_url,''),
@@ -222,6 +232,7 @@ func (s *Store) ListProspectBoard(limit int) ([]ProspectCard, error) {
 		if err := rows.Scan(
 			&card.CoupleID, &personAID, &personBID, &created,
 			&card.City, &card.Region,
+			&card.JourneyStage,
 			&card.PersonALabel, &card.PersonBLabel,
 			&card.HandleA, &card.HandleB,
 			&card.ProfilePicA, &card.ProfilePicB,
@@ -252,13 +263,54 @@ func (s *Store) ListProspectBoard(limit int) ([]ProspectCard, error) {
 				card.PersonBLabel = card.HandleB
 			}
 		}
+		// Growth OS: ICP + runway (bios only here for board speed; dossier uses captions too)
+		EnrichProspectCard(&card, card.BioA+"\n"+card.BioB, nil)
+		card.Queue = classifyConciergeQueue(card)
 		// Truncate bios for payload size
 		card.BioA = truncateStr(card.BioA, 220)
 		card.BioB = truncateStr(card.BioB, 220)
 		card.Column = classifyProspectColumn(card)
 		out = append(out, card)
 	}
+	// Prefer Neptune rank for operator sorting within the actionable set
+	sortProspectsByRank(out)
 	return out, rows.Err()
+}
+
+func sortProspectsByRank(cards []ProspectCard) {
+	// Actionable first, then Neptune rank, then engagement score.
+	sort.SliceStable(cards, func(i, j int) bool {
+		if cards[i].NeedsAction != cards[j].NeedsAction {
+			return cards[i].NeedsAction
+		}
+		if cards[i].NeptuneRank != cards[j].NeptuneRank {
+			return cards[i].NeptuneRank > cards[j].NeptuneRank
+		}
+		return cards[i].HypothesisScore > cards[j].HypothesisScore
+	})
+}
+
+// classifyConciergeQueue maps a card into the Today concierge desk.
+func classifyConciergeQueue(c ProspectCard) string {
+	if c.PendingActionType == "concierge_review" || c.PendingActionType == "pause_automation" || c.AutomationPaused {
+		return "risk"
+	}
+	if c.Runway.Band == "red" || c.Runway.Band == "amber" {
+		return "runway_urgent"
+	}
+	if c.NeedsPics || c.NeedsLocation || (c.PendingActionType == "investigate") {
+		return "detective"
+	}
+	if c.NeedsAction || c.PendingActionType == "review" || c.PendingActionType == "create_case" || c.PendingActionType == "draft_outreach" {
+		if c.JourneyStage == "detected" || c.JourneyStage == "approved" || c.JourneyStage == "" {
+			return "congratulate"
+		}
+		return "action"
+	}
+	if c.JourneyStage == "detected" || c.JourneyStage == "approved" {
+		return "congratulate"
+	}
+	return "other"
 }
 
 func truncateStr(s string, n int) string {
@@ -562,6 +614,20 @@ type OpsSummary struct {
 	SourcesStale       int `json:"sources_stale"` // no posts in 7d or never
 	MapPins            int `json:"map_pins"`
 	ResultsUsedToday   int `json:"results_used_today"`
+	// Growth OS concierge queues (counts)
+	QueueCongratulate  int `json:"queue_congratulate"`
+	QueueDetective     int `json:"queue_detective"`
+	QueueRunwayUrgent  int `json:"queue_runway_urgent"`
+	QueueRisk          int `json:"queue_risk"`
+	KitsReadyToMail    int `json:"kits_ready_to_mail"`
+	KitsMailed         int `json:"kits_mailed"`
+	// Closed-loop funnel (7d)
+	FunnelChatStarted7d   int     `json:"funnel_chat_started_7d"`
+	FunnelConsultBooked7d int     `json:"funnel_consult_booked_7d"`
+	FunnelClosedWon7d     int     `json:"funnel_closed_won_7d"`
+	FunnelHandoffsIssued  int     `json:"funnel_handoffs_issued"`
+	FunnelChatRate        float64 `json:"funnel_chat_rate"`
+	FunnelBookRate        float64 `json:"funnel_book_rate"`
 }
 
 // GetOpsSummary aggregates operator KPIs.
@@ -591,5 +657,31 @@ func (s *Store) GetOpsSummary() (OpsSummary, error) {
 		    AND o.observed_at > now() - interval '7 days'
 		    AND (o.monitor = 'vendor:' || w.handle OR lower(o.raw_payload::jsonb->>'handle') = lower(w.handle))
 		)`).Scan(&o.SourcesStale)
+	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM congratulate_kits WHERE status IN ('ready_to_mail','address_verified')`).Scan(&o.KitsReadyToMail)
+	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM congratulate_kits WHERE status = 'mailed'`).Scan(&o.KitsMailed)
+
+	// Concierge queue counts from enriched board (bounded).
+	if cards, err := s.ListProspectBoard(200); err == nil {
+		for _, c := range cards {
+			switch c.Queue {
+			case "congratulate":
+				o.QueueCongratulate++
+			case "detective":
+				o.QueueDetective++
+			case "runway_urgent":
+				o.QueueRunwayUrgent++
+			case "risk":
+				o.QueueRisk++
+			}
+		}
+	}
+	if st, err := s.GetFunnelStats(); err == nil {
+		o.FunnelChatStarted7d = st.ChatStarted7d
+		o.FunnelConsultBooked7d = st.ConsultBooked7d
+		o.FunnelClosedWon7d = st.ClosedWon7d
+		o.FunnelHandoffsIssued = st.HandoffsIssued
+		o.FunnelChatRate = st.ChatRate
+		o.FunnelBookRate = st.BookRate
+	}
 	return o, nil
 }

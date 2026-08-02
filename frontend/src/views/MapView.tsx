@@ -1,16 +1,24 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo, type ReactNode } from "react";
 import { geoAlbersUsa, geoPath } from "d3-geo";
 import { select } from "d3-selection";
 import { zoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
 import "d3-transition";
 import { feature } from "topojson-client";
 import topology from "us-atlas/states-10m.json";
+import countyTopology from "us-atlas/counties-10m.json";
 import { getCities } from "./cities";
-import { OHIO_CITY_COORDS, OHIO_COUNTIES, OHIO_FIPS, type LayerId } from "./ohio";
-import { OhioPanel } from "./OhioPanel";
-import { useOhioChurches, useOhioGovernment, useOhioOverview, useOhioSocial, useProspectPins } from "../api/hooks";
+import { StatePanel } from "./StatePanel";
+import {
+  useNationalCoverage,
+  useProspectPins,
+  useStateOverview,
+  useStateSocial,
+  useStateChurches,
+  useStateGovernment,
+} from "../api/hooks";
 import { mediaURL } from "../api/media";
-import type { ConnectorStatus, ProspectPin } from "../api/types";
+import type { ProspectPin } from "../api/types";
+import { type LayerId } from "./layers";
 
 // us-atlas identifies states by numeric FIPS code, which is meaningless on
 // screen and — critically — does NOT match the USPS abbreviations cities.ts
@@ -49,7 +57,7 @@ const path = geoPath(projection);
 
 // Precompute every path string + label centroid ONCE at module scope.
 // Before this, every mousemove/zoom-frame re-render recomputed geoPath for
-// all 56 states and 88 Ohio counties — dozens of times per second.
+// all 56 states — dozens of times per second.
 const STATE_PATHS: Record<string, string> = {};
 const STATE_CENTROIDS: Record<string, [number, number]> = {};
 for (const s of STATES) {
@@ -58,112 +66,62 @@ for (const s of STATES) {
   const c = path.centroid(s.geometry);
   if (c && !isNaN(c[0]) && !isNaN(c[1])) STATE_CENTROIDS[s.id] = c;
 }
-const COUNTY_PATHS: Record<string, string> = {};
-for (const cty of OHIO_COUNTIES) {
-  const d = path(cty.geometry);
-  if (d) COUNTY_PATHS[cty.fips] = d;
+
+// County centroids keyed by 5-digit FIPS — used to place government-office
+// pins. us-atlas counties-10m ships the same resolution as the state file,
+// so no new dependency; same topojson feature() pattern as states above.
+const countyFeature = feature(countyTopology as any, countyTopology.objects.counties as any) as any;
+const COUNTY_CENTROIDS: Record<string, [number, number]> = {};
+for (const f of countyFeature.features) {
+  const c = path.centroid(f.geometry);
+  if (c && !isNaN(c[0]) && !isNaN(c[1])) COUNTY_CENTROIDS[String(f.id)] = c;
 }
 
-const TIER_COLORS: Record<number, { bg: string; border: string; text: string }> = {
-  1: { bg: "var(--cove)", border: "#b8e8ea", text: "var(--cove-deep)" },
-  2: { bg: "var(--mesa-soft)", border: "#f5d4c0", text: "var(--mesa-deep)" },
-  3: { bg: "var(--bg-alt)", border: "var(--border)", text: "var(--ink-dim)" },
+// Denomination → pin color for diocese markers. Read from the diocese
+// organization's metadata JSON (set by bootstrap-state); unknown denominations
+// fall back to the Catholic gold so the pin is still visible.
+const DENOM_COLOR: Record<string, string> = {
+  catholic: "#D4AF37",
+  episcopal: "#6B3FA0",
+  methodist: "#C8102E",
+  jewish: "#003F87",
 };
-
-const SIGNAL_DOT: Record<string, string> = {
-  Active: "var(--cove-deep)",
-  Pending: "var(--mesa)",
-  Idle: "var(--ink-faint)",
-};
-
-function TierBadge({ tier }: { tier: 1 | 2 | 3 }) {
-  const label = tier === 1 ? "Tier 1" : tier === 2 ? "Tier 2" : "Tier 3";
-  const c = TIER_COLORS[tier];
-  return (
-    <span className="city-tier" style={{ background: c.bg, color: c.text, borderColor: c.border }}>
-      {label}
-    </span>
-  );
+function denomColor(metaJson?: string): string {
+  if (!metaJson) return DENOM_COLOR.catholic;
+  try {
+    const d = (JSON.parse(metaJson) as { denomination?: string }).denomination ?? "catholic";
+    return DENOM_COLOR[d] ?? DENOM_COLOR.catholic;
+  } catch {
+    return DENOM_COLOR.catholic;
+  }
 }
 
-function SignalDot({ signal }: { signal: string }) {
-  const color = SIGNAL_DOT[signal] ?? "var(--ink-faint)";
-  return <span className={`city-signal-dot ${signal === "Active" ? "city-signal-dot--live" : ""}`} style={{ background: color }} title={signal} />;
+// --- National coverage choropleth -----------------------------------------
+// 5-step red→green ramp keyed off a 0-1 coverage-health value. Discrete
+// buckets match the spec exactly; computed once at module scope, never
+// per-frame. Used for both the state fills and the legend gradient.
+const COVERAGE_STOPS: Array<[number, string]> = [
+  [0.0, "#451a03"], // no coverage
+  [0.2, "#c2410c"], // minimal
+  [0.4, "#a16207"], // partial
+  [0.6, "#4d7c0f"], // good
+  [0.8, "#15803d"], // full
+];
+function coverageColor(v: number): string {
+  if (v < 0.2) return COVERAGE_STOPS[0][1];
+  if (v < 0.4) return COVERAGE_STOPS[1][1];
+  if (v < 0.6) return COVERAGE_STOPS[2][1];
+  if (v < 0.8) return COVERAGE_STOPS[3][1];
+  return COVERAGE_STOPS[4][1];
 }
 
-function StatePanel({ stateId, stateName, onClose }: { stateId: string; stateName: string; onClose: () => void }) {
-  const cities = getCities(stateId);
-  const tiers = ([1, 2, 3] as const).map((t) => ({ tier: t, rows: cities.filter((c) => c.tier === t) }));
-  const active = cities.filter((c) => c.signal === "Active").length;
-
-  return (
-    <aside className="state-panel">
-      <header className="state-panel__header">
-        <div className="state-panel__title-row">
-          <div>
-            <h3 className="state-panel__title">{stateName}</h3>
-            <span className="state-panel__code">{stateId}</span>
-          </div>
-          <button className="state-panel__close" onClick={onClose} aria-label="Close panel">×</button>
-        </div>
-        <div className="state-panel__stats">
-          <div className="state-panel__stat">
-            <span className="state-panel__stat-value">{cities.length}</span>
-            <span className="state-panel__stat-label">cities</span>
-          </div>
-          <div className="state-panel__stat">
-            <span className="state-panel__stat-value">{active}</span>
-            <span className="state-panel__stat-label">active</span>
-          </div>
-          <div className="state-panel__stat">
-            <span className="state-panel__stat-value">{tiers[0].rows.length}</span>
-            <span className="state-panel__stat-label">tier 1</span>
-          </div>
-        </div>
-      </header>
-
-      <div className="state-panel__body">
-        {tiers.map(({ tier, rows }) => rows.length > 0 && (
-          <section className="state-panel__section" key={tier}>
-            <div className="state-panel__section-header">
-              <span className="state-panel__section-title">
-                {tier === 1 ? "Primary" : tier === 2 ? "Secondary" : "Emerging"}
-              </span>
-              <span className="state-panel__section-count">{rows.length}</span>
-            </div>
-            <ul className="city-list">
-              {rows.map((c, i) => (
-                <li key={c.city} className={`city-row city-row--tier${tier}`} style={{ animationDelay: `${i * 30}ms` }}>
-                  <span className="city-row__bar" />
-                  <div className="city-row__main">
-                    <div className="city-row__top">
-                      <span className="city-row__name">{c.city}</span>
-                      <SignalDot signal={c.signal} />
-                    </div>
-                    <div className="city-row__bottom">
-                      <span className="city-row__pop">{c.pop}</span>
-                      <TierBadge tier={c.tier} />
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-
-        {cities.length === 0 && (
-          <div className="state-panel__empty">
-            No monitored markets in this state yet.
-          </div>
-        )}
-      </div>
-
-      <footer className="state-panel__footer">
-        <span className="state-panel__hint">Click ocean or press esc to reset</span>
-      </footer>
-    </aside>
-  );
-}
+type CoverageMode = "radar" | "government" | "church" | "social";
+const COVERAGE_MODES: Array<{ id: CoverageMode; label: string }> = [
+  { id: "radar", label: "Radar Value" },
+  { id: "government", label: "Government" },
+  { id: "church", label: "Church" },
+  { id: "social", label: "Social" },
+];
 
 export function MapView() {
   const [selected, setSelected] = useState<string | null>(null);
@@ -176,22 +134,163 @@ export function MapView() {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showProspects, setShowProspects] = useState(true);
   const [selectedPin, setSelectedPin] = useState<ProspectPin | null>(null);
+  const [coverageMode, setCoverageMode] = useState<CoverageMode>("radar");
+  // Layer + pin toggle are lifted here so the map can render the active
+  // layer's pins; StatePanel receives them as props.
+  const [layer, setLayer] = useState<LayerId>("overview");
+  const [showPins, setShowPins] = useState(true);
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  // Custom HTML tooltip for registry pins — replaces native SVG <title> so the
+  // tooltip is styled consistently and anchored to the pin, not the cursor.
+  const [hoveredPin, setHoveredPin] = useState<{ x: number; y: number; content: ReactNode } | null>(null);
 
-  // Ohio drill-down: layer tabs + which county/diocese is inspected. Only
-  // meaningful when selected === OHIO_FIPS; reset alongside the selection.
-  const [ohioLayer, setOhioLayer] = useState<LayerId>("overview");
-  const [selectedCountyFips, setSelectedCountyFips] = useState<string | null>(null);
-  const [selectedDioceseId, setSelectedDioceseId] = useState<string | null>(null);
-  const isOhio = selected === OHIO_FIPS;
+  // Source-registry drill-down panel is rendered by StatePanel, which
+  // manages its own layer/county/diocese selection state internally.
+  const selectedAbbrev = selected ? STATE_ABBREV[selected] : undefined;
+  const hasSelection = !!selectedAbbrev;
 
-  const ohioOverview = useOhioOverview(isOhio);
-  const ohioGovernment = useOhioGovernment(isOhio);
-  const ohioChurches = useOhioChurches(isOhio);
-  const ohioSocial = useOhioSocial(isOhio);
+  const nationalCoverage = useNationalCoverage(true);
   const prospectPins = useProspectPins(showProspects);
+
+  // State-scoped registry data — react-query caches by state key, so these
+  // are the same responses StatePanel fetches (no duplicate HTTP). Only
+  // enabled while a state is selected so we don't load every state up front.
+  const overview = useStateOverview(selectedAbbrev, hasSelection);
+  const social = useStateSocial(selectedAbbrev, hasSelection);
+  const churches = useStateChurches(selectedAbbrev, hasSelection);
+  const government = useStateGovernment(selectedAbbrev, hasSelection);
+
+  // City id → [lat, lng] from the overview payload. Vendors and dioceses
+  // reference cities by id, so this lookup table is what places their pins.
+  const cityCoords = useMemo(() => {
+    const m = new Map<string, { lat: number; lng: number; name: string }>();
+    for (const row of overview.data ?? []) {
+      if (row.city.lat != null && row.city.lng != null) {
+        m.set(row.city.id, { lat: row.city.lat, lng: row.city.lng, name: row.city.name });
+      }
+    }
+    return m;
+  }, [overview.data]);
+
+  // --- Pin positions, precomputed per active layer -------------------------
+  // Each memo projects lat/lng → SVG x/y once; the render just maps the
+  // result. Recomputed only when the underlying dataset or zoom changes.
+  const cityPins = useMemo(() => {
+    if (!hasSelection || layer !== "overview") return [];
+    return (overview.data ?? [])
+      .filter((r) => r.city.lat != null && r.city.lng != null)
+      .map((r) => {
+        const pt = projection([r.city.lng!, r.city.lat!]);
+        return pt ? { id: r.city.id, name: r.city.name, x: pt[0], y: pt[1] } : null;
+      })
+      .filter((p): p is { id: string; name: string; x: number; y: number } => !!p);
+  }, [hasSelection, layer, overview.data]);
+
+  // Vendors grouped by city — a city with >1 vendor renders a single cluster
+  // badge with the count instead of overlapping dots.
+  const vendorPins = useMemo(() => {
+    if (!hasSelection || layer !== "social") return [];
+    const byCity = new Map<string, { x: number; y: number; vendors: { name: string; handle?: string }[] }>();
+    for (const market of social.data ?? []) {
+      const city = market.city;
+      if (city.lat == null || city.lng == null) continue;
+      const pt = projection([city.lng, city.lat]);
+      if (!pt) continue;
+      const entry = byCity.get(city.id) ?? { x: pt[0], y: pt[1], vendors: [] };
+      for (const v of market.vendors ?? []) {
+        entry.vendors.push({
+          name: v.organization.name,
+          handle: v.watched_source?.handle,
+        });
+      }
+      byCity.set(city.id, entry);
+    }
+    return [...byCity.entries()].map(([cityId, e]) => ({ cityId, ...e }));
+  }, [hasSelection, layer, social.data]);
+
+  const churchPins = useMemo(() => {
+    if (!hasSelection || layer !== "churches") return [];
+    return (churches.data ?? [])
+      .map((d) => {
+        const cityId = d.jurisdiction.hub_city_id ?? d.organization.city_id;
+        const c = cityId ? cityCoords.get(cityId) : undefined;
+        if (!c) return null;
+        const pt = projection([c.lng, c.lat]);
+        if (!pt) return null;
+        return {
+          id: d.jurisdiction.id,
+          name: d.organization.name,
+          parishCount: (d.parishes ?? []).length,
+          color: denomColor(d.organization.metadata),
+          x: pt[0],
+          y: pt[1],
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => !!p);
+  }, [hasSelection, layer, churches.data, cityCoords]);
+
+  const govPins = useMemo(() => {
+    if (!hasSelection || layer !== "government") return [];
+    return (government.data ?? [])
+      .map((r) => {
+        const c = COUNTY_CENTROIDS[r.county.id];
+        if (!c) return null;
+        const status = r.connector?.status ?? "not_configured";
+        return {
+          id: r.county.id,
+          name: r.organization?.name ?? `${r.county.name} County`,
+          county: r.county.name,
+          status,
+          x: c[0],
+          y: c[1],
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => !!p);
+  }, [hasSelection, layer, government.data]);
+
+  const coverageByAbbrev = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const row of nationalCoverage.data ?? []) {
+      m.set(row.state_id, row.alive_score);
+    }
+    return m;
+  }, [nationalCoverage.data]);
+
+  // Choropleth metric for the selected mode — normalized to 0-1 so the same
+  // color scale applies to every toggle. Church/Social are raw counts, so
+  // they're divided by the national max (computed once per dataset).
+  const metricByAbbrev = useMemo(() => {
+    const rows = nationalCoverage.data ?? [];
+    const maxChurch = rows.reduce((m, r) => Math.max(m, r.church_sources), 1);
+    const maxSocial = rows.reduce((m, r) => Math.max(m, r.social_sources), 1);
+    const map = new Map<string, number>();
+    for (const row of rows) {
+      let v = 0;
+      if (coverageMode === "radar") v = row.alive_score;
+      else if (coverageMode === "government")
+        v = row.county_count ? row.counties_configured / row.county_count : 0;
+      else if (coverageMode === "church") v = row.church_sources / maxChurch;
+      else v = row.social_sources / maxSocial;
+      map.set(row.state_id, v);
+    }
+    return map;
+  }, [nationalCoverage.data, coverageMode]);
+
+  // National totals for the summary bar — aggregated from the same coverage
+  // rows, recomputed only when the dataset changes.
+  const summary = useMemo(() => {
+    const rows = nationalCoverage.data ?? [];
+    const withCoverage = rows.filter((r) => r.alive_score > 0).length;
+    const gov = rows.reduce((s, r) => s + r.government_sources, 0);
+    const church = rows.reduce((s, r) => s + r.church_sources, 0);
+    const social = rows.reduce((s, r) => s + r.social_sources, 0);
+    const avg = rows.length
+      ? rows.reduce((s, r) => s + r.alive_score, 0) / rows.length
+      : 0;
+    return { withCoverage, total: rows.length, gov, church, social, avg };
+  }, [nationalCoverage.data]);
 
   const resetZoom = useCallback((clearSelection = true) => {
     if (svgRef.current && zoomRef.current) {
@@ -202,9 +301,6 @@ export function MapView() {
     }
     if (clearSelection) {
       setSelected(null);
-      setOhioLayer("overview");
-      setSelectedCountyFips(null);
-      setSelectedDioceseId(null);
     }
   }, []);
 
@@ -272,9 +368,6 @@ export function MapView() {
       resetZoom();
     } else {
       setSelected(stateId);
-      setOhioLayer("overview");
-      setSelectedCountyFips(null);
-      setSelectedDioceseId(null);
       zoomToState(stateId);
     }
   }, [selected, resetZoom, zoomToState]);
@@ -298,8 +391,27 @@ export function MapView() {
     tipRef.current.style.top = `${e.clientY - rect.top + 14}px`;
   }, []);
 
+  // Anchor the custom pin tooltip to the pin's screen position (top-center),
+  // not the cursor — so it stays put while reading multi-line vendor lists.
+  const pinEnter = useCallback((e: React.MouseEvent<SVGGElement>, content: ReactNode) => {
+    const cr = containerRef.current?.getBoundingClientRect();
+    const pr = e.currentTarget.getBoundingClientRect();
+    if (cr && pr) setHoveredPin({ x: pr.left - cr.left + pr.width / 2, y: pr.top - cr.top, content });
+  }, []);
+  const pinLeave = useCallback(() => setHoveredPin(null), []);
+
   const hoveredAbbrev = hovered ? STATE_ABBREV[hovered] : null;
   const hoveredCities = hoveredAbbrev ? getCities(hoveredAbbrev) : [];
+  const hoveredCoverage = hoveredAbbrev
+    ? nationalCoverage.data?.find((c) => c.state_id === hoveredAbbrev)
+    : undefined;
+
+  // Counter-scale keeps pins a constant on-screen size as the map zooms.
+  // Clamped so extreme zoom can't shrink pins to nothing or blow them up.
+  const pinScale = Math.min(2, Math.max(0.5, 1 / zoomLevel));
+  // At low zoom, close-together city labels collide — show every other one;
+  // once zoomed in enough, show them all.
+  const labelStride = zoomLevel < 2 ? 2 : 1;
 
   return (
     <div className="view view--map">
@@ -307,8 +419,11 @@ export function MapView() {
         <div className="map-frame__topbar">
           <div className="map-frame__title-group">
             <h2 className="map-frame__title">Coverage map</h2>
+            <p className="map-frame__subtitle">Where we're watching. 50 states + DC.</p>
             <span className="map-frame__meta">
-              {selected ? STATE_MAP[selected] : "50 states · 3 tiers"}
+              {selected
+                ? STATE_MAP[selected]
+                : `${summary.withCoverage || 0} states with sources · all 50 clickable`}
             </span>
           </div>
           <div className="map-controls">
@@ -323,6 +438,28 @@ export function MapView() {
             <button className="map-btn" onClick={handleZoomOut} title="Zoom out">−</button>
             <button className="map-btn" onClick={() => resetZoom()} title="Reset view">⟲</button>
             <span className="map-zoom-level">{Math.round(zoomLevel * 100)}%</span>
+          </div>
+        </div>
+
+        <div className="map-coverage-bar">
+          <div className="map-mode-toggle" role="group" aria-label="Coverage metric">
+            {COVERAGE_MODES.map((m) => (
+              <button
+                key={m.id}
+                className={`map-mode-btn ${coverageMode === m.id ? "map-mode-btn--active" : ""}`}
+                onClick={() => setCoverageMode(m.id)}
+                type="button"
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <div className="map-summary">
+            <span className="map-summary__stat">States <b>{summary.withCoverage}/{summary.total || 51}</b></span>
+            <span className="map-summary__stat">Gov <b>{summary.gov}</b></span>
+            <span className="map-summary__stat">Church <b>{summary.church}</b></span>
+            <span className="map-summary__stat">Social <b>{summary.social}</b></span>
+            <span className="map-summary__stat">Avg alive <b>{Math.round(summary.avg * 100)}%</b></span>
           </div>
         </div>
 
@@ -345,11 +482,18 @@ export function MapView() {
                 {STATES.map((state: any) => {
                   const d = STATE_PATHS[state.id];
                   if (!d) return null;
+                  const alive = coverageByAbbrev.get(state.abbrev) ?? 0;
+                  // Choropleth fill from the selected metric's 0-1 value.
+                  // Selected states defer to the CSS selected style.
+                  const metric = metricByAbbrev.get(state.abbrev) ?? 0;
+                  const fill =
+                    selected === state.id ? undefined : coverageColor(metric);
                   return (
                     <path
                       key={state.id}
                       d={d}
-                      className={`map-state ${selected === state.id ? "map-state--selected" : ""} ${hovered === state.id ? "map-state--hovered" : ""}`}
+                      className={`map-state ${selected === state.id ? "map-state--selected" : ""} ${hovered === state.id ? "map-state--hovered" : ""} ${alive > 0 ? "map-state--alive" : ""}`}
+                      style={fill ? { fill } : undefined}
                       onClick={() => handleStateClick(state.id)}
                       onMouseEnter={(e) => {
                         setHovered(state.id);
@@ -420,99 +564,112 @@ export function MapView() {
                 </g>
               )}
 
-              {isOhio && ohioLayer === "government" && (
-                <g className="ohio-county-layer">
-                  {OHIO_COUNTIES.map((county) => {
-                    const d = COUNTY_PATHS[county.fips];
-                    if (!d) return null;
-                    const row = ohioGovernment.data?.find((r) => r.county.id === county.fips);
-                    const status: ConnectorStatus | "not_configured" = row?.connector?.status ?? "not_configured";
-                    return (
-                      <path
-                        key={county.fips}
-                        d={d}
-                        className={`ohio-county ohio-county--${status} ${selectedCountyFips === county.fips ? "ohio-county--selected" : ""}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedCountyFips(county.fips === selectedCountyFips ? null : county.fips);
-                        }}
-                      />
-                    );
-                  })}
-                </g>
-              )}
-
-              {isOhio && ohioLayer === "churches" && (
-                <g className="ohio-marker-layer">
-                  {/* Dioceses group by hub-city coordinate. Only Columbus has
-                      verified coords today, so N dioceses share one point —
-                      render ONE marker with a count badge instead of N
-                      identical stacked circles where only the top was
-                      clickable. Clicking opens the diocese list (no single
-                      selection — they're all at the same place). */}
-                  {(() => {
-                    const groups = new Map<string, typeof ohioChurches.data>();
-                    for (const d of ohioChurches.data ?? []) {
-                      const key = OHIO_CITY_COORDS.Columbus.join(",");
-                      groups.set(key, [...(groups.get(key) ?? []), d]);
-                    }
-                    return [...groups.values()].map((group) => {
-                      const [lng, lat] = OHIO_CITY_COORDS.Columbus;
-                      const p = projection([lng, lat]);
-                      if (!p || !group) return null;
-                      const anySelected = group.some((d) => d.jurisdiction.id === selectedDioceseId);
-                      return (
-                        <g
-                          key={group.map((d) => d.jurisdiction.id).join("+")}
-                          className={`ohio-diocese-marker ${anySelected ? "ohio-diocese-marker--selected" : ""}`}
-                          transform={`translate(${p[0]},${p[1]})`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedDioceseId(null);
-                          }}
-                          style={{ cursor: "pointer" }}
-                        >
-                          <circle r={11 / zoomLevel} />
-                          <text
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            style={{ fontSize: `${9 / zoomLevel}px` }}
-                            className="ohio-diocese-marker__count"
-                          >
-                            {group.length}
-                          </text>
-                        </g>
-                      );
-                    });
-                  })()}
-                </g>
-              )}
-
-              {isOhio && ohioLayer === "instagram" && (ohioSocial.data?.vendors?.length ?? 0) > 0 && (
-                <g className="ohio-marker-layer">
-                  {/* One marker per city market that actually has vendors —
-                      driven by the API response, not a static decoration. */}
-                  {(() => {
-                    const vendors = ohioSocial.data?.vendors ?? [];
-                    const p = projection(OHIO_CITY_COORDS.Columbus);
-                    if (!p) return null;
+              {/* --- State-scoped registry pins (only when zoomed in) ------ */}
+              {hasSelection && showPins && (
+                <g className="registry-pin-layer" pointerEvents="all">
+                  {/* City markers — overview layer */}
+                  {layer === "overview" && cityPins.map((c, i) => {
+                    // Skip every other label at low zoom so close-together city
+                    // names don't collide; pins still render so the dot is visible.
+                    const showLabel = i % labelStride === 0;
                     return (
                       <g
-                        transform={`translate(${p[0]},${p[1]})`}
-                        className="ohio-instagram-marker"
+                        key={`city-${c.id}`}
+                        className="registry-pin registry-pin--city"
+                        transform={`translate(${c.x},${c.y})`}
+                        onMouseEnter={(e) => pinEnter(e, c.name)}
+                        onMouseLeave={pinLeave}
                       >
-                        <circle r={11 / zoomLevel} />
-                        <text
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                          style={{ fontSize: `${9 / zoomLevel}px` }}
-                          className="ohio-diocese-marker__count"
-                        >
-                          {vendors.length}
-                        </text>
+                        <g className="registry-pin__inner">
+                          <circle r={4 * pinScale} className="registry-pin__dot" />
+                        </g>
+                        {showLabel && (
+                          <text
+                            className="registry-pin__label"
+                            x={8 * pinScale}
+                            y={-6 * pinScale}
+                            style={{ fontSize: `${10 * pinScale}px`, pointerEvents: "none" }}
+                          >
+                            {c.name}
+                          </text>
+                        )}
                       </g>
                     );
-                  })()}
+                  })}
+
+                  {/* Vendor pins — social layer. Cluster badge when >1 per city. */}
+                  {layer === "social" && vendorPins.map((v) => (
+                    <g
+                      key={`vendor-${v.cityId}`}
+                      className="registry-pin registry-pin--vendor"
+                      transform={`translate(${v.x},${v.y})`}
+                      onMouseEnter={(e) => pinEnter(
+                        e,
+                        v.vendors.length > 1
+                          ? v.vendors.map((vd) => `${vd.name}${vd.handle ? ` (@${vd.handle})` : ""}`).join("\n")
+                          : `${v.vendors[0]?.name ?? "Vendor"}${v.vendors[0]?.handle ? ` (@${v.vendors[0].handle})` : ""}`,
+                      )}
+                      onMouseLeave={pinLeave}
+                    >
+                      <g className="registry-pin__inner">
+                        {v.vendors.length > 1 ? (
+                          <>
+                            <circle r={10 * pinScale} className="registry-pin__cluster" />
+                            <text
+                              className="registry-pin__cluster-count"
+                              textAnchor="middle"
+                              dominantBaseline="central"
+                              style={{ fontSize: `${9 * pinScale}px` }}
+                            >
+                              {v.vendors.length}
+                            </text>
+                          </>
+                        ) : (
+                          <circle r={3 * pinScale} className="registry-pin__dot" />
+                        )}
+                      </g>
+                    </g>
+                  ))}
+
+                  {/* Diocese pins — churches layer. Cross symbol, denomination-colored. */}
+                  {layer === "churches" && churchPins.map((d) => {
+                    const s = 6 * pinScale;
+                    return (
+                      <g
+                        key={`church-${d.id}`}
+                        className="registry-pin registry-pin--church"
+                        transform={`translate(${d.x},${d.y})`}
+                        onMouseEnter={(e) => pinEnter(e, `${d.name} — ${d.parishCount} parishes`)}
+                        onMouseLeave={pinLeave}
+                      >
+                        <g className="registry-pin__inner">
+                          <path
+                            d={`M0,${-s} L0,${s} M${-s},0 L${s},0`}
+                            className="registry-pin__cross"
+                            style={{ stroke: d.color }}
+                          />
+                        </g>
+                      </g>
+                    );
+                  })}
+
+                  {/* Government office pins — government layer. Square symbol. */}
+                  {layer === "government" && govPins.map((g) => {
+                    const s = 4 * pinScale;
+                    return (
+                      <g
+                        key={`gov-${g.id}`}
+                        className="registry-pin registry-pin--gov"
+                        transform={`translate(${g.x},${g.y})`}
+                        onMouseEnter={(e) => pinEnter(e, `${g.name} — ${g.status}`)}
+                        onMouseLeave={pinLeave}
+                      >
+                        <g className="registry-pin__inner">
+                          <rect x={-s} y={-s} width={s * 2} height={s * 2} className="registry-pin__square" />
+                        </g>
+                      </g>
+                    );
+                  })}
                 </g>
               )}
             </g>
@@ -520,22 +677,85 @@ export function MapView() {
 
           {/* Cursor-following tooltip — position set imperatively via ref */}
           {hovered && !selected && tipVisible && (
-            <div ref={tipRef} className="map-cursor-tip">
+            <div ref={tipRef} className="map-cursor-tip map-cursor-tip--coverage">
               <span className="map-cursor-tip__name">{STATE_MAP[hovered]}</span>
-              <span className="map-cursor-tip__count">
-                {hoveredCities.length} {hoveredCities.length === 1 ? "market" : "markets"}
-              </span>
+              {hoveredCoverage ? (
+                <div className="map-cursor-tip__stats">
+                  <span>Government: {hoveredCoverage.government_sources}</span>
+                  <span>Church: {hoveredCoverage.church_sources}</span>
+                  <span>Social: {hoveredCoverage.social_sources}</span>
+                  <span>Counties: {hoveredCoverage.counties_configured}/{hoveredCoverage.county_count}</span>
+                  <span>Alive: {Math.round(hoveredCoverage.alive_score * 100)}%</span>
+                </div>
+              ) : (
+                <span className="map-cursor-tip__count">
+                  {hoveredCities.length} planned markets
+                </span>
+              )}
             </div>
           )}
 
-          {/* Legend */}
-          <div className="map-legend">
-            <span className="map-legend__item"><i className="map-legend__swatch map-legend__swatch--t1" /> Tier 1</span>
-            <span className="map-legend__item"><i className="map-legend__swatch map-legend__swatch--t2" /> Tier 2</span>
-            <span className="map-legend__item"><i className="map-legend__swatch map-legend__swatch--t3" /> Tier 3</span>
+          {/* Custom pin tooltip — anchored to the hovered pin, not the cursor */}
+          {hoveredPin && (
+            <div className="map-tooltip" style={{ left: hoveredPin.x, top: hoveredPin.y }}>
+              {hoveredPin.content}
+            </div>
+          )}
+
+          {/* Coverage choropleth legend — gradient bar with bucket ticks */}
+          <svg className="map-coverage-legend" width="230" height="46" viewBox="0 0 230 46" aria-hidden="true">
+            <defs>
+              <linearGradient id="coverage-grad" x1="0" x2="1" y1="0" y2="0">
+                {COVERAGE_STOPS.map(([t, c], i) => (
+                  <stop key={i} offset={`${t * 100}%`} stopColor={c} />
+                ))}
+                <stop offset="100%" stopColor={COVERAGE_STOPS[COVERAGE_STOPS.length - 1][1]} />
+              </linearGradient>
+            </defs>
+            <rect x="10" y="8" width="210" height="12" rx="2" fill="url(#coverage-grad)" stroke="rgba(0,0,0,0.12)" strokeWidth="0.5" />
+            {[0, 42, 84, 126, 168, 210].map((dx, i) => (
+              <line key={i} x1={10 + dx} y1="20" x2={10 + dx} y2="24" stroke="rgba(0,0,0,0.35)" strokeWidth="1" />
+            ))}
+            <text x="10" y="40" className="map-coverage-legend__label" textAnchor="start">No coverage</text>
+            <text x="220" y="40" className="map-coverage-legend__label" textAnchor="end">Full coverage</text>
+          </svg>
+
+          {/* Legend — explains every pin color for the active layer */}
+          <div className="map-legend map-legend--stacked map-legend--corner">
             {showProspects && (
               <span className="map-legend__item">
                 <i className="map-legend__swatch" style={{ background: "var(--mesa)" }} /> Prospects
+              </span>
+            )}
+            {hasSelection && showPins && layer === "overview" && (
+              <span className="map-legend__item">
+                <i className="map-legend__swatch" style={{ background: "var(--ink-faint)" }} /> Cities
+              </span>
+            )}
+            {hasSelection && showPins && layer === "social" && (
+              <span className="map-legend__item">
+                <i className="map-legend__swatch" style={{ background: "#E1306C" }} /> Instagram vendors
+              </span>
+            )}
+            {hasSelection && showPins && layer === "churches" && (
+              <>
+                <span className="map-legend__item">
+                  <i className="map-legend__swatch" style={{ background: DENOM_COLOR.catholic }} /> Catholic
+                </span>
+                <span className="map-legend__item">
+                  <i className="map-legend__swatch" style={{ background: DENOM_COLOR.episcopal }} /> Episcopal
+                </span>
+                <span className="map-legend__item">
+                  <i className="map-legend__swatch" style={{ background: DENOM_COLOR.methodist }} /> Methodist
+                </span>
+                <span className="map-legend__item">
+                  <i className="map-legend__swatch" style={{ background: DENOM_COLOR.jewish }} /> Jewish
+                </span>
+              </>
+            )}
+            {hasSelection && showPins && layer === "government" && (
+              <span className="map-legend__item">
+                <i className="map-legend__swatch" style={{ background: "#1a3a5c" }} /> County offices
               </span>
             )}
           </div>
@@ -572,27 +792,16 @@ export function MapView() {
             </div>
           )}
 
-          {/* Overlay panel — no page scroll needed */}
-          {selected && isOhio && (
-            <OhioPanel
-              layer={ohioLayer}
-              onLayerChange={setOhioLayer}
-              onClose={() => resetZoom()}
-              overview={ohioOverview}
-              government={ohioGovernment}
-              churches={ohioChurches}
-              social={ohioSocial}
-              selectedCountyFips={selectedCountyFips}
-              onSelectCounty={setSelectedCountyFips}
-              selectedDioceseId={selectedDioceseId}
-              onSelectDiocese={setSelectedDioceseId}
-            />
-          )}
-          {selected && !isOhio && (
+          {/* Source registry panel — works for any state */}
+          {selected && selectedAbbrev && (
             <StatePanel
-              stateId={STATE_ABBREV[selected]}
+              stateAbbrev={selectedAbbrev}
               stateName={STATE_MAP[selected]}
               onClose={() => resetZoom()}
+              layer={layer}
+              setLayer={setLayer}
+              showPins={showPins}
+              setShowPins={setShowPins}
             />
           )}
         </div>

@@ -54,6 +54,11 @@ type CongratulateKit struct {
 	VerifiedBy           string             `json:"verified_by,omitempty"`
 	VerifiedAt           *time.Time         `json:"verified_at,omitempty"`
 	MailedAt             *time.Time         `json:"mailed_at,omitempty"`
+	PriorityScore        float64            `json:"priority_score"`
+	FollowUpAt           *time.Time         `json:"follow_up_at,omitempty"`
+	FollowUpTemplate     string             `json:"follow_up_template,omitempty"`
+	FollowUpSentAt       *time.Time         `json:"follow_up_sent_at,omitempty"`
+	FollowUpCount        int                `json:"follow_up_count"`
 	CreatedAt            time.Time          `json:"created_at"`
 	UpdatedAt            time.Time          `json:"updated_at"`
 }
@@ -120,10 +125,13 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 			address_line1, address_line2, address_city, address_region, address_postal, address_country,
 			address_confidence, address_source, address_candidates_json,
 			headline, body_message, internal_note, postcard_html, mail_payload_json,
-			verified_by, verified_at, mailed_at, created_at, updated_at
+			verified_by, verified_at, mailed_at,
+			priority_score, follow_up_at, follow_up_template, follow_up_sent_at, follow_up_count,
+			created_at, updated_at
 		) VALUES (
 			$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,
-			$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41
+			$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,
+			$42,$43,$44,$45,$46,$47
 		)
 		ON CONFLICT (id) DO UPDATE SET
 			status = EXCLUDED.status,
@@ -149,7 +157,11 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 			internal_note = EXCLUDED.internal_note, postcard_html = EXCLUDED.postcard_html,
 			mail_payload_json = EXCLUDED.mail_payload_json,
 			verified_by = EXCLUDED.verified_by, verified_at = EXCLUDED.verified_at,
-			mailed_at = EXCLUDED.mailed_at, updated_at = EXCLUDED.updated_at
+			mailed_at = EXCLUDED.mailed_at,
+			priority_score = EXCLUDED.priority_score,
+			follow_up_at = EXCLUDED.follow_up_at, follow_up_template = EXCLUDED.follow_up_template,
+			follow_up_sent_at = EXCLUDED.follow_up_sent_at, follow_up_count = EXCLUDED.follow_up_count,
+			updated_at = EXCLUDED.updated_at
 	`,
 		k.ID, k.CoupleID, k.Status, nullIfEmpty(k.HandleA), nullIfEmpty(k.HandleB),
 		nullIfEmpty(k.PersonAName), nullIfEmpty(k.PersonBName),
@@ -163,7 +175,9 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 		k.AddressCountry, k.AddressConfidence, nullIfEmpty(k.AddressSource), string(cands),
 		nullIfEmpty(k.Headline), nullIfEmpty(k.BodyMessage), nullIfEmpty(k.InternalNote),
 		nullIfEmpty(k.PostcardHTML), string(mail),
-		nullIfEmpty(k.VerifiedBy), k.VerifiedAt, k.MailedAt, k.CreatedAt, k.UpdatedAt,
+		nullIfEmpty(k.VerifiedBy), k.VerifiedAt, k.MailedAt,
+		k.PriorityScore, k.FollowUpAt, nullIfEmpty(k.FollowUpTemplate), k.FollowUpSentAt, k.FollowUpCount,
+		k.CreatedAt, k.UpdatedAt,
 	)
 	if err != nil {
 		return k, err
@@ -233,13 +247,15 @@ const kitSelect = `SELECT id, couple_id, status,
 	address_confidence, COALESCE(address_source,''), COALESCE(address_candidates_json,'[]'),
 	COALESCE(headline,''), COALESCE(body_message,''), COALESCE(internal_note,''),
 	COALESCE(postcard_html,''), COALESCE(mail_payload_json,''),
-	COALESCE(verified_by,''), verified_at, mailed_at, created_at, updated_at
+	COALESCE(verified_by,''), verified_at, mailed_at,
+	priority_score, follow_up_at, COALESCE(follow_up_template,''), follow_up_sent_at, follow_up_count,
+	created_at, updated_at
 	FROM congratulate_kits`
 
 func (s *Store) scanKit(row *sql.Row) (CongratulateKit, error) {
 	var k CongratulateKit
 	var evidence, steps, cands, mail string
-	var verifiedAt, mailedAt sql.NullTime
+	var verifiedAt, mailedAt, followUpAt, followUpSentAt sql.NullTime
 	err := row.Scan(
 		&k.ID, &k.CoupleID, &k.Status,
 		&k.HandleA, &k.HandleB, &k.PersonAName, &k.PersonBName,
@@ -254,7 +270,9 @@ func (s *Store) scanKit(row *sql.Row) (CongratulateKit, error) {
 		&k.AddressConfidence, &k.AddressSource, &cands,
 		&k.Headline, &k.BodyMessage, &k.InternalNote,
 		&k.PostcardHTML, &mail,
-		&k.VerifiedBy, &verifiedAt, &mailedAt, &k.CreatedAt, &k.UpdatedAt,
+		&k.VerifiedBy, &verifiedAt, &mailedAt,
+		&k.PriorityScore, &followUpAt, &k.FollowUpTemplate, &followUpSentAt, &k.FollowUpCount,
+		&k.CreatedAt, &k.UpdatedAt,
 	)
 	if err != nil {
 		return k, err
@@ -273,13 +291,21 @@ func (s *Store) scanKit(row *sql.Row) (CongratulateKit, error) {
 		t := mailedAt.Time
 		k.MailedAt = &t
 	}
+	if followUpAt.Valid {
+		t := followUpAt.Time
+		k.FollowUpAt = &t
+	}
+	if followUpSentAt.Valid {
+		t := followUpSentAt.Time
+		k.FollowUpSentAt = &t
+	}
 	return k, nil
 }
 
 func (s *Store) scanKitRow(rows *sql.Rows) (CongratulateKit, error) {
 	var k CongratulateKit
 	var evidence, steps, cands, mail string
-	var verifiedAt, mailedAt sql.NullTime
+	var verifiedAt, mailedAt, followUpAt, followUpSentAt sql.NullTime
 	err := rows.Scan(
 		&k.ID, &k.CoupleID, &k.Status,
 		&k.HandleA, &k.HandleB, &k.PersonAName, &k.PersonBName,
@@ -294,7 +320,9 @@ func (s *Store) scanKitRow(rows *sql.Rows) (CongratulateKit, error) {
 		&k.AddressConfidence, &k.AddressSource, &cands,
 		&k.Headline, &k.BodyMessage, &k.InternalNote,
 		&k.PostcardHTML, &mail,
-		&k.VerifiedBy, &verifiedAt, &mailedAt, &k.CreatedAt, &k.UpdatedAt,
+		&k.VerifiedBy, &verifiedAt, &mailedAt,
+		&k.PriorityScore, &followUpAt, &k.FollowUpTemplate, &followUpSentAt, &k.FollowUpCount,
+		&k.CreatedAt, &k.UpdatedAt,
 	)
 	if err != nil {
 		return k, err
@@ -312,6 +340,14 @@ func (s *Store) scanKitRow(rows *sql.Rows) (CongratulateKit, error) {
 	if mailedAt.Valid {
 		t := mailedAt.Time
 		k.MailedAt = &t
+	}
+	if followUpAt.Valid {
+		t := followUpAt.Time
+		k.FollowUpAt = &t
+	}
+	if followUpSentAt.Valid {
+		t := followUpSentAt.Time
+		k.FollowUpSentAt = &t
 	}
 	return k, nil
 }
@@ -385,6 +421,29 @@ func (s *Store) FindDiscoveryPost(handleA, handleB string) (caption, imageURL, p
 		}
 	}
 	return
+}
+
+// FindDiscoveryPostLocation returns the Instagram venue tag (location) from the
+// discovery post for a couple. Used to feed post location into detective queries.
+func (s *Store) FindDiscoveryPostLocation(handleA, handleB string) (location string, ok bool) {
+	row := s.DB.QueryRow(`
+		SELECT raw_payload FROM social_observations
+		WHERE observation_type IN ('post','vendor_post')
+		  AND (
+		    raw_payload ILIKE '%' || $1 || '%'
+		    OR raw_payload ILIKE '%' || $2 || '%'
+		  )
+		ORDER BY observed_at DESC LIMIT 1`, handleA, handleB)
+	var raw string
+	if err := row.Scan(&raw); err != nil {
+		return "", false
+	}
+	var payload map[string]any
+	if json.Unmarshal([]byte(raw), &payload) != nil {
+		return "", false
+	}
+	loc, _ := payload["location"].(string)
+	return loc, loc != ""
 }
 
 func lower(s string) string {

@@ -30,6 +30,7 @@ type NoopVision struct{}
 func (NoopVision) ClassifyVisualSignals(ctx context.Context, imageURL string) ([]string, error) {
 	return nil, nil
 }
+func (NoopVision) Name() string { return "noop" }
 
 // BasetenVision classifies post images with a multimodal model hosted on
 // Baseten's OpenAI-compatible chat completions endpoint.
@@ -47,6 +48,7 @@ func NewBasetenVision() *BasetenVision {
 }
 
 func (b *BasetenVision) Available() bool { return b.apiKey != "" && b.model != "" }
+func (b *BasetenVision) Name() string    { return "baseten:" + b.model }
 
 const visionSystemPrompt = `You are a visual signal classifier inside a social-listening pipeline for engagement photography.
 Look at the image and report which of these signals are clearly visible:

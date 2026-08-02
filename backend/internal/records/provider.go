@@ -19,6 +19,17 @@ type Query struct {
 	Region       string // state abbrev
 	// Social handles for providers that accept them (PDL).
 	Handle string
+
+	// --- Enriched location signals (used by heuristic to boost confidence) ---
+	PostLocation    string // Instagram venue tag, e.g. "The Joseph Hotel, Columbus OH"
+	VendorCity      string // photographer/vendor city from watched_sources
+	VendorState     string // photographer/vendor state from watched_sources
+	AccountCityA    string // person A's individually-inferred city from their bio
+	AccountRegionA  string // person A's state
+	AccountCityB    string // person B's individually-inferred city from their bio
+	AccountRegionB  string // person B's state
+	BioA            string // person A bio text (heuristic can check for location mentions)
+	BioB            string // person B bio text
 }
 
 // Candidate is one possible mailing address — never mailed until human confirms.

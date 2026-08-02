@@ -116,6 +116,10 @@ type Couple struct {
 	LocationSource   string     `json:"location_source,omitempty"`
 	SuppressedAt     *time.Time `json:"suppressed_at,omitempty"`
 	SuppressedReason string     `json:"suppressed_reason,omitempty"`
+	Mistaken         bool       `json:"mistaken,omitempty"`
+	MistakenReason   string     `json:"mistaken_reason,omitempty"`
+	MistakenBy       string     `json:"mistaken_by,omitempty"`
+	MistakenAt       *time.Time `json:"mistaken_at,omitempty"`
 }
 
 type Relationship struct {

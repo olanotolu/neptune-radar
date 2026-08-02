@@ -118,11 +118,16 @@ func (t *TemplateInterpreter) DraftCopy(ctx context.Context, req CopyRequest) (C
 			fmt.Sprintf("Partner-match confidence: %.0f%%", partnerConf*100),
 			"Recommended action: Human review",
 		)
+		// Brand-safe: dual-partner, celebrate-first, never hard-sell prenup.
+		partner := req.PartnerName
+		if partner == "" {
+			partner = "your partner"
+		}
 		return Copy{
-			InternalNote: strings.Join(lines, "\n"),
+			InternalNote: strings.Join(lines, "\n") + "\n\nBrand rule: celebrate first. Soft invite to chat only after congratulate. Never pitch prenup on day-one touch.",
 			CustomerFacing: fmt.Sprintf(
-				"Hi %s, congratulations on this exciting chapter! Whenever you're ready, Neptune has a short, no-pressure guide on planning ahead together — no obligation, just here if useful.",
-				req.PersonName,
+				"Dear %s & %s — congratulations on your engagement. Wishing you both a beautiful chapter ahead. When you're ready to plan the admin of partnership together (no pressure), Neptune is here with a free guided chat and flat-fee attorneys — both of you, side by side.",
+				req.PersonName, partner,
 			),
 		}, nil
 	case "investigate":
@@ -152,11 +157,15 @@ func (t *TemplateInterpreter) DraftCopy(ctx context.Context, req CopyRequest) (C
 			fmt.Sprintf("Partner-match confidence: %.0f%%", partnerConf*100),
 			"Recommended action: Human investigation — verify the couple and the event are real before any outreach is considered.",
 		)
+		partner := req.PartnerName
+		if partner == "" {
+			partner = "your partner"
+		}
 		return Copy{
-			InternalNote: strings.Join(lines, "\n"),
+			InternalNote: strings.Join(lines, "\n") + "\n\nBrand rule: no customer-facing send until identity is confirmed.",
 			CustomerFacing: fmt.Sprintf(
-				"Hi %s, congratulations on this exciting chapter! Whenever you're ready, Neptune has a short, no-pressure guide on planning ahead together — no obligation, just here if useful.",
-				req.PersonName,
+				"Dear %s & %s — congratulations on this exciting chapter. Whenever you both are ready, Neptune has a calm, no-pressure way to plan ahead together.",
+				req.PersonName, partner,
 			),
 		}, nil
 	case "concierge_review":

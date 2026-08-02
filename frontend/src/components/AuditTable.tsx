@@ -1,5 +1,6 @@
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import type { AuditEvent } from "../api/types";
+import { EmptyState } from "./EmptyState";
 
 const columnHelper = createColumnHelper<AuditEvent>();
 
@@ -27,7 +28,7 @@ export function AuditTable({ events }: { events: AuditEvent[] }) {
   const table = useReactTable({ data: events, columns, getCoreRowModel: getCoreRowModel() });
 
   if (events.length === 0) {
-    return <div className="empty-state">No audit events yet — the watch loop logs every stage as events arrive.</div>;
+    return <EmptyState variant="empty" icon="📜" title="No audit events yet" message="The watch loop logs every stage as events arrive." />;
   }
 
   return (

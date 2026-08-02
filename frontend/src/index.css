@@ -26,19 +26,28 @@
   --red: #e24848;
   --green: #008285;
 
+  /* Accent + radii */
+  --accent: #4f8cff;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
   --sans: "Space Grotesk", "Inter", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 
   color-scheme: light;
   font-family: var(--sans);
   font-size: 15px;
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--ink);
   background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   letter-spacing: 0;
+  font-feature-settings: "ss01", "cv01", "cv02";
+  font-variant-numeric: tabular-nums;
 }
 
 * {
@@ -57,6 +66,10 @@ h1, h2, h3, h4 {
   letter-spacing: -0.01em;
 }
 
+h2, h3 {
+  letter-spacing: -0.005em;
+}
+
 p {
   margin: 0;
 }
@@ -68,4 +81,74 @@ button {
 ::selection {
   background: var(--mesa-soft);
   color: var(--mesa-deep);
+}
+
+/* ---------- dark mode ---------- */
+
+[data-theme="dark"] {
+  /* Surfaces — GitHub-dark-ish, three-tier for depth */
+  --bg: #0d1117;
+  --bg-alt: #161b22;
+  --surface: #1c2230;
+  --surface-hover: #252b38;
+  --chip: #21262d;
+  --border: #3d444d;
+  --border-strong: #484f58;
+
+  /* Ink */
+  --ink: #e6edf3;
+  --ink-soft: #9da7b3;
+  --ink-dim: #8b949e;
+  --ink-faint: #484f58;
+
+  /* Brand accents stay the same — they read well on dark. */
+  --mesa: #f3813f;
+  --mesa-deep: #ff9d5c;
+  --mesa-soft: #3a2418;
+  --cove: #0d3a3c;
+  --cove-deep: #2dd4d8;
+  --cove-ink: #5cc6e6;
+
+  --red: #f87171;
+  --green: #2dd4d8;
+
+  --accent: #6ca8ff;
+  --shadow-color: rgba(0, 0, 0, 0.4);
+
+  color-scheme: dark;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+/* Smooth theme switch — only animate the shell, not every descendant. */
+.app-shell,
+.app-header,
+.app-main,
+.app-nav,
+.map-stage {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Subtle, theme-matching scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-faint);
 }

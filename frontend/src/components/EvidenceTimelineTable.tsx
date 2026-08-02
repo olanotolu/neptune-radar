@@ -1,5 +1,6 @@
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import type { Evidence } from "../api/types";
+import { EmptyState } from "./EmptyState";
 
 const columnHelper = createColumnHelper<Evidence>();
 
@@ -23,7 +24,7 @@ export function EvidenceTimelineTable({ evidence }: { evidence: Evidence[] }) {
   const table = useReactTable({ data: evidence, columns, getCoreRowModel: getCoreRowModel() });
 
   if (evidence.length === 0) {
-    return <div className="empty-state">No evidence collected yet.</div>;
+    return <EmptyState variant="empty" icon="🔬" title="No evidence collected yet" message="Signals that confirm or refute this hypothesis will appear here." />;
   }
 
   return (

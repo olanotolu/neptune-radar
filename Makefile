@@ -1,4 +1,4 @@
-.PHONY: backend frontend test test-db test-db-down build deploy
+.PHONY: backend frontend test test-db test-db-down build deploy seed-geography bootstrap-state
 
 BACKEND_ENV := $(shell test -f backend/.env && echo backend/.env)
 LOAD_ENV = set -a && [ -f $(BACKEND_ENV) ] && . $(BACKEND_ENV); true
@@ -34,6 +34,14 @@ test:
 build:
 	docker build -t neptune-radar .
 
+# Upsert all 50 states + DC + ~3k counties (no fake sources). Safe to re-run.
+seed-geography:
+	$(LOAD_ENV); cd backend && go run ./cmd/seed-geography
+
+# Seed city markets + public wedding IG vendors for NY/CA (or -states=NY).
+bootstrap-state:
+	$(LOAD_ENV); cd backend && go run ./cmd/bootstrap-state -states=NY,CA
+
 # Deploys to the TeamC AWS EC2 instance (i-0a7a301139acb9e87). The box is a
 # 1 GB t3.micro: building the Go/npm stages in-image there wedges it (OOM),
 # so artifacts are built LOCALLY (frontend bundle + linux/amd64 Go binaries)
@@ -46,7 +54,8 @@ deploy:
 	cd frontend && npm ci && npm run build
 	mkdir -p build
 	cd backend && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ../build/server ./cmd/server
-	cd backend && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ../build/bootstrap-ohio ./cmd/bootstrap-ohio
+	cd backend && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ../build/seed-geography ./cmd/seed-geography
+	cd backend && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ../build/bootstrap-state ./cmd/bootstrap-state
 	rsync -az --delete -e "ssh -i $(EC2_KEY)" --exclude node_modules --exclude .git --exclude ".env" ./ $(EC2_HOST):neptune-radar/
 	ssh -i $(EC2_KEY) $(EC2_HOST) 'cd neptune-radar && docker build -q -f Dockerfile.deploy -t neptune-radar . && \
 		docker rm -f neptune-radar >/dev/null 2>&1 || true; \
@@ -54,6 +63,8 @@ deploy:
 		  --log-opt max-size=10m --log-opt max-file=3 \
 		  -p 127.0.0.1:8080:8080 --env-file ~/neptune-radar.env neptune-radar >/dev/null && \
 		sleep 2 && curl -sf --retry 10 --retry-all-errors --retry-delay 1 http://localhost:8080/api/health && \
+		docker run --rm --network neptune-net --env-file ~/neptune-radar.env --entrypoint /app/seed-geography neptune-radar && \
+		docker run --rm --network neptune-net --env-file ~/neptune-radar.env --entrypoint /app/bootstrap-state neptune-radar -states=AL,AK,AZ,AR,CA,CO,CT,DE,FL,GA,HI,ID,IL,IN,IA,KS,KY,LA,ME,MD,MA,MI,MN,MS,MO,MT,NE,NV,NH,NJ,NM,NY,NC,ND,OH,OK,OR,PA,RI,SC,SD,TN,TX,UT,VT,VA,WA,WV,WI,WY,DC && \
 		docker image prune -f >/dev/null'
 	@# Hard gate: the bundle must never contain the dev API URL (incident 2026-07-29).
 	@! ssh -i $(EC2_KEY) $(EC2_HOST) 'docker run --rm neptune-radar sh -c "grep -rq localhost:8080 /app/public"' && echo "bundle clean"

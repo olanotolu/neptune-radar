@@ -13,13 +13,66 @@ import (
 )
 
 // health is the one unauthenticated route — load balancer/uptime probe.
+// It reports DB connectivity, provider availability, ingest loop state,
+// pending action and DLQ counts, and the build version.
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {
+	dbOK := true
 	if err := s.Store.DB.Ping(); err != nil {
-		writeError(w, http.StatusServiceUnavailable, err)
-		return
+		dbOK = false
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+
+	providerStatus := "unknown"
+	ingestRunning := false
+	if s.Watch != nil {
+		ingestRunning = !s.Watch.IsPaused()
+		if s.Watch.ProviderAvailable() {
+			providerStatus = "ok"
+		} else {
+			providerStatus = "unavailable"
+		}
+	}
+
+	pendingActions := 0
+	dlqPending := 0
+	if dbOK {
+		if n, err := s.Store.CountPendingActions(); err == nil {
+			pendingActions = n
+		}
+		if n, err := s.Store.CountDLQPending(); err == nil {
+			dlqPending = n
+		}
+	}
+
+	dbCheck := "ok"
+	if !dbOK {
+		dbCheck = "fail"
+	}
+
+	status := "ok"
+	httpCode := http.StatusOK
+	if !dbOK {
+		status = "down"
+		httpCode = http.StatusServiceUnavailable
+	} else if providerStatus == "unavailable" || dlqPending > 0 {
+		status = "degraded"
+	}
+
+	writeJSON(w, httpCode, map[string]any{
+		"status": status,
+		"checks": map[string]any{
+			"database":        dbCheck,
+			"provider":        providerStatus,
+			"ingest_running":  ingestRunning,
+			"pending_actions": pendingActions,
+			"dlq_pending":     dlqPending,
+		},
+		"version": BuildVersion,
+	})
 }
+
+// BuildVersion is set at link time via -ldflags "-X api.BuildVersion=…".
+// Defaults to "dev" when not overridden.
+var BuildVersion = "dev"
 
 type sourceRequest struct {
 	Handle      string `json:"handle"`
@@ -55,7 +108,7 @@ func (s *Server) listSources(w http.ResponseWriter, r *http.Request) {
 			"id": wsrc.ID, "handle": wsrc.Handle, "source_class": wsrc.SourceClass,
 			"active": wsrc.Active, "state": wsrc.State, "city": wsrc.City,
 			"full_name": wsrc.FullName, "profile_pic_url": wsrc.ProfilePicURL,
-			"created_at": wsrc.CreatedAt.UTC().Format(time.RFC3339),
+			"created_at":   wsrc.CreatedAt.UTC().Format(time.RFC3339),
 			"posts_stored": n, "stale": stale, "scan_mode": scanMode,
 		}
 		if wsrc.LastScannedAt != nil {

@@ -674,10 +674,9 @@ export function SourcesView({
       <div className="sources-main">
         <div className="sources-header">
           <div>
-            <h2 className="view__title">Watched sources</h2>
+            <h2 className="view__title">Radar sources</h2>
             <p className="view__subtitle">
-              Photographers discover couples. Venues are monitor-only. Run agent (async) pulls posts, filters vendor
-              tags, ranks real people.
+              Wedding vendors, publications, and venues we monitor for new couples.
             </p>
           </div>
           <div className="sources-header__stats">

@@ -20,16 +20,20 @@ import (
 	"neptune-social-radar/backend/internal/ingest"
 	"neptune-social-radar/backend/internal/llm"
 	"neptune-social-radar/backend/internal/mail"
+	"neptune-social-radar/backend/internal/notify"
 	"neptune-social-radar/backend/internal/outreach"
 	"neptune-social-radar/backend/internal/pipeline"
+	"neptune-social-radar/backend/internal/ratelimit"
 	"neptune-social-radar/backend/internal/records"
 	"neptune-social-radar/backend/internal/store"
+	"neptune-social-radar/backend/internal/vocab"
 )
 
 func main() {
 	addr := flag.String("addr", envOr("ADDR", ":8080"), "HTTP listen address")
 	pollInterval := flag.Duration("poll-interval", 15*time.Minute, "how often the watch loop polls each source")
 	dryRun := flag.Bool("dry-run", false, "fetch from the provider but only log events, don't store or process them")
+	bootstrapUser := flag.String("bootstrap-user", "", "create the first admin user (email) and print their API key, then exit")
 	flag.Parse()
 
 	dsn := os.Getenv("DATABASE_URL")
@@ -38,6 +42,26 @@ func main() {
 		log.Fatalf("open store: %v", err)
 	}
 	defer s.Close()
+
+	// Merge DB-driven signal vocabulary into the in-memory defaults so ops
+	// can add new engagement phrases/hashtags without a redeploy.
+	if err := vocab.LoadFromStore(s); err != nil {
+		log.Printf("load external vocabulary: %v (continuing with defaults)", err)
+	}
+
+	// Bootstrap the first admin user. This is the only way to create the first
+	// user since the API's POST /api/users requires an existing admin. After
+	// this, the shared admin token stops working (UserCount > 0 switches auth
+	// to per-user API keys).
+	if *bootstrapUser != "" {
+		user, plaintext, err := s.CreateUser(*bootstrapUser, *bootstrapUser, store.RoleAdmin)
+		if err != nil {
+			log.Fatalf("bootstrap user: %v", err)
+		}
+		log.Printf("created admin user %s (%s)", user.Email, user.ID)
+		log.Printf("API key (store this — it won't be shown again): %s", plaintext)
+		return
+	}
 
 	interp := llm.NewInterpreter()
 	switch it := interp.(type) {
@@ -56,6 +80,17 @@ func main() {
 	}
 
 	orch := pipeline.New(s, interp)
+
+	// SSE live updates hub — pipeline events are pushed to dashboard subscribers.
+	hub := notify.NewHub()
+	orch.SetHub(hub)
+
+	// Slack/webhook alerting for high-confidence couples. Empty URL = no-op.
+	notifier := notify.NewNotifier(os.Getenv("SLACK_WEBHOOK_URL"))
+	if notifier.Enabled() {
+		orch.SetNotifier(notifier)
+		log.Println("SLACK: webhook alerts enabled for high-confidence couples")
+	}
 
 	// The watch loop: monitors run on an interval and their events flow
 	// straight through the pipeline. With no provider token it simply idles —
@@ -100,7 +135,13 @@ func main() {
 	} else {
 		log.Println("records provider: heuristic only — set TRESTLE_API_KEY or PDL_API_KEY for street hits")
 	}
-	handler := api.Wrap(api.NewRouter(s, worker, agent), adminToken, origin)
+	// Rate limiter: 10 req/sec per identity, burst of 20. Tunable via env.
+	// ponytail: ceiling — in-memory, per-process. With leader election only
+	// the leader polls, but all replicas serve the API, so the effective
+	// per-user limit is replicas × burst. Fine at 5 users.
+	limiter := ratelimit.New(envFloat("NEPTUNE_API_RATE", 10), envFloat("NEPTUNE_API_BURST", 20))
+
+	handler := api.Wrap(api.NewRouter(s, worker, agent, hub), s, adminToken, origin, limiter)
 	// In the deployed single-service image the Go server also serves the
 	// built dashboard; in local dev the Vite dev server owns the frontend.
 	if staticDir := os.Getenv("STATIC_DIR"); staticDir != "" {
@@ -156,6 +197,15 @@ func envInt(key string, fallback int) int {
 	if v := os.Getenv(key); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			return n
+		}
+	}
+	return fallback
+}
+
+func envFloat(key string, fallback float64) float64 {
+	if v := os.Getenv(key); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			return f
 		}
 	}
 	return fallback

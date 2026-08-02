@@ -8,17 +8,24 @@ package policy
 
 import (
 	"encoding/json"
+	"os"
+	"strconv"
 	"strings"
 
 	"neptune-social-radar/backend/internal/ontology"
 	"neptune-social-radar/backend/internal/store"
 )
 
-const (
-	// Engagement-prospect tiers (the spec's points, normalized: 100 pts = 1.0):
-	//   90+  → create Neptune prospect (ActionReview)
-	//   70–89 → human investigation queue (ActionInvestigate)
-	//   <70  → retained as an unconfirmed inference or discarded — no card
+// Engagement-prospect tiers (the spec's points, normalized: 100 pts = 1.0):
+//
+//	90+  → create Neptune prospect (ActionReview)
+//	70–89 → human investigation queue (ActionInvestigate)
+//	<70  → retained as an unconfirmed inference or discarded — no card
+//
+// These are vars (not consts) so they can be tuned via env vars at startup
+// without a redeploy: NEPTUNE_THRESHOLD_CREATE_PROSPECT=0.85 etc. The defaults
+// match the spec. init() loads them once at process start.
+var (
 	ThresholdCreateProspect = 0.90
 	ThresholdInvestigate    = 0.70
 	// Relationship-state-change bar (unchanged): below this the system logs
@@ -26,6 +33,32 @@ const (
 	ThresholdSurfaceReview = 0.60
 	ThresholdActOnStage    = 0.60 // internal relationship-stage transition bar
 )
+
+func init() {
+	// Load thresholds from env, allowing ops to tune precision/recall without
+	// a code change. Each is a float in [0,1]. Invalid values are logged and
+	// ignored (the default stays) — we never crash on a bad env var.
+	if v := os.Getenv("NEPTUNE_THRESHOLD_CREATE_PROSPECT"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 && f <= 1 {
+			ThresholdCreateProspect = f
+		}
+	}
+	if v := os.Getenv("NEPTUNE_THRESHOLD_INVESTIGATE"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 && f <= 1 {
+			ThresholdInvestigate = f
+		}
+	}
+	if v := os.Getenv("NEPTUNE_THRESHOLD_SURFACE_REVIEW"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 && f <= 1 {
+			ThresholdSurfaceReview = f
+		}
+	}
+	if v := os.Getenv("NEPTUNE_THRESHOLD_ACT_ON_STAGE"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 && f <= 1 {
+			ThresholdActOnStage = f
+		}
+	}
+}
 
 type Decision struct {
 	ShouldAct       bool

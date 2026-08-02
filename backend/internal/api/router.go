@@ -4,14 +4,15 @@
 package api
 
 import (
-	"crypto/subtle"
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 
+	"neptune-social-radar/backend/internal/auth"
 	"neptune-social-radar/backend/internal/ingest"
+	"neptune-social-radar/backend/internal/notify"
 	"neptune-social-radar/backend/internal/outreach"
+	"neptune-social-radar/backend/internal/ratelimit"
 	"neptune-social-radar/backend/internal/store"
 )
 
@@ -19,10 +20,11 @@ type Server struct {
 	Store    *store.Store
 	Watch    *ingest.Worker // global watch-loop pause/play
 	Outreach *outreach.Agent
+	Hub      *notify.Hub // SSE live updates (nil = endpoint returns 503)
 }
 
-func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent) http.Handler {
-	srv := &Server{Store: s, Watch: worker, Outreach: agent}
+func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub *notify.Hub) http.Handler {
+	srv := &Server{Store: s, Watch: worker, Outreach: agent, Hub: hub}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/signals", srv.listSignals)
@@ -32,6 +34,7 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent) htt
 	mux.HandleFunc("POST /api/couples/{id}/pause", srv.pauseCouple)
 	mux.HandleFunc("POST /api/couples/{id}/resume", srv.resumeCouple)
 	mux.HandleFunc("POST /api/couples/{id}/suppress", srv.suppressCouple)
+	mux.HandleFunc("POST /api/couples/bulk", srv.bulkCouple)
 
 	mux.HandleFunc("GET /api/ops/summary", srv.opsSummary)
 	mux.HandleFunc("POST /api/prospects/enrich-missing", srv.enrichMissingProfiles)
@@ -42,6 +45,19 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent) htt
 	mux.HandleFunc("GET /api/cases", srv.listCases)
 	mux.HandleFunc("GET /api/cases/{id}", srv.getCase)
 	mux.HandleFunc("GET /api/leads", srv.listLeads)
+
+	// Universal search across couples, leads, and cases.
+	mux.HandleFunc("GET /api/search", srv.search)
+
+	// CSV exports for operational reporting.
+	mux.HandleFunc("GET /api/export/couples", srv.exportCouples)
+	mux.HandleFunc("GET /api/export/leads", srv.exportLeads)
+	mux.HandleFunc("GET /api/export/audit", srv.exportAudit)
+
+	// Dead-letter queue visibility + replay/retry controls.
+	mux.HandleFunc("GET /api/dlq", srv.listDLQ)
+	mux.HandleFunc("POST /api/dlq/{id}/replay", srv.replayDLQ)
+	mux.HandleFunc("POST /api/dlq/{id}/retry", srv.retryDLQ)
 
 	mux.HandleFunc("GET /api/actions", srv.listActions)
 	mux.HandleFunc("POST /api/actions/{id}/approve", srv.approveAction)
@@ -58,6 +74,8 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent) htt
 	mux.HandleFunc("PATCH /api/sources/{handle}/location", srv.patchSourceLocation)
 	// Job polling lives outside /api/sources/{…} to avoid Go ServeMux wildcard conflicts
 	// (e.g. scan-jobs/{id} vs {handle}/posts both match …/scan-jobs/posts).
+	// GET /api/scan-jobs (list) is a distinct pattern from /api/scan-jobs/{id}.
+	mux.HandleFunc("GET /api/scan-jobs", srv.listScanJobs)
 	mux.HandleFunc("GET /api/scan-jobs/{id}", srv.scanJobStatus)
 	mux.HandleFunc("POST /api/prospects/suppress-vendor-pairs", srv.suppressVendorPairs)
 	mux.HandleFunc("GET /api/prospects/board", srv.listProspectBoard)
@@ -66,16 +84,22 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent) htt
 	mux.HandleFunc("POST /api/ingest/pause", srv.pauseIngest)
 	mux.HandleFunc("POST /api/ingest/resume", srv.resumeIngest)
 
-	mux.HandleFunc("GET /api/map/states/OH/overview", srv.mapOverview)
-	mux.HandleFunc("GET /api/map/states/OH/government", srv.mapGovernment)
-	mux.HandleFunc("GET /api/map/states/OH/churches", srv.mapChurches)
-	mux.HandleFunc("GET /api/map/states/OH/social", srv.mapSocial)
+	// National map: any USPS state (seed-geography required). OH legacy paths
+	// remain identical via {state}=OH.
+	mux.HandleFunc("GET /api/map/coverage/summary", srv.mapCoverageSummary)
+	mux.HandleFunc("GET /api/map/coverage", srv.mapNationalCoverage)
+	mux.HandleFunc("GET /api/map/states/{state}/overview", srv.mapOverview)
+	mux.HandleFunc("GET /api/map/states/{state}/government", srv.mapGovernment)
+	mux.HandleFunc("GET /api/map/states/{state}/churches", srv.mapChurches)
+	mux.HandleFunc("GET /api/map/states/{state}/social", srv.mapSocial)
 	mux.HandleFunc("GET /api/map/organizations/{id}", srv.mapOrganization)
 	mux.HandleFunc("GET /api/map/connectors/{id}", srv.mapConnector)
 	mux.HandleFunc("GET /api/map/connectors/{id}/runs", srv.mapConnectorRuns)
 
 	mux.HandleFunc("GET /api/audit", srv.listAudit)
 	mux.HandleFunc("GET /api/health", srv.health)
+	mux.HandleFunc("GET /api/events/stream", srv.eventsStream)
+	mux.HandleFunc("GET /api/pipeline/metrics", srv.pipelineMetrics)
 	// Image proxy — Instagram CDN blocks cross-origin paint (CORP same-origin).
 	mux.HandleFunc("GET /api/media", srv.mediaProxy)
 
@@ -94,15 +118,49 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent) htt
 	mux.HandleFunc("POST /api/kits/{id}/verify-address", srv.verifyKitAddress)
 	mux.HandleFunc("POST /api/kits/{id}/send-postcard", srv.sendKitPostcard)
 	mux.HandleFunc("GET /api/couples/{id}/dossier", srv.coupleDossier)
+	mux.HandleFunc("POST /api/couples/{id}/handoff", srv.createHandoff)
+	mux.HandleFunc("POST /api/couples/{id}/journey", srv.setJourneyStage)
 	mux.HandleFunc("POST /api/ops/janitor", srv.runJanitor)
+
+	// Congratulate kit upgrades — templates, county lookup, batch detect, operator queue, follow-up
+	mux.HandleFunc("GET /api/kits/templates", srv.listGreetingTemplates)
+	mux.HandleFunc("POST /api/kits/{id}/apply-template", srv.applyGreetingTemplate)
+	mux.HandleFunc("GET /api/kits/{id}/county-records", srv.countyRecordLinks)
+	mux.HandleFunc("POST /api/kits/batch-detective", srv.batchDetective)
+	mux.HandleFunc("POST /api/kits/batch-verify", srv.batchVerifyAddresses)
+	mux.HandleFunc("GET /api/kits/operator-queue", srv.operatorQueue)
+	mux.HandleFunc("GET /api/kits/follow-up-queue", srv.followUpQueue)
+	mux.HandleFunc("POST /api/kits/{id}/send-follow-up", srv.sendFollowUp)
+
+	// Closed-loop funnel (Meet Neptune app → Radar) + trust autopsy
+	mux.HandleFunc("POST /api/webhooks/neptune", srv.ingestFunnelWebhook)
+	mux.HandleFunc("GET /api/funnel/events", srv.listFunnelEvents)
+	mux.HandleFunc("GET /api/funnel/stats", srv.funnelStats)
+	mux.HandleFunc("GET /api/trust/autopsies", srv.listAutopsies)
+	mux.HandleFunc("POST /api/trust/autopsy", srv.generateAutopsy)
+	mux.HandleFunc("GET /api/trust/autopsies/{id}", srv.getAutopsy)
+
+	// User management (admin-only — handler checks role).
+	mux.HandleFunc("GET /api/users", srv.listUsers)
+	mux.HandleFunc("POST /api/users", srv.createUser)
+	mux.HandleFunc("POST /api/users/{id}/rotate-key", srv.rotateAPIKey)
+	mux.HandleFunc("POST /api/users/{id}/disable", srv.disableUser)
+	mux.HandleFunc("POST /api/users/{id}/enable", srv.enableUser)
+
+	// DSAR: GDPR/CCPA right-to-erasure (admin-only — handler checks role).
+	mux.HandleFunc("POST /api/dsar/delete", srv.dsarDelete)
+
+	// Identity override: human marks couple as mistaken or hypothesis as rejected.
+	mux.HandleFunc("POST /api/couple/mistaken", srv.markCoupleMistaken)
+	mux.HandleFunc("POST /api/hypothesis/reject", srv.rejectHypothesis)
 
 	return mux
 }
 
-// Wrap applies the production middleware chain: origin-locked CORS, bearer
-// auth, request logging.
-func Wrap(handler http.Handler, adminToken, dashboardOrigin string) http.Handler {
-	return withCORS(dashboardOrigin, withAuth(adminToken, withLogging(handler)))
+// Wrap applies the production middleware chain: origin-locked CORS, per-user
+// auth (with legacy shared-token fallback), rate limiting, request logging.
+func Wrap(handler http.Handler, s *store.Store, adminToken, dashboardOrigin string, limiter *ratelimit.Limiter) http.Handler {
+	return withCORS(dashboardOrigin, auth.Middleware(s, adminToken, ratelimit.Middleware(limiter, withLogging(handler))))
 }
 
 func withCORS(origin string, next http.Handler) http.Handler {
@@ -112,31 +170,6 @@ func withCORS(origin string, next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-// withAuth enforces a shared bearer token on every /api/* route except
-// health. The dashboard is Neptune-internal; this is the whole auth model
-// for now — per-user concierge identity is a PRODUCTION_GAPS item.
-func withAuth(adminToken string, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if adminToken == "" {
-			writeError(w, http.StatusServiceUnavailable, errors.New("server misconfigured: NEPTUNE_ADMIN_TOKEN is not set"))
-			return
-		}
-		// Health is public; media proxy is also public so <img> tags work
-		// without Authorization headers (browsers never send our bearer on img).
-		if r.URL.Path == "/api/health" || r.URL.Path == "/api/media" {
-			next.ServeHTTP(w, r)
-			return
-		}
-		const prefix = "Bearer "
-		h := r.Header.Get("Authorization")
-		if len(h) <= len(prefix) || h[:len(prefix)] != prefix || subtle.ConstantTimeCompare([]byte(h[len(prefix):]), []byte(adminToken)) != 1 {
-			writeError(w, http.StatusUnauthorized, errors.New("missing or invalid bearer token"))
 			return
 		}
 		next.ServeHTTP(w, r)

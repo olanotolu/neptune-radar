@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"log"
@@ -106,6 +107,24 @@ func (w *Worker) Run(ctx context.Context) {
 		log.Println("[watchtower] watch loop stopped")
 		return
 	}
+	// Leader election: a second replica would double-spend the provider budget
+	// and double-process events (idempotency saves correctness, not money).
+	// The session-level advisory lock auto-releases on disconnect, so a crashed
+	// worker frees it without a heartbeat. If we're not the leader, idle the
+	// poll loop but stay alive — the API and Pause/Resume still work.
+	leader, err := w.store.TryAcquireLeaderLock()
+	if err != nil {
+		log.Printf("[watchtower] leader lock acquire failed, refusing to poll: %v", err)
+		<-ctx.Done()
+		return
+	}
+	if !leader {
+		log.Println("[watchtower] another replica holds the leader lock — poll loop idle (API still serving)")
+		<-ctx.Done()
+		log.Println("[watchtower] watch loop stopped (non-leader)")
+		return
+	}
+	log.Println("[watchtower] acquired leader lock — this replica owns the poll loop")
 	log.Printf("[watchtower] watch loop started provider=%s (interval=%s, budget=%d results/day, markets=%v, dry_run=%v)",
 		w.ProviderName(), w.cfg.PollInterval, w.cfg.DailyBudget, w.cfg.ActiveMarkets, w.cfg.DryRun)
 	w.Tick(ctx) // first poll immediately, then on the interval
@@ -178,11 +197,16 @@ func (w *Worker) pollHashtags(ctx context.Context) {
 		return
 	}
 	w.recordUsage("hashtag:batch", len(items))
+	// Schema drift canary: catch Apify actor upgrades that silently rename/drop
+	// fields before the whole batch degrades to zero-signal.
+	if report := CheckSchemaDrift("hashtag", items); report.Drifted {
+		log.Printf("[watchtower] SCHEMA DRIFT on hashtag batch: %v", report.MissingFields)
+	}
 	newest := time.Time{}
 	for _, item := range items {
 		raw, imageURL, err := MapPost(item, "hashtag:batch")
 		if err != nil {
-			log.Printf("[watchtower] skip unmappable hashtag item: %v", err)
+			w.deadLetter("apify:hashtag", "hashtag:batch", item, err)
 			continue
 		}
 		raw.Monitor = attributeHashtagMonitor(raw.Payload)
@@ -240,9 +264,13 @@ func (w *Worker) pollVendors(ctx context.Context) {
 	// count for cursor advancement and usage accounting.
 	newestByVendor := make(map[string]time.Time, len(sources))
 	countByVendor := make(map[string]int, len(sources))
+	if report := CheckSchemaDrift("vendor", items); report.Drifted {
+		log.Printf("[watchtower] SCHEMA DRIFT on vendor batch: %v", report.MissingFields)
+	}
 	for _, item := range items {
 		raw, imageURL, err := MapPost(item, "vendor:batch")
 		if err != nil {
+			w.deadLetter("apify:vendor", "vendor:batch", item, err)
 			continue
 		}
 		// Re-attribute to the specific vendor's monitor — the audit trail
@@ -318,6 +346,10 @@ func (w *Worker) pollProfiles(ctx context.Context) {
 			prof.FollowerCount, prof.FollowingCount, prof.IsPrivate, time.Now().UTC())
 		if loc, ok := signals.InferLocationFromText(prof.Bio, "bio"); ok {
 			_ = w.store.UpdateAccountLocation(acct.ID, loc.City, loc.Region, loc.Source)
+		}
+		// Persist Instagram business address (free street-level data when present)
+		if prof.StreetAddress != "" {
+			_ = w.store.UpdateAccountBusinessAddress(acct.ID, prof.StreetAddress, prof.BusinessCity, prof.BusinessState, prof.BusinessPostal)
 		}
 		if acct.BioText == prof.Bio {
 			continue // bio unchanged — no bio_change event
@@ -420,7 +452,14 @@ func (w *Worker) processPost(ctx context.Context, raw watchtower.RawEvent, image
 	if imageURL != "" {
 		sig := signals.ExtractFromPayload(raw.Payload)
 		if sig.CreatesCandidate() {
-			if labels, err := w.vision.ClassifyVisualSignals(ctx, imageURL); err != nil {
+			labels, err := w.vision.ClassifyVisualSignals(ctx, imageURL)
+			// Record the classification for calibration tracking — even
+			// failures, so we can see the error rate over time.
+			model := w.visionModelName()
+			if logErr := w.store.RecordVisionClassification("", raw.ExternalEventID, imageURL, model, labels, errToString(err)); logErr != nil {
+				log.Printf("[watchtower] vision log failed: %v", logErr)
+			}
+			if err != nil {
 				log.Printf("[watchtower] vision classify failed for %s: %v", raw.ExternalEventID, err)
 			} else if len(labels) > 0 {
 				raw.Payload["visual_signals"] = labels
@@ -441,9 +480,35 @@ func (w *Worker) process(ctx context.Context, raw watchtower.RawEvent) {
 			raw.Monitor, raw.Type, raw.Handle, raw.Payload)
 		return
 	}
-	result, err := w.orch.ProcessEvent(ctx, raw)
+	// Retry transient DB errors (connection blips, deadlocks). A single
+	// hiccup no longer drops an entire event permanently — the event is
+	// only lost after maxRetries attempts. Non-retryable errors (e.g.
+	// ErrDuplicateObservation) are returned immediately by ProcessEvent
+	// and not retried.
+	const maxRetries = 2
+	var result pipeline.StepResult
+	var err error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		result, err = w.orch.ProcessEvent(ctx, raw)
+		if err == nil {
+			break
+		}
+		if !isRetryableDBError(err) {
+			break
+		}
+		if attempt < maxRetries {
+			wait := time.Duration(1<<attempt) * time.Second // 1s, 2s
+			log.Printf("[watchtower] transient error on %s (attempt %d), retrying in %s: %v",
+				raw.ExternalEventID, attempt+1, wait, err)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(wait):
+			}
+		}
+	}
 	if err != nil {
-		log.Printf("[watchtower] process event %s failed: %v", raw.ExternalEventID, err)
+		log.Printf("[watchtower] process event %s failed after %d attempts: %v", raw.ExternalEventID, maxRetries+1, err)
 		return
 	}
 	switch {
@@ -453,6 +518,34 @@ func (w *Worker) process(ctx context.Context, raw watchtower.RawEvent) {
 	case result.HypothesisID != "":
 		log.Printf("[watchtower] hypothesis %s scored %.2f (no action)", result.HypothesisID, result.FinalConfidence)
 	}
+}
+
+// isRetryableDBError reports whether an error from ProcessEvent is worth
+// retrying: connection errors, deadlocks, and serialization failures are
+// transient. Unique violations (duplicate events) and bad input are not.
+func isRetryableDBError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	// ponytail: string matching instead of typed errors because the pgx
+	// error types are wrapped through multiple layers and the typed check
+	// (pgconn.PgError code) only works on the unwrapped leaf. The strings
+	// are stable Postgres error messages.
+	for _, pattern := range []string{
+		"connection reset",
+		"connection refused",
+		"deadlock detected",
+		"could not serialize",
+		"server closed the connection",
+		"i/o timeout",
+		"context deadline exceeded",
+	} {
+		if strings.Contains(s, pattern) {
+			return true
+		}
+	}
+	return false
 }
 
 // profileEnrichMaxAge avoids re-fetching the same tagged account every tick.
@@ -585,7 +678,6 @@ func cityCoords(city, region string) (*float64, *float64) {
 	return nil, nil
 }
 
-
 func (w *Worker) recordUsage(monitor string, results int) {
 	if results <= 0 {
 		return
@@ -597,6 +689,36 @@ func (w *Worker) recordUsage(monitor string, results int) {
 	if err := w.store.RecordUsage(provider, monitor, results); err != nil {
 		log.Printf("[watchtower] record usage: %v", err)
 	}
+}
+
+// deadLetter persists an unmappable provider item to the DLQ instead of
+// silently dropping it. The raw item JSON is stored so it can be inspected
+// or replayed later (e.g. after a mapper fix).
+func (w *Worker) deadLetter(source, monitor string, item json.RawMessage, mapErr error) {
+	log.Printf("[watchtower] dead-letter %s item: %v", source, mapErr)
+	raw := ""
+	if item != nil {
+		raw = string(item)
+	}
+	if err := w.store.InsertDLQ(source, monitor, "", raw, mapErr.Error()); err != nil {
+		log.Printf("[watchtower] dlq insert failed: %v", err)
+	}
+}
+
+// visionModelName returns the name of the active vision classifier for the
+// calibration log. Falls back to "noop" when no model is configured.
+func (w *Worker) visionModelName() string {
+	if v, ok := w.vision.(interface{ Name() string }); ok {
+		return v.Name()
+	}
+	return "noop"
+}
+
+func errToString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
 
 func (w *Worker) advance(monitor string, newest time.Time) {

@@ -29,6 +29,7 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 	firstB := firstNonEmpty(k.FirstNameB, splitNameFirst(k.PersonBName))
 	lastB := firstNonEmpty(k.LastNameB, splitNameLast(k.PersonBName))
 
+	// --- Enrich query with ALL available location signals ---
 	q := records.Query{
 		FirstName:    firstA,
 		LastName:     lastA,
@@ -37,7 +38,51 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 		City:         firstNonEmpty(k.AddressCity, k.MarketCity),
 		Region:       firstNonEmpty(k.AddressRegion, k.MarketRegion),
 		Handle:       k.HandleA,
+		BioA:         k.BioA,
+		BioB:         k.BioB,
 	}
+
+	// Load couple + account data for location signal enrichment
+	if k.CoupleID != "" {
+		if couple, err := a.Store.GetCouple(k.CoupleID); err == nil {
+			// Couple-level inferred city (from post geotags + both bios)
+			if q.City == "" && couple.InferredCity != "" {
+				q.City = couple.InferredCity
+				q.Region = couple.InferredRegion
+			}
+			// Load each partner's individually-inferred city from their Instagram bio
+			if acctA, err := a.Store.GetAccountByPersonID(couple.PersonAID); err == nil {
+				q.AccountCityA = acctA.InferredCity
+				q.AccountRegionA = acctA.InferredRegion
+				if q.BioA == "" {
+					q.BioA = acctA.BioText
+				}
+			}
+			if acctB, err := a.Store.GetAccountByPersonID(couple.PersonBID); err == nil {
+				q.AccountCityB = acctB.InferredCity
+				q.AccountRegionB = acctB.InferredRegion
+				if q.BioB == "" {
+					q.BioB = acctB.BioText
+				}
+			}
+		}
+	}
+
+	// Vendor/photographer city from watched_sources registry
+	if k.SourceHandle != "" {
+		if src, err := a.Store.GetWatchedSource(k.SourceHandle); err == nil {
+			q.VendorCity = src.City
+			q.VendorState = src.State
+		}
+	}
+
+	// Post venue location from discovery post's raw payload
+	if k.DiscoveryPostURL != "" {
+		if postLoc, _ := a.Store.FindDiscoveryPostLocation(k.HandleA, k.HandleB); postLoc != "" {
+			q.PostLocation = postLoc
+		}
+	}
+
 	// Stronger note when last names missing
 	if lastA == "" && lastB == "" {
 		k.ResearchNotes = strings.TrimSpace(k.ResearchNotes + "\n\n⚠ Detective: no last names — street hits unlikely. Fill Last name A/B and re-run.")
@@ -52,6 +97,24 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 		if res2, err2 := prov.Search(ctx, q2); err2 == nil && len(res2.Candidates) > 0 {
 			res = res2
 			err = nil
+		}
+	}
+
+	// Bio-to-address regex: extract street addresses from Instagram bios (free, no API)
+	for _, bio := range []string{k.BioA, k.BioB} {
+		if addr := records.ExtractAddressFromBio(bio); addr != nil {
+			res.Candidates = append([]records.Candidate{{
+				Line1:      addr.Line1,
+				Line2:      addr.Line2,
+				City:       firstNonEmpty(addr.City, q.City),
+				Region:     firstNonEmpty(addr.Region, q.Region),
+				Postal:     addr.Postal,
+				Country:    "US",
+				Confidence: addr.Confidence,
+				Source:     "bio_regex",
+				Note:       fmt.Sprintf("Street address parsed from Instagram bio (%s). Verify before mail.", addr.Source),
+			}}, res.Candidates...)
+			res.Provider = res.Provider + "+bio_regex"
 		}
 	}
 
@@ -153,10 +216,40 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 		}
 	}
 
-	// Research notes append
+	// Research notes append — include all location signals + county records for operator context
+	var signalSummary []string
+	if q.VendorCity != "" {
+		signalSummary = append(signalSummary, fmt.Sprintf("vendor=%s,%s", q.VendorCity, q.VendorState))
+	}
+	if q.AccountCityA != "" {
+		signalSummary = append(signalSummary, fmt.Sprintf("acctA=%s,%s", q.AccountCityA, q.AccountRegionA))
+	}
+	if q.AccountCityB != "" {
+		signalSummary = append(signalSummary, fmt.Sprintf("acctB=%s,%s", q.AccountCityB, q.AccountRegionB))
+	}
+	if q.PostLocation != "" {
+		signalSummary = append(signalSummary, fmt.Sprintf("postLoc=%s", q.PostLocation))
+	}
+	sigStr := ""
+	if len(signalSummary) > 0 {
+		sigStr = "\nSignals: " + strings.Join(signalSummary, " · ")
+	}
+
+	// County record links (Ohio only)
+	countyStr := ""
+	searchCity := firstNonEmpty(q.City, q.Region)
+	if searchCity != "" {
+		countyName := records.CountyName(searchCity, q.Region)
+		if countyName != "" {
+			countyURL := records.CountySearchURL(searchCity, q.Region)
+			countyStr = fmt.Sprintf("\nCounty: %s County, Ohio — %s", countyName, countyURL)
+		}
+	}
+
 	k.ResearchNotes = strings.TrimSpace(k.ResearchNotes + "\n\n--- Detective run " + time.Now().UTC().Format(time.RFC3339) + " ---\n" +
 		fmt.Sprintf("Provider: %s · status: %s · candidates: %d\n", res.Provider, st, len(cands)) +
 		fmt.Sprintf("Query: %s %s · %s, %s\n", firstA, lastA, q.City, q.Region) +
+		sigStr + countyStr + "\n" +
 		"Pick a candidate in the UI, then Verify address. Configure TRESTLE_API_KEY or PDL_API_KEY for street hits.")
 
 	// Mark detective step done in research steps

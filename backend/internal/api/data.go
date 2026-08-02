@@ -2,9 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
+	"neptune-social-radar/backend/internal/auth"
 	"neptune-social-radar/backend/internal/ontology"
 )
 
@@ -175,9 +177,16 @@ type relationshipResponse struct {
 
 func (s *Server) coupleRelationship(w http.ResponseWriter, r *http.Request) {
 	coupleID := r.PathValue("id")
+	role := auth.UserFromContext(r.Context()).Role
 	current, err := s.Store.CurrentRelationship(coupleID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err)
+		return
+	}
+	// Gate the current relationship: if it's attorney_only and the caller
+	// isn't attorney/admin, return 404 (don't even confirm the couple exists).
+	if !auth.ScopeVisible(role, string(current.VisibilityScope)) {
+		writeError(w, http.StatusNotFound, errors.New("relationship not found"))
 		return
 	}
 	history, err := s.Store.RelationshipHistory(coupleID)
@@ -185,7 +194,14 @@ func (s *Server) coupleRelationship(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, relationshipResponse{Current: current, History: history})
+	// Filter history: drop attorney_only rows the caller can't see.
+	visible := history[:0]
+	for _, h := range history {
+		if auth.ScopeVisible(role, string(h.VisibilityScope)) {
+			visible = append(visible, h)
+		}
+	}
+	writeJSON(w, http.StatusOK, relationshipResponse{Current: current, History: visible})
 }
 
 // pauseCouple flips automation_paused to true on the couple's current
@@ -218,7 +234,16 @@ func (s *Server) resumeCouple(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) hypothesisEvidence(w http.ResponseWriter, r *http.Request) {
-	ev, err := s.Store.EvidenceForHypothesis(r.PathValue("id"))
+	id := r.PathValue("id")
+	role := auth.UserFromContext(r.Context()).Role
+	// Gate: evidence for an attorney_only hypothesis is invisible to concierge.
+	if hyp, err := s.Store.GetHypothesis(id); err == nil {
+		if !auth.ScopeVisible(role, string(hyp.VisibilityScope)) {
+			writeError(w, http.StatusNotFound, errors.New("hypothesis not found"))
+			return
+		}
+	}
+	ev, err := s.Store.EvidenceForHypothesis(id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
@@ -238,9 +263,15 @@ type confidenceResponse struct {
 
 func (s *Server) hypothesisConfidence(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	role := auth.UserFromContext(r.Context()).Role
 	hyp, err := s.Store.GetHypothesis(id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err)
+		return
+	}
+	// Gate: an attorney_only hypothesis is invisible to concierge.
+	if !auth.ScopeVisible(role, string(hyp.VisibilityScope)) {
+		writeError(w, http.StatusNotFound, errors.New("hypothesis not found"))
 		return
 	}
 	ev, err := s.Store.EvidenceForHypothesis(id)

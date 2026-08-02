@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"html"
+	"math"
 	"net/url"
 	"strings"
 	"time"
@@ -224,7 +225,83 @@ func (a *Agent) BuildKit(ctx context.Context, coupleID string) (store.Congratula
 	kit.MailPayload = mailPayload(kit)
 	kit.Status = "ready_review"
 
-	return a.Store.UpsertCongratulateKit(kit)
+	// Compute priority score (higher = operator should work this kit first)
+	kit.PriorityScore = ComputePriorityScore(kit)
+
+	// Schedule follow-up card 14 days after first mail (if address gets verified)
+	if kit.AddressConfidence >= 0.50 {
+		followUp := time.Now().UTC().AddDate(0, 0, 14)
+		kit.FollowUpAt = &followUp
+		kit.FollowUpTemplate = "bright_casual" // different template for follow-up
+	}
+
+	saved, err := a.Store.UpsertCongratulateKit(kit)
+	if err != nil {
+		return saved, err
+	}
+
+	// Auto-detective: run detective immediately if we have enough data (last names + city)
+	if saved.LastNameA != "" || saved.LastNameB != "" {
+		if saved.MarketCity != "" || saved.AddressCity != "" {
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+				defer cancel()
+				_, _ = a.RunDetective(ctx, saved.ID)
+			}()
+		}
+	}
+
+	return saved, nil
+}
+
+// computePriorityScore combines multiple signals into a single score (0-1).
+// Higher = more valuable kit to work first.
+// ComputePriorityScore combines multiple signals into a single score (0-1).
+// Higher = more valuable kit to work first.
+func ComputePriorityScore(kit store.CongratulateKit) float64 {
+	score := 0.0
+
+	// Address confidence (40% weight) — the most important signal
+	score += kit.AddressConfidence * 0.40
+
+	// Name completeness (25% weight) — last names make people-search work
+	nameScore := 0.0
+	if kit.LastNameA != "" {
+		nameScore += 0.5
+	}
+	if kit.LastNameB != "" {
+		nameScore += 0.5
+	}
+	score += nameScore * 0.25
+
+	// Market location quality (15% weight) — Ohio cities score higher than unknown
+	if kit.MarketCity != "" {
+		marketScore := 0.5 // generic city
+		if kit.MarketSource == "photographer_profile" || kit.MarketSource == "post_location" {
+			marketScore = 0.8 // strong source
+		}
+		if kit.MarketSource == "bio_agreement" {
+			marketScore = 1.0 // both bios agree
+		}
+		score += marketScore * 0.15
+	}
+
+	// Vendor quality (10% weight) — kits from known vendors are better
+	if kit.SourceHandle != "" {
+		score += 0.08 // has a source vendor
+	}
+
+	// Recency (10% weight) — newer kits are more timely
+	hoursSinceCreation := time.Since(kit.CreatedAt).Hours()
+	if hoursSinceCreation < 24 {
+		score += 0.10 // fresh
+	} else if hoursSinceCreation < 72 {
+		score += 0.07
+	} else if hoursSinceCreation < 168 {
+		score += 0.04
+	}
+
+	return math.Min(score, 1.0)
 }
 
 func nameSourceRank(src string) int {

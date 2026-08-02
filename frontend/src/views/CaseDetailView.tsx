@@ -1,5 +1,7 @@
 import { EvidenceTimelineTable } from "../components/EvidenceTimelineTable";
 import { ConfidenceBar } from "../components/ConfidenceBar";
+import { EmptyState } from "../components/EmptyState";
+import { LoadingState } from "../components/LoadingState";
 import { useCases, useConfidence, useEvidence, useLeads } from "../api/hooks";
 import type { NeptuneCase, CRMLead } from "../api/types";
 
@@ -35,13 +37,18 @@ export function CaseDetailView() {
     return (
       <div className="view">
         <h2 className="view__title">Active Neptune case</h2>
-        <div className="empty-state">
-          {isLoading
-            ? "Loading cases…"
-            : error
-              ? `Cases unavailable: ${(error as Error).message}`
-              : "No case yet — approve the engagement review action in the Approval Queue to open one."}
-        </div>
+        {isLoading ? (
+          <LoadingState variant="spinner" message="Loading cases…" />
+        ) : error ? (
+          <EmptyState variant="warning" icon="⚠" title="Cases unavailable" message={(error as Error).message} />
+        ) : (
+          <EmptyState
+            variant="empty"
+            icon="📂"
+            title="No case yet"
+            message="Approve the engagement review action in the Approval Queue to open one."
+          />
+        )}
       </div>
     );
   }

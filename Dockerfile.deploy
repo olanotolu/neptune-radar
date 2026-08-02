@@ -7,7 +7,8 @@ FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata curl
 WORKDIR /app
 COPY build/server /app/server
-COPY build/bootstrap-ohio /app/bootstrap-ohio
+COPY build/seed-geography /app/seed-geography
+COPY build/bootstrap-state /app/bootstrap-state
 COPY frontend/dist /app/public
 # DASHBOARD_ORIGIN is deliberately NOT baked in — the deploy env file
 # (~/neptune-radar.env on the box) owns it. A baked-in fly.dev default here

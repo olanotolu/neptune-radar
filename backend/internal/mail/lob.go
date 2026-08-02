@@ -193,6 +193,80 @@ func (c *Client) SendPostcard(ctx context.Context, to Address, frontHTML, backHT
 	}, nil
 }
 
+// BatchVerifyResult is one address from a batch verification.
+type BatchVerifyResult struct {
+	Index       int     `json:"index"`
+	Deliverable bool    `json:"deliverable"`
+	Address     Address `json:"address"`
+	Error       string  `json:"error,omitempty"`
+}
+
+// VerifyBatch verifies up to 100 addresses in a single Lob API call.
+// Cost: $0.01 per address (vs $0.02 single).
+func (c *Client) VerifyBatch(ctx context.Context, addresses []Address) ([]BatchVerifyResult, error) {
+	if !c.Available() {
+		return nil, fmt.Errorf("lob unavailable")
+	}
+	if len(addresses) > 100 {
+		addresses = addresses[:100]
+	}
+
+	// Lob batch verify endpoint
+	var batches []map[string]any
+	for i, a := range addresses {
+		batches = append(batches, map[string]any{
+			"id": fmt.Sprintf("addr_%d", i),
+			"address": map[string]any{
+				"primary_line":   a.AddressLine1,
+				"secondary_line": a.AddressLine2,
+				"city":           a.AddressCity,
+				"state":          a.AddressState,
+				"zip_code":       a.AddressZip,
+			},
+		})
+	}
+
+	body := map[string]any{"addresses": batches}
+	raw, status, err := c.post(ctx, "https://api.lob.com/v1/us_verifications/batches", body)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 300 {
+		return nil, fmt.Errorf("lob batch verify http %d: %s", status, truncate(raw, 300))
+	}
+
+	var parsed struct {
+		Results []struct {
+			ID            string `json:"id"`
+			Deliverability string `json:"deliverability"`
+			Components    struct {
+				PrimaryLine string `json:"primary_line"`
+				City        string `json:"city"`
+				State       string `json:"state"`
+				ZipCode     string `json:"zip_code"`
+			} `json:"components"`
+		} `json:"results"`
+	}
+	_ = json.Unmarshal([]byte(raw), &parsed)
+
+	var results []BatchVerifyResult
+	for i, r := range parsed.Results {
+		deliv := strings.HasPrefix(strings.ToLower(r.Deliverability), "deliverable")
+		addr := Address{
+			AddressLine1: r.Components.PrimaryLine,
+			AddressCity:  r.Components.City,
+			AddressState: r.Components.State,
+			AddressZip:   r.Components.ZipCode,
+		}
+		results = append(results, BatchVerifyResult{
+			Index:       i,
+			Deliverable: deliv,
+			Address:     addr,
+		})
+	}
+	return results, nil
+}
+
 func (c *Client) post(ctx context.Context, endpoint string, body any) (raw string, status int, err error) {
 	payload, err := json.Marshal(body)
 	if err != nil {

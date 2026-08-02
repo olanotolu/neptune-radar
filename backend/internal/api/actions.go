@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"neptune-social-radar/backend/internal/auth"
 	"neptune-social-radar/backend/internal/pipeline/operator"
 	"neptune-social-radar/backend/internal/pipeline/verifier"
 	"neptune-social-radar/backend/internal/store"
@@ -29,7 +30,8 @@ type approveResponse struct {
 // re-read the database and confirm the intended state actually landed.
 func (s *Server) approveAction(w http.ResponseWriter, r *http.Request) {
 	actionID := r.PathValue("id")
-	exec, err := operator.Approve(s.Store, actionID, "human:concierge")
+	decidedBy := "human:" + auth.UserFromContext(r.Context()).Email
+	exec, err := operator.Approve(s.Store, actionID, decidedBy)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
@@ -44,12 +46,20 @@ func (s *Server) approveAction(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	// Growth OS: advance journey on approve (risk actions stay concierge-only).
+	if hyp, err := s.Store.GetHypothesis(action.HypothesisID); err == nil && hyp.CoupleID != "" {
+		switch string(action.ActionType) {
+		case "review", "create_case", "draft_outreach", "investigate":
+			_ = s.Store.SetJourneyStage(hyp.CoupleID, "approved")
+		}
+	}
 	writeJSON(w, http.StatusOK, approveResponse{ID: actionID, Status: string(action.Status), Verified: verified})
 }
 
 func (s *Server) ignoreAction(w http.ResponseWriter, r *http.Request) {
 	actionID := r.PathValue("id")
-	if err := operator.Ignore(s.Store, actionID, "human:concierge"); err != nil {
+	decidedBy := "human:" + auth.UserFromContext(r.Context()).Email
+	if err := operator.Ignore(s.Store, actionID, decidedBy); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}

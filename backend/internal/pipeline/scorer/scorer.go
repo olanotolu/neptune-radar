@@ -14,11 +14,13 @@
 package scorer
 
 import (
-	"time"
 	"database/sql"
 	"errors"
+	"math"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"neptune-social-radar/backend/internal/ontology"
 	"neptune-social-radar/backend/internal/pipeline/analyst"
@@ -58,8 +60,50 @@ func pts(p float64) float64 { return p / 100.0 }
 
 // oldPostThreshold is how fresh a post must be to earn the +10 recency
 // points. Thirty days: engagement announcements are acted on within weeks;
-// anything older is context, not news.
-const oldPostThreshold = 30 * 24 * time.Hour
+// anything older is context, not news. Tunable via NEPTUNE_OLD_POST_DAYS.
+var oldPostThreshold = time.Duration(loadDurationEnv("NEPTUNE_OLD_POST_DAYS", 30)) * 24 * time.Hour
+
+// evidenceHalfLife is the age at which evidence weight drops to 50%.
+// 90 days: social signals for a life event go stale fast — a post from 6
+// months ago should carry far less weight than one from last week. The decay
+// is exponential (weight *= 0.5^(age/halfLife)), so at 180 days evidence is
+// at 25%, at 270 days at 12.5%. This prevents a hypothesis from accumulating
+// a high score purely from old evidence that was never corroborated.
+// Tunable via NEPTUNE_EVIDENCE_HALF_LIFE_DAYS.
+var evidenceHalfLife = time.Duration(loadDurationEnv("NEPTUNE_EVIDENCE_HALF_LIFE_DAYS", 90)) * 24 * time.Hour
+
+// loadDurationEnv reads an integer number of days from an env var, falling
+// back to the default if unset or invalid. Never crashes on bad input.
+func loadDurationEnv(key string, defaultDays int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return defaultDays
+}
+
+// decayFactor returns the weight multiplier for evidence of the given age.
+// Fresh evidence (age < halfLife) keeps most of its weight; old evidence
+// decays exponentially. Zero-age evidence returns 1.0 (no decay).
+func decayFactor(age time.Duration, now time.Time) float64 {
+	if age <= 0 || evidenceHalfLife <= 0 {
+		return 1.0
+	}
+	// 0.5^(age/halfLife): at halfLife, factor=0.5; at 2*halfLife, 0.25; etc.
+	lambda := float64(age) / float64(evidenceHalfLife)
+	return math.Pow(0.5, lambda)
+}
+
+// decayedWeight applies the time-decay factor to one evidence item's weight.
+// Evidence with a zero CreatedAt (migration backfill, missing timestamp) is
+// treated as full-weight — we don't penalize data we can't date.
+func decayedWeight(e ontology.Evidence, now time.Time) float64 {
+	if e.CreatedAt.IsZero() {
+		return e.Weight
+	}
+	return e.Weight * decayFactor(now.Sub(e.CreatedAt), now)
+}
 
 // CollectEvidence re-derives supporting/contradicting facts from the
 // database's current state (edges, account flags) each time a hypothesis is
@@ -319,9 +363,10 @@ func containsPartnerReference(bio string) bool {
 // evidence weights. Policy — not this function — decides what confidence
 // level is enough to act.
 func Score(modelConfidence float64, evidence []ontology.Evidence) float64 {
+	now := time.Now()
 	sum := 0.0
 	for _, e := range evidence {
-		sum += e.Weight
+		sum += decayedWeight(e, now)
 	}
 	// Deliberately no neutral baseline: a single weak signal (e.g. one
 	// unfollow with no corroboration) must not be enough to cross an action
@@ -365,9 +410,10 @@ const (
 // language counted as explicit, and every point on the board is an auditable
 // deterministic signal.
 func ProspectScore(evidence []ontology.Evidence) (final, engagementSub, partnerSub float64) {
+	now := time.Now()
 	total, engagement, partner := 0.0, 0.0, 0.0
 	for _, e := range evidence {
-		points := e.Weight * 100
+		points := decayedWeight(e, now) * 100
 		total += points
 		switch {
 		case engagementEvidenceKinds[e.Kind]:

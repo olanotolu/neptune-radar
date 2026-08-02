@@ -128,6 +128,11 @@ type ProfileDetails struct {
 	Region string // state / region
 	// LocationSource: "profile" | "bio" | ""
 	LocationSource string
+	// Street address from Instagram business profile (rare but gold when present).
+	StreetAddress  string
+	BusinessCity   string
+	BusinessState  string
+	BusinessPostal string
 }
 
 // ParseProfile extracts bio + avatar + stats + location from a profile-scraper item.
@@ -182,16 +187,24 @@ func ParseProfile(item json.RawMessage) (ProfileDetails, bool) {
 	region := ""
 	if city == "" && len(p.BusinessAddress) > 0 {
 		var ba struct {
-			City        string `json:"city"`
-			CityName    string `json:"city_name"`
-			Region      string `json:"region"`
-			RegionCode  string `json:"region_code"`
-			State       string `json:"state"`
+			City          string `json:"city"`
+			CityName      string `json:"city_name"`
+			Region        string `json:"region"`
+			RegionCode    string `json:"region_code"`
+			State         string `json:"state"`
 			StreetAddress string `json:"street_address"`
+			PostalCode    string `json:"postal_code"`
+			ZipCode       string `json:"zip_code"`
 		}
 		if json.Unmarshal(p.BusinessAddress, &ba) == nil {
 			city = firstNonEmpty(ba.City, ba.CityName)
 			region = firstNonEmpty(ba.RegionCode, ba.State, ba.Region)
+			if ba.StreetAddress != "" {
+				out.StreetAddress = ba.StreetAddress
+				out.BusinessCity = firstNonEmpty(ba.City, ba.CityName)
+				out.BusinessState = firstNonEmpty(ba.RegionCode, ba.State)
+				out.BusinessPostal = firstNonEmpty(ba.PostalCode, ba.ZipCode)
+			}
 		}
 	}
 	if city != "" {
@@ -226,7 +239,13 @@ func parseCityState(text string) (city, region string, ok bool) {
 		{"manhattan", "Manhattan", "NY"},
 		{"new york", "New York", "NY"},
 		{"nyc", "New York", "NY"},
+		{"dumbo", "Brooklyn", "NY"},
 		{"los angeles", "Los Angeles", "CA"},
+		{"san francisco", "San Francisco", "CA"},
+		{"bay area", "San Francisco", "CA"},
+		{"malibu", "Malibu", "CA"},
+		{"beverly hills", "Beverly Hills", "CA"},
+		{"napa", "Napa", "CA"},
 		{"chicago", "Chicago", "IL"},
 		{"miami", "Miami", "FL"},
 		{"austin", "Austin", "TX"},

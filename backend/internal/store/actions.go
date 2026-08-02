@@ -77,6 +77,14 @@ func (s *Store) GetAction(id string) (ontology.RecommendedAction, error) {
 	return a, nil
 }
 
+// CountPendingActions returns the number of recommended_actions still
+// awaiting a human decision. Used by the health check.
+func (s *Store) CountPendingActions() (int, error) {
+	var n int
+	err := s.DB.QueryRow(`SELECT COUNT(*) FROM recommended_actions WHERE status = 'pending'`).Scan(&n)
+	return n, err
+}
+
 func (s *Store) ListActions(status string) ([]ontology.RecommendedAction, error) {
 	q := `SELECT id, COALESCE(hypothesis_id,''), COALESCE(case_id,''), action_type, COALESCE(proposed_payload,''), status, created_at, decided_at, COALESCE(decided_by,'') FROM recommended_actions`
 	args := []any{}

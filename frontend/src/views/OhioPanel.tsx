@@ -49,13 +49,18 @@ function parseMeta(json?: string): Record<string, unknown> {
 }
 
 interface OhioPanelProps {
+  /** Display name, e.g. "Ohio" or "New York" */
+  stateName?: string;
+  /** USPS code, e.g. "OH" */
+  stateCode?: string;
   layer: LayerId;
   onLayerChange: (l: LayerId) => void;
   onClose: () => void;
   overview: { data?: OverviewCityView[]; isLoading: boolean };
   government: { data?: CountyGovernmentView[]; isLoading: boolean };
   churches: { data?: DioceseView[]; isLoading: boolean };
-  social: { data?: SocialMarketView; isLoading: boolean };
+  /** Single market (legacy) or multi-city markets */
+  social: { data?: SocialMarketView | SocialMarketView[]; isLoading: boolean };
   selectedCountyFips: string | null;
   onSelectCounty: (fips: string | null) => void;
   selectedDioceseId: string | null;
@@ -63,6 +68,8 @@ interface OhioPanelProps {
 }
 
 export function OhioPanel({
+  stateName = "Ohio",
+  stateCode = "OH",
   layer, onLayerChange, onClose, overview, government, churches, social,
   selectedCountyFips, onSelectCounty, selectedDioceseId, onSelectDiocese,
 }: OhioPanelProps) {
@@ -71,8 +78,8 @@ export function OhioPanel({
       <header className="state-panel__header">
         <div className="state-panel__title-row">
           <div>
-            <h3 className="state-panel__title">Ohio</h3>
-            <span className="state-panel__code">OH</span>
+            <h3 className="state-panel__title">{stateName}</h3>
+            <span className="state-panel__code">{stateCode}</span>
           </div>
           <button className="state-panel__close" onClick={onClose} aria-label="Close panel">×</button>
         </div>
@@ -109,36 +116,51 @@ export function OhioPanel({
 
 function OverviewBody({ overview }: { overview: { data?: OverviewCityView[]; isLoading: boolean } }) {
   if (overview.isLoading) return <div className="ohio-empty">Loading real coverage counts…</div>;
-  const city = overview.data?.[0];
-  if (!city) return <div className="ohio-empty">No coverage data yet.</div>;
-  const c = city.counts;
+  const cities = overview.data ?? [];
+  if (cities.length === 0) {
+    return (
+      <div className="ohio-empty">
+        No city markets registered in this state yet.
+        <div className="ohio-hint">
+          Geography is national; social/government packs are added state-by-state. Honest empty — not a fake status.
+        </div>
+      </div>
+    );
+  }
   return (
-    <section className="state-panel__section">
-      <div className="state-panel__section-header">
-        <span className="state-panel__section-title">{city.city.name} — real coverage</span>
-      </div>
-      <div className="ohio-overview-grid">
-        <div className="ohio-overview-stat">
-          <span className="ohio-overview-stat__value">{c.government}</span>
-          <span className="ohio-overview-stat__label">government sources</span>
-        </div>
-        <div className="ohio-overview-stat">
-          <span className="ohio-overview-stat__value">{c.church}</span>
-          <span className="ohio-overview-stat__label">church sources</span>
-        </div>
-        <div className="ohio-overview-stat">
-          <span className="ohio-overview-stat__value">{c.social}</span>
-          <span className="ohio-overview-stat__label">social sources</span>
-        </div>
-      </div>
-      <div className="ohio-overview-breakdown">
-        <StatusBadge status="healthy" /> <span>{c.healthy}</span>
-        <StatusBadge status="degraded" /> <span>{c.degraded}</span>
-        <StatusBadge status="setup" /> <span>{c.setup}</span>
-        <StatusBadge status="offline" /> <span>{c.offline}</span>
-      </div>
-      <p className="ohio-hint">Every count above comes from real, checked connectors — not a fixed estimate.</p>
-    </section>
+    <>
+      {cities.map((city) => {
+        const c = city.counts;
+        return (
+          <section className="state-panel__section" key={city.city.id}>
+            <div className="state-panel__section-header">
+              <span className="state-panel__section-title">{city.city.name} — real coverage</span>
+            </div>
+            <div className="ohio-overview-grid">
+              <div className="ohio-overview-stat">
+                <span className="ohio-overview-stat__value">{c.government}</span>
+                <span className="ohio-overview-stat__label">government sources</span>
+              </div>
+              <div className="ohio-overview-stat">
+                <span className="ohio-overview-stat__value">{c.church}</span>
+                <span className="ohio-overview-stat__label">church sources</span>
+              </div>
+              <div className="ohio-overview-stat">
+                <span className="ohio-overview-stat__value">{c.social}</span>
+                <span className="ohio-overview-stat__label">social sources</span>
+              </div>
+            </div>
+            <div className="ohio-overview-breakdown">
+              <StatusBadge status="healthy" /> <span>{c.healthy}</span>
+              <StatusBadge status="degraded" /> <span>{c.degraded}</span>
+              <StatusBadge status="setup" /> <span>{c.setup}</span>
+              <StatusBadge status="offline" /> <span>{c.offline}</span>
+            </div>
+            <p className="ohio-hint">Every count above comes from real, checked connectors — not a fixed estimate.</p>
+          </section>
+        );
+      })}
+    </>
   );
 }
 
@@ -155,10 +177,39 @@ function GovernmentBody({
 
   if (!selectedCountyFips) {
     return (
-      <div className="ohio-empty">
-        Click a county on the map to inspect its government connector.
-        <div className="ohio-hint">{configured} of {rows.length} Ohio counties configured so far.</div>
-      </div>
+      <section className="state-panel__section">
+        <div className="state-panel__section-header">
+          <span className="state-panel__section-title">Counties</span>
+          <span className="state-panel__section-count">
+            {configured}/{rows.length} configured
+          </span>
+        </div>
+        {rows.length === 0 ? (
+          <div className="ohio-empty">
+            No counties in registry for this state yet. Run <code>seed-geography</code>.
+          </div>
+        ) : (
+          <ul className="ohio-diocese-list">
+            {rows.slice(0, 80).map((r) => (
+              <li key={r.county.id}>
+                <button
+                  type="button"
+                  className="ohio-diocese-card"
+                  onClick={() => onSelectCounty(r.county.id)}
+                >
+                  <span className="ohio-diocese-card__name">{r.county.name}</span>
+                  <span className="ohio-diocese-card__meta">
+                    {r.organization ? r.organization.name : "Not configured"}
+                  </span>
+                </button>
+              </li>
+            ))}
+            {rows.length > 80 && (
+              <li className="ohio-hint">Showing first 80 of {rows.length} counties — pick one to inspect.</li>
+            )}
+          </ul>
+        )}
+      </section>
     );
   }
 
@@ -296,10 +347,18 @@ const CATEGORY_LABEL: Record<string, string> = {
   bridal_boutique: "Boutiques",
 };
 
-function InstagramBody({ social }: { social: { data?: SocialMarketView; isLoading: boolean } }) {
-  if (social.isLoading) return <div className="ohio-empty">Loading Columbus accounts…</div>;
-  const vendors = social.data?.vendors ?? [];
-  if (vendors.length === 0) return <div className="ohio-empty">No accounts configured yet.</div>;
+function InstagramBody({ social }: { social: { data?: SocialMarketView | SocialMarketView[]; isLoading: boolean } }) {
+  if (social.isLoading) return <div className="ohio-empty">Loading social accounts…</div>;
+  const markets = Array.isArray(social.data) ? social.data : social.data ? [social.data] : [];
+  const vendors = markets.flatMap((m) => m.vendors ?? []);
+  if (vendors.length === 0) {
+    return (
+      <div className="ohio-empty">
+        No social accounts configured yet for this state.
+        <div className="ohio-hint">Vendor packs are added per metro — geography alone does not invent sources.</div>
+      </div>
+    );
+  }
 
   const byCategory = new Map<string, typeof vendors>();
   for (const v of vendors) {
@@ -310,6 +369,9 @@ function InstagramBody({ social }: { social: { data?: SocialMarketView; isLoadin
 
   return (
     <>
+      {markets.length > 1 && (
+        <p className="ohio-hint">{markets.length} city markets · {vendors.length} accounts</p>
+      )}
       {[...byCategory.entries()].map(([category, rows]) => (
         <div key={category} className="ohio-vendor-group">
           <div className="state-panel__section-header">

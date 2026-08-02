@@ -1,0 +1,113 @@
+package packs
+
+// New Jersey source pack — verified 2026-08-01 via web search.
+// Government: NJ marriage records held by county clerks (historical) and
+// NJ State Archives (1848-1940). Modern records via local registrar/county.
+// Church: 6 Catholic dioceses/archdioceses.
+
+var njPack = StatePack{
+	State: "NJ",
+	Cities: []CityDef{
+		{ID: "city_newark_nj", State: "NJ", County: "34013", Name: "Newark",
+			Lat: 40.7357, Lng: -74.1724, Markets: []string{"newark", "essex", "nj", "northjersey"}},
+		{ID: "city_jersey_city_nj", State: "NJ", County: "34017", Name: "Jersey City",
+			Lat: 40.7178, Lng: -74.0431, Markets: []string{"jerseycity", "hudson", "hoboken"}},
+		{ID: "city_princeton_nj", State: "NJ", County: "34021", Name: "Princeton",
+			Lat: 40.3573, Lng: -74.6672, Markets: []string{"princeton", "mercer", "centraljersey"}},
+		{ID: "city_cape_may_nj", State: "NJ", County: "34009", Name: "Cape May",
+			Lat: 38.9351, Lng: -74.9060, Markets: []string{"capemay", "jerseyshore", "capemaycounty"}},
+	},
+	Government: []GovSource{
+		{CountyFIPS: "34003", CourtName: "Bergen County Clerk",
+			CourtURL:  "https://www.bergencountyclerk.org",
+			SearchURL: "https://www.bergencountyclerk.org",
+			Note:      "Marriage records via county clerk; historical records at NJ State Archives."},
+		{CountyFIPS: "34013", CourtName: "Essex County Clerk",
+			CourtURL:  "https://www.essexclerk.com",
+			SearchURL: "https://www.essexclerk.com",
+			Note:      "Marriage records via county clerk; historical records at NJ State Archives."},
+		{CountyFIPS: "34017", CourtName: "Hudson County Clerk",
+			CourtURL:  "https://www.hudsoncountyclerk.org",
+			SearchURL: "https://www.hudsoncountyclerk.org",
+			Note:      "Marriage records via county clerk; historical records at NJ State Archives."},
+		{CountyFIPS: "34023", CourtName: "Middlesex County Clerk",
+			CourtURL:  "https://www.middlesexcountynj.gov",
+			SearchURL: "https://www.middlesexcountynj.gov",
+			Note:      "Marriage records via county clerk; request-oriented."},
+		{CountyFIPS: "34025", CourtName: "Monmouth County Clerk",
+			CourtURL:  "https://www.monmouthcountyclerk.com",
+			SearchURL: "https://www.monmouthcountyclerk.com",
+			Note:      "Marriage records via county clerk; request-oriented."},
+		{CountyFIPS: "34029", CourtName: "Ocean County Clerk",
+			CourtURL:  "https://www.co.ocean.nj.us",
+			SearchURL: "https://www.co.ocean.nj.us",
+			Note:      "Marriage records via county clerk; request-oriented."},
+		{CountyFIPS: "34039", CourtName: "Union County Clerk",
+			CourtURL:  "https://www.ucnj.org",
+			SearchURL: "https://www.ucnj.org",
+			Note:      "Marriage records via county clerk; request-oriented."},
+		{CountyFIPS: "34007", CourtName: "Camden County Clerk",
+			CourtURL:  "https://www.camdencounty.com",
+			SearchURL: "https://www.camdencounty.com",
+			Note:      "Marriage records via county clerk; request-oriented."},
+	},
+	Dioceses: []DioceseDef{
+		{Slug: "newark", Name: "Archdiocese of Newark", Type: "archdiocese",
+			Website: "https://www.rcan.org", Directory: "https://www.rcan.org/parishes", HubCityID: "city_newark_nj"},
+		{Slug: "paterson", Name: "Diocese of Paterson", Type: "diocese",
+			Website: "https://www.patersondiocese.org", Directory: "https://www.patersondiocese.org/parishes"},
+		{Slug: "metuchen", Name: "Diocese of Metuchen", Type: "diocese",
+			Website: "https://www.diometuchen.org", Directory: "https://www.diometuchen.org/parishes"},
+		{Slug: "camden", Name: "Diocese of Camden", Type: "diocese",
+			Website: "https://www.camdendiocese.org", Directory: "https://www.camdendiocese.org/parishes"},
+		{Slug: "trenton", Name: "Diocese of Trenton", Type: "diocese",
+			Website: "https://www.dioceseoftrenton.org", Directory: "https://www.dioceseoftrenton.org/parishes"},
+	},
+	Parishes: []ParishDef{
+		{DioceseSlug: "newark", Name: "Cathedral Basilica of the Sacred Heart", Address: "89 Ridge St, Newark, NJ 07104"},
+		{DioceseSlug: "newark", Name: "St. Patrick's Pro-Cathedral", Address: "91 Washington St, Newark, NJ 07102"},
+	},
+	Vendors: []VendorDef{
+		// Newark photographer
+		{Name: "NJ Wedding Photographer", OfficialURL: "https://two17photo.com/",
+			Handle: "two17photo", SourceClass: "engagement_photographer",
+			CityID: "city_newark_nj", State: "NJ", City: "Newark", Verified: "2026-08-01"},
+		// Jersey City photographer
+		{Name: "Lauren Spinelli Photo Co", OfficialURL: "https://laurenspinelli.com/",
+			Handle: "laurenspinelliphoto", SourceClass: "engagement_photographer",
+			CityID: "city_jersey_city_nj", State: "NJ", City: "Jersey City", Verified: "2026-08-01"},
+		// Jersey City venues
+		{Name: "Maritime Parc", OfficialURL: "https://www.maritimeparc.com/",
+			Handle: "maritimeparc", SourceClass: "wedding_venue",
+			CityID: "city_jersey_city_nj", State: "NJ", City: "Jersey City", Verified: "2026-08-01"},
+		{Name: "Liberty House", OfficialURL: "https://bylandmark.com/venues/liberty-house/",
+			Handle: "libertyhousejc", SourceClass: "wedding_venue",
+			CityID: "city_jersey_city_nj", State: "NJ", City: "Jersey City", Verified: "2026-08-01"},
+		// Princeton photographer
+		{Name: "Johns & Leena Photography", OfficialURL: "https://www.johnsandleena.com/",
+			Handle: "johnsandleenaphotography", SourceClass: "engagement_photographer",
+			CityID: "city_princeton_nj", State: "NJ", City: "Princeton", Verified: "2026-08-01"},
+		// Princeton venue
+		{Name: "Nassau Inn", OfficialURL: "https://nassauinn.com/",
+			Handle: "nassau_inn", SourceClass: "wedding_venue",
+			CityID: "city_princeton_nj", State: "NJ", City: "Princeton", Verified: "2026-08-01"},
+		// Princeton jeweler
+		{Name: "Hamilton Jewelers", OfficialURL: "https://hamiltonjewelers.com/",
+			Handle: "hamiltonjewelers", SourceClass: "jeweler",
+			CityID: "city_princeton_nj", State: "NJ", City: "Princeton", Verified: "2026-08-01"},
+		// Cape May photographers
+		{Name: "Kaitlin Noel Co", OfficialURL: "https://kaitlinnoel.com/",
+			Handle: "kaitlinnoelco", SourceClass: "engagement_photographer",
+			CityID: "city_cape_may_nj", State: "NJ", City: "Cape May", Verified: "2026-08-01"},
+		{Name: "Jordan Simone Photography", OfficialURL: "https://jordansimonephoto.com/",
+			Handle: "jordansimonephoto", SourceClass: "engagement_photographer",
+			CityID: "city_cape_may_nj", State: "NJ", City: "Cape May", Verified: "2026-08-01"},
+		// Cape May venue
+		{Name: "Congress Hall", OfficialURL: "https://www.caperesorts.com/congress-hall/weddings",
+			Handle: "congresshall", SourceClass: "wedding_venue",
+			CityID: "city_cape_may_nj", State: "NJ", City: "Cape May", Verified: "2026-08-01",
+			TikTokHandle: "congresshall",
+			// ponytail: KnotURL placeholder — verify on theknot.com before production use
+			KnotURL: "https://www.theknot.com/marketplace/wedding-venues/congress-hall-cape-may-4356247"},
+	},
+}

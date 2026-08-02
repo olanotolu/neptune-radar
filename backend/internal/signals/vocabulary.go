@@ -24,20 +24,20 @@ import (
 // existing 0–1 confidence plumbing stays intact; scorer.ProspectScore turns
 // them back into points for the 90/70 policy tiers.
 const (
-	PtsExplicitLanguage    = 40  // explicit engagement language (caption phrase, high-intent hashtag, fiancé bio)
-	PtsBothPartnersTagged  = 25  // both probable partners identified on the post (co-tagged, author+tag, or collab)
-	PtsKnownVendorSource   = 15  // known photographer/planner/venue/jeweler/publication/registry/boutique source
-	PtsVisualRing          = 10  // ring or proposal visually detected (supports the caption, never identifies people)
-	PtsReciprocalEvidence  = 10  // reciprocal relationship evidence (mutual tag/follow)
-	PtsRegistryMatch       = 15  // public registry with matching names
-	PtsRecentPost          = 10  // fresh, original post
-	PtsStyledShoot         = -50 // styled/editorial shoot or vendor inspiration content
-	PtsAdvertisement       = -50 // advertisement, sponsorship, or giveaway
-	PtsNoSecondPerson      = -30 // no identifiable second person
-	PtsOldReposted         = -25 // old or reposted content
-	PtsConflictingIdentity = -40 // conflicting identity evidence
-	PtsRepeatedCooccurrence = 10 // pair keeps appearing together across independent source accounts
-	PtsVendorInPair        = -30 // one account in the proposed pair is itself a vendor — wrong role
+	PtsExplicitLanguage     = 40  // explicit engagement language (caption phrase, high-intent hashtag, fiancé bio)
+	PtsBothPartnersTagged   = 25  // both probable partners identified on the post (co-tagged, author+tag, or collab)
+	PtsKnownVendorSource    = 15  // known photographer/planner/venue/jeweler/publication/registry/boutique source
+	PtsVisualRing           = 10  // ring or proposal visually detected (supports the caption, never identifies people)
+	PtsReciprocalEvidence   = 10  // reciprocal relationship evidence (mutual tag/follow)
+	PtsRegistryMatch        = 15  // public registry with matching names
+	PtsRecentPost           = 10  // fresh, original post
+	PtsStyledShoot          = -50 // styled/editorial shoot or vendor inspiration content
+	PtsAdvertisement        = -50 // advertisement, sponsorship, or giveaway
+	PtsNoSecondPerson       = -30 // no identifiable second person
+	PtsOldReposted          = -25 // old or reposted content
+	PtsConflictingIdentity  = -40 // conflicting identity evidence
+	PtsRepeatedCooccurrence = 10  // pair keeps appearing together across independent source accounts
+	PtsVendorInPair         = -30 // one account in the proposed pair is itself a vendor — wrong role
 )
 
 // --- Tier 1: high-intent engagement hashtags --------------------------------
@@ -96,6 +96,8 @@ var WatchedSourceClasses = map[string]bool{
 	"wedding_planner": true, "wedding_venue": true, "jeweler": true,
 	"wedding_publication": true, "registry_provider": true,
 	"bridal_boutique": true,
+	"florist":         true, "videographer": true, "wedding_cake": true,
+	"bridal_shop": true, "officiant": true,
 }
 
 // --- Tier 5: location vocabulary ---------------------------------------------
@@ -108,10 +110,11 @@ var Markets = []string{
 	// configured-county metros.
 	"columbus", "cbus", "cleveland", "cincinnati", "dayton", "akron",
 	"toledo", "delawareohio", "fairfieldcounty",
-	// Legacy metro set (kept: the vocabulary is market-agnostic infra).
-	"nyc", "newyork", "brooklyn", "manhattan", "centralpark",
-	"la", "losangeles", "sf", "sanfrancisco", "chicago", "boston",
-	"austin", "miami", "seattle", "dc", "denver", "nashville",
+	// National metro set (Phase 1: NY + CA packs live via bootstrap-state).
+	"nyc", "newyork", "brooklyn", "manhattan", "centralpark", "dumbo", "williamsburg",
+	"la", "losangeles", "hollywood", "santamonica", "beverlyhills", "malibu",
+	"sf", "sanfrancisco", "bayarea", "napa", "sonoma",
+	"chicago", "boston", "austin", "miami", "seattle", "dc", "denver", "nashville",
 }
 
 // --- Tier 6: inclusive and cultural vocabulary --------------------------------
@@ -262,4 +265,84 @@ func VisualSignalLabels() []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// VocabularyReader is the minimal interface the signals package needs to
+// load external vocabulary. Defined here (not imported from store) so the
+// signals package stays dependency-free — it's the shared source of truth
+// that analyst, scorer, and the LLM template fallback all import.
+type VocabularyReader interface {
+	ListSignalVocabulary(category string) ([]VocabEntry, error)
+}
+
+// VocabEntry mirrors store.SignalVocabEntry without importing store.
+type VocabEntry struct {
+	Category string
+	Phrase   string
+	Tier     string
+}
+
+// LoadExternalVocabulary merges DB-driven phrases/hashtags into the
+// in-memory vocabularies. Called once at startup (after store.Open). The
+// hardcoded defaults stay as the seed; this only ADDS to them — it never
+// removes or overrides. This lets ops add new engagement phrases and
+// hashtags as language evolves ("she said yes to forever") without a
+// redeploy, while the spec's points table and tier structure stay in code.
+//
+// ponytail: ceiling — the merged vocabulary is a process-lifetime snapshot;
+// phrases added mid-run won't appear until restart. Acceptable since the
+// worker loads vocabulary once at startup and new phrases are rare.
+func LoadExternalVocabulary(r VocabularyReader) error {
+	if r == nil {
+		return nil
+	}
+	// ExplicitPhrases: append new ones, dedup against existing.
+	if entries, err := r.ListSignalVocabulary("explicit_phrase"); err == nil {
+		existing := map[string]bool{}
+		for _, p := range ExplicitPhrases {
+			existing[p] = true
+		}
+		for _, e := range entries {
+			if !existing[e.Phrase] {
+				ExplicitPhrases = append(ExplicitPhrases, e.Phrase)
+				existing[e.Phrase] = true
+			}
+		}
+	}
+	// HighIntentHashtags: add new ones.
+	if entries, err := r.ListSignalVocabulary("high_intent_hashtag"); err == nil {
+		for _, e := range entries {
+			HighIntentHashtags[e.Phrase] = true
+		}
+	}
+	// bioPhrases: append new ones.
+	if entries, err := r.ListSignalVocabulary("bio_phrase"); err == nil {
+		existing := map[string]bool{}
+		for _, p := range bioPhrases {
+			existing[p] = true
+		}
+		for _, e := range entries {
+			if !existing[e.Phrase] {
+				bioPhrases = append(bioPhrases, e.Phrase)
+				existing[e.Phrase] = true
+			}
+		}
+	}
+	// captionNegativePhrases: add new ones with their penalty tier.
+	if entries, err := r.ListSignalVocabulary("negative_phrase"); err == nil {
+		for _, e := range entries {
+			if e.Tier != "" {
+				captionNegativePhrases[e.Phrase] = e.Tier
+			}
+		}
+	}
+	// SupportingHashtags: add new ones.
+	if entries, err := r.ListSignalVocabulary("supporting_hashtag"); err == nil {
+		for _, e := range entries {
+			SupportingHashtags[e.Phrase] = true
+		}
+	}
+	// Rebuild the phrase regexps with the augmented vocabulary.
+	phraseRe = buildPhraseRegexps()
+	return nil
 }

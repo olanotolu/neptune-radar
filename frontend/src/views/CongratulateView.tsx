@@ -13,6 +13,8 @@ import {
 } from "../api/hooks";
 import { mediaURL } from "../api/media";
 import type { CongratulateKit, KitStatus } from "../api/types";
+import { EmptyState } from "../components/EmptyState";
+import { LoadingState } from "../components/LoadingState";
 import { useToast } from "../components/Toast";
 import { getToken } from "../api/client";
 
@@ -277,7 +279,7 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
             // content inside, that's an XSS path straight to localStorage.
             <iframe title="Postcard" className="kit-postcard-frame" sandbox="" srcDoc={previewHTML} />
           ) : (
-            <div className="empty-state">Loading postcard…</div>
+            <LoadingState variant="spinner" message="Loading postcard…" />
           )}
         </section>
 
@@ -654,11 +656,9 @@ export function CongratulateView({
     <div className="view view--kits">
       <header className="sources-header">
         <div>
-          <h2 className="view__title">Congratulate</h2>
+          <h2 className="view__title">Celebration kits</h2>
           <p className="view__subtitle">
-            After a couple is found, the agent builds a kit: profiles, market location, research
-            checklist for public records, and a print-ready postcard. Nothing mails without your
-            verify step.
+            The first move is always celebration. No pitches, no asks — just joy.
           </p>
         </div>
       </header>
@@ -692,7 +692,7 @@ export function CongratulateView({
           </div>
           <div className="kit-list__items">
             {(kits ?? []).length === 0 && (
-              <div className="empty-state">No kits yet. Open Work → Congratulate on a couple.</div>
+              <EmptyState variant="empty" icon="✉️" title="No kits yet" message="Open Work → Congratulate on a couple to build a postcard kit." />
             )}
             {(kits ?? []).map((k) => (
               <KitCard
@@ -708,9 +708,12 @@ export function CongratulateView({
           {selected ? (
             <KitWorkspace kit={selected} onUpdated={() => refetch()} />
           ) : (
-            <div className="empty-state kit-main__empty">
-              Select a kit or build one for a couple to see the postcard and research workspace.
-            </div>
+            <EmptyState
+              variant="empty"
+              icon="✉️"
+              title="No kit selected"
+              message="Select a kit or build one for a couple to see the postcard and research workspace."
+            />
           )}
         </main>
       </div>
