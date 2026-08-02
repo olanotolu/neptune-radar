@@ -217,6 +217,24 @@ export function useIgnoreAction() {
   });
 }
 
+export function useAssignAction() {
+  const invalidate = useInvalidateKeys("actions", "ops");
+  return useMutation({
+    mutationFn: ({ id, owner, priority }: { id: string; owner: string; priority: number }) =>
+      api.post(`/api/actions/${id}/assign`, { owner, priority }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSnoozeAction() {
+  const invalidate = useInvalidateKeys("actions", "ops");
+  return useMutation({
+    mutationFn: ({ id, until, reason }: { id: string; until: string; reason: string }) =>
+      api.post(`/api/actions/${id}/snooze`, { until, reason }),
+    onSuccess: invalidate,
+  });
+}
+
 export function useAudit(monitor?: string) {
   const interval = useLiveRefetch(15_000);
   return useQuery({
@@ -852,11 +870,11 @@ export function useLiveEvents() {
   return { events, connected };
 }
 
-export function useRuns() {
+export function useRuns(coupleId?: string) {
   const interval = useLiveRefetch(15_000);
   return useQuery({
-    queryKey: keys.runs,
-    queryFn: () => api.get<PipelineRun[]>("/api/runs?limit=200"),
+    queryKey: coupleId ? ["runs", "couple", coupleId] : keys.runs,
+    queryFn: () => api.get<PipelineRun[]>(`/api/runs?limit=200${coupleId ? `&couple_id=${encodeURIComponent(coupleId)}` : ""}`),
     refetchInterval: interval,
   });
 }

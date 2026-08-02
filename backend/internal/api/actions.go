@@ -1,8 +1,10 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"neptune-social-radar/backend/internal/auth"
 	"neptune-social-radar/backend/internal/pipeline/operator"
@@ -64,6 +66,47 @@ func (s *Server) ignoreAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"id": actionID, "status": "ignored"})
+}
+
+// assignAction sets the owner and optional priority on a recommended action.
+func (s *Server) assignAction(w http.ResponseWriter, r *http.Request) {
+	actionID := r.PathValue("id")
+	var body struct {
+		Owner    string `json:"owner"`
+		Priority int    `json:"priority"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if err := s.Store.AssignAction(actionID, body.Owner, body.Priority); err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	s.Store.Audit("recommended_action", actionID, "assigned",
+		map[string]any{"owner": body.Owner, "priority": body.Priority,
+			"by": "human:" + auth.UserFromContext(r.Context()).Email}, "", 0)
+	writeJSON(w, http.StatusOK, map[string]string{"id": actionID, "status": "assigned"})
+}
+
+// snoozeAction defers an action until a future time with a reason.
+func (s *Server) snoozeAction(w http.ResponseWriter, r *http.Request) {
+	actionID := r.PathValue("id")
+	var body struct {
+		Until  string `json:"until"` // ISO 8601
+		Reason string `json:"reason"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	until, err := time.Parse(time.RFC3339, body.Until)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	if err := s.Store.SnoozeAction(actionID, until, body.Reason); err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	s.Store.Audit("recommended_action", actionID, "snoozed",
+		map[string]any{"until": body.Until, "reason": body.Reason,
+			"by": "human:" + auth.UserFromContext(r.Context()).Email}, "", 0)
+	writeJSON(w, http.StatusOK, map[string]string{"id": actionID, "status": "snoozed"})
 }
 
 func ontologyAuditFilterFromQuery(r *http.Request) store.AuditFilter {

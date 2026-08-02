@@ -125,6 +125,10 @@ export interface RecommendedAction {
   created_at: string;
   decided_at?: string;
   decided_by?: string;
+  priority: number;
+  owner?: string;
+  snooze_until?: string;
+  reason?: string;
 }
 
 export interface ActionPayload {

@@ -60,19 +60,26 @@ func (s *Store) LatestPendingActionForCouple(coupleID string) (ontology.Recommen
 
 func (s *Store) GetAction(id string) (ontology.RecommendedAction, error) {
 	var a ontology.RecommendedAction
-	var hypID, caseID, decidedBy sql.NullString
-	var decidedAt sql.NullTime
+	var hypID, caseID, decidedBy, owner, reason sql.NullString
+	var decidedAt, snoozeUntil sql.NullTime
 	err := s.DB.QueryRow(
-		`SELECT id, COALESCE(hypothesis_id,''), COALESCE(case_id,''), action_type, COALESCE(proposed_payload,''), status, created_at, decided_at, COALESCE(decided_by,'')
+		`SELECT id, COALESCE(hypothesis_id,''), COALESCE(case_id,''), action_type, COALESCE(proposed_payload,''),
+		   status, created_at, decided_at, COALESCE(decided_by,''),
+		   priority, COALESCE(owner,''), snooze_until, COALESCE(reason,'')
 		 FROM recommended_actions WHERE id = $1`, id,
-	).Scan(&a.ID, &hypID, &caseID, &a.ActionType, &a.ProposedPayload, &a.Status, &a.CreatedAt, &decidedAt, &decidedBy)
+	).Scan(&a.ID, &hypID, &caseID, &a.ActionType, &a.ProposedPayload, &a.Status, &a.CreatedAt, &decidedAt, &decidedBy,
+		&a.Priority, &owner, &snoozeUntil, &reason)
 	if err != nil {
 		return a, err
 	}
-	a.HypothesisID, a.CaseID, a.DecidedBy = hypID.String, caseID.String, decidedBy.String
+	a.HypothesisID, a.CaseID, a.DecidedBy, a.Owner, a.Reason = hypID.String, caseID.String, decidedBy.String, owner.String, reason.String
 	if decidedAt.Valid {
 		t := decidedAt.Time
 		a.DecidedAt = &t
+	}
+	if snoozeUntil.Valid {
+		t := snoozeUntil.Time
+		a.SnoozeUntil = &t
 	}
 	return a, nil
 }
@@ -86,13 +93,16 @@ func (s *Store) CountPendingActions() (int, error) {
 }
 
 func (s *Store) ListActions(status string) ([]ontology.RecommendedAction, error) {
-	q := `SELECT id, COALESCE(hypothesis_id,''), COALESCE(case_id,''), action_type, COALESCE(proposed_payload,''), status, created_at, decided_at, COALESCE(decided_by,'') FROM recommended_actions`
+	q := `SELECT id, COALESCE(hypothesis_id,''), COALESCE(case_id,''), action_type, COALESCE(proposed_payload,''),
+	   status, created_at, decided_at, COALESCE(decided_by,''),
+	   priority, COALESCE(owner,''), snooze_until, COALESCE(reason,'')
+	 FROM recommended_actions`
 	args := []any{}
 	if status != "" {
 		q += ` WHERE status = $1`
 		args = append(args, status)
 	}
-	q += ` ORDER BY created_at DESC, id DESC`
+	q += ` ORDER BY priority DESC, created_at DESC, id DESC`
 	rows, err := s.DB.Query(q, args...)
 	if err != nil {
 		return nil, err
@@ -101,19 +111,36 @@ func (s *Store) ListActions(status string) ([]ontology.RecommendedAction, error)
 	var out []ontology.RecommendedAction
 	for rows.Next() {
 		var a ontology.RecommendedAction
-		var hypID, caseID, decidedBy sql.NullString
-		var decidedAt sql.NullTime
-		if err := rows.Scan(&a.ID, &hypID, &caseID, &a.ActionType, &a.ProposedPayload, &a.Status, &a.CreatedAt, &decidedAt, &decidedBy); err != nil {
+		var hypID, caseID, decidedBy, owner, reason sql.NullString
+		var decidedAt, snoozeUntil sql.NullTime
+		if err := rows.Scan(&a.ID, &hypID, &caseID, &a.ActionType, &a.ProposedPayload, &a.Status, &a.CreatedAt, &decidedAt, &decidedBy,
+			&a.Priority, &owner, &snoozeUntil, &reason); err != nil {
 			return nil, err
 		}
-		a.HypothesisID, a.CaseID, a.DecidedBy = hypID.String, caseID.String, decidedBy.String
+		a.HypothesisID, a.CaseID, a.DecidedBy, a.Owner, a.Reason = hypID.String, caseID.String, decidedBy.String, owner.String, reason.String
 		if decidedAt.Valid {
 			t := decidedAt.Time
 			a.DecidedAt = &t
 		}
+		if snoozeUntil.Valid {
+			t := snoozeUntil.Time
+			a.SnoozeUntil = &t
+		}
 		out = append(out, a)
 	}
 	return out, rows.Err()
+}
+
+// AssignAction sets the owner and optional priority on a recommended action.
+func (s *Store) AssignAction(id, owner string, priority int) error {
+	_, err := s.DB.Exec(`UPDATE recommended_actions SET owner = $1, priority = $2 WHERE id = $3`, owner, priority, id)
+	return err
+}
+
+// SnoozeAction defers an action until a future time with a reason.
+func (s *Store) SnoozeAction(id string, until time.Time, reason string) error {
+	_, err := s.DB.Exec(`UPDATE recommended_actions SET snooze_until = $1, reason = $2 WHERE id = $3`, until, reason, id)
+	return err
 }
 
 func (s *Store) DecideAction(id string, status ontology.ActionStatus, decidedBy string) error {

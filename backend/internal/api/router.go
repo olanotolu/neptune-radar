@@ -62,6 +62,8 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("GET /api/actions", srv.listActions)
 	mux.HandleFunc("POST /api/actions/{id}/approve", srv.approveAction)
 	mux.HandleFunc("POST /api/actions/{id}/ignore", srv.ignoreAction)
+	mux.HandleFunc("POST /api/actions/{id}/assign", srv.assignAction)
+	mux.HandleFunc("POST /api/actions/{id}/snooze", srv.snoozeAction)
 
 	mux.HandleFunc("GET /api/sources", srv.listSources)
 	mux.HandleFunc("POST /api/sources", srv.addSource)

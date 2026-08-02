@@ -241,6 +241,10 @@ type RecommendedAction struct {
 	CreatedAt       time.Time    `json:"created_at"`
 	DecidedAt       *time.Time   `json:"decided_at,omitempty"`
 	DecidedBy       string       `json:"decided_by,omitempty"`
+	Priority        int          `json:"priority"`
+	Owner           string       `json:"owner,omitempty"`
+	SnoozeUntil     *time.Time   `json:"snooze_until,omitempty"`
+	Reason          string       `json:"reason,omitempty"`
 }
 
 type ExecutedAction struct {

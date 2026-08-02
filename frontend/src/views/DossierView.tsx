@@ -5,6 +5,7 @@ import {
   useCoupleDossier,
   useCreateHandoff,
   useIgnoreAction,
+  useRuns,
   useSetJourneyStage,
   useSuppressCouple,
 } from "../api/hooks";
@@ -605,7 +606,43 @@ export function DossierView({
         </section>
       </div>
 
+      <AgentActivitySection coupleId={coupleId} />
+
       <NotesSection coupleId={coupleId} />
     </div>
+  );
+}
+
+/* ---------- Agent activity — pipeline runs for this couple ---------- */
+
+function AgentActivitySection({ coupleId }: { coupleId: string }) {
+  const { data: runs, isLoading } = useRuns(coupleId);
+  const runList = (runs ?? []).slice(0, 10);
+
+  return (
+    <section className="dossier__section dossier-agent">
+      <h3>Agent activity</h3>
+      <p className="dossier__hint">Pipeline runs that touched this couple — what observed, what concluded, what it cost.</p>
+      {isLoading && <p className="work-drawer__muted">Loading…</p>}
+      {!isLoading && runList.length === 0 && <p className="work-drawer__muted">No pipeline runs for this couple yet.</p>}
+      {runList.length > 0 && (
+        <table className="dossier-ledger">
+          <thead>
+            <tr><th>Stopped</th><th>Confidence</th><th>Model</th><th>Tokens</th><th>When</th></tr>
+          </thead>
+          <tbody>
+            {runList.map((r) => (
+              <tr key={r.id}>
+                <td><span className={`run-stop run-stop--${r.stop_reason === "completed" ? "ok" : r.stop_reason === "error" ? "err" : "muted"}`}>{r.stop_reason}</span></td>
+                <td>{r.confidence != null ? pct(r.confidence) : "—"}</td>
+                <td><code style={{ fontSize: 11 }}>{r.model || "—"}</code></td>
+                <td>{r.prompt_tokens > 0 ? `${r.prompt_tokens}→${r.completion_tokens}` : "—"}</td>
+                <td style={{ color: "var(--ink-dim, #64748b)", fontSize: 12 }}>{r.created_at?.slice(0, 19)?.replace("T", " ")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
   );
 }
