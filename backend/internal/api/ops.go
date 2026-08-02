@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"neptune-social-radar/backend/internal/auth"
 	"neptune-social-radar/backend/internal/ontology"
 	"neptune-social-radar/backend/internal/signals"
 )
@@ -50,15 +51,19 @@ func (s *Server) suppressCouple(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	_, _ = s.Store.Audit("couple", id, "suppressed", map[string]any{"reason": body.Reason, "by": "human:concierge"}, "", 0)
+	actor := "human:" + auth.UserFromContext(r.Context()).Email
+	_, _ = s.Store.Audit("couple", id, "suppressed", map[string]any{"reason": body.Reason, "by": actor}, "", 0)
 	if act, err := s.Store.LatestPendingActionForCouple(id); err == nil && act.ID != "" {
-		_ = s.Store.DecideAction(act.ID, ontology.ActionIgnored, "human:suppress")
+		_ = s.Store.DecideAction(act.ID, ontology.ActionIgnored, actor)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"id": id, "status": "suppressed"})
 }
 
 // enrichMissingProfiles pulls Instagram profile pics/bios for couples missing them.
 func (s *Server) enrichMissingProfiles(w http.ResponseWriter, r *http.Request) {
+	if !auth.RequireAdmin(w, r) {
+		return
+	}
 	if s.Watch == nil {
 		writeError(w, http.StatusServiceUnavailable, errorString("watch loop not configured"))
 		return
@@ -103,6 +108,9 @@ func (s *Server) enrichMissingProfiles(w http.ResponseWriter, r *http.Request) {
 
 // backfillLocations infers city from bios for couples missing geo.
 func (s *Server) backfillLocations(w http.ResponseWriter, r *http.Request) {
+	if !auth.RequireAdmin(w, r) {
+		return
+	}
 	limit := 100
 	if v := r.URL.Query().Get("limit"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {

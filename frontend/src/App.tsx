@@ -12,6 +12,7 @@ import { FeedView } from "./views/FeedView";
 import { CoupleGraphView } from "./views/CoupleGraphView";
 import { CaseDetailView } from "./views/CaseDetailView";
 import { AuditTrailView } from "./views/AuditTrailView";
+import { AgentRunsView } from "./views/AgentRunsView";
 import { SourcesView } from "./views/SourcesView";
 import { WorkView } from "./views/WorkView";
 import { TodayView } from "./views/TodayView";
@@ -82,6 +83,7 @@ const NAV: { id: string; label: string; path: string }[] = [
   { id: "funnel", label: "Funnel", path: "/funnel" },
   { id: "cost", label: "Budget", path: "/cost" },
   { id: "ops", label: "Ops", path: "/ops" },
+  { id: "runs", label: "Runs", path: "/runs" },
   { id: "audit", label: "System", path: "/audit" },
   { id: "search", label: "Search", path: "/search" },
   { id: "dlq", label: "DLQ", path: "/dlq" },
@@ -330,6 +332,8 @@ function Shell() {
         return <OpsView />;
       case "audit":
         return <AuditTrailView />;
+      case "runs":
+        return <AgentRunsView />;
       case "search":
         return <SearchView />;
       case "dlq":

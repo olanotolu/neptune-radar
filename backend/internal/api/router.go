@@ -154,6 +154,16 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("POST /api/couple/mistaken", srv.markCoupleMistaken)
 	mux.HandleFunc("POST /api/hypothesis/reject", srv.rejectHypothesis)
 
+	// Agent run ledger — one summary row per pipeline execution, with the
+	// per-stage audit/timing detail joinable by observation_id.
+	mux.HandleFunc("GET /api/runs", srv.listRuns)
+	mux.HandleFunc("GET /api/runs/{id}", srv.getRun)
+
+	// Retention policy — admin-only config + purge preview.
+	mux.HandleFunc("GET /api/retention", srv.listRetention)
+	mux.HandleFunc("PUT /api/retention", srv.setRetention)
+	mux.HandleFunc("GET /api/retention/preview", srv.purgePreview)
+
 	return mux
 }
 

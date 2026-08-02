@@ -79,12 +79,50 @@ type StepResult struct {
 func (o *Orchestrator) ProcessEvent(ctx context.Context, raw watchtower.RawEvent) (StepResult, error) {
 	pipelineStart := time.Now()
 
+	// Run-ledger state: the defer at the end records one pipeline_runs row
+	// per execution so the viewer can reconstruct "what happened, why, and
+	// what it cost" without joining four tables by hand. Local vars capture
+	// the cross-cutting summary as the pipeline progresses.
+	var (
+		runObsID    string
+		runModel    string
+		runPromptTk int
+		runComplTk  int
+		runConf     *float64
+		runStop     = "error"
+		runHypID    string
+		runActionID string
+		runCoupleID string
+	)
+	defer func() {
+		if runObsID == "" {
+			return // normalize failed before we had an observation to key on
+		}
+		end := time.Now().UTC()
+		if err := o.Store.RecordPipelineRun(ontology.PipelineRun{
+			ObservationID:    runObsID,
+			AgentName:        "orchestrator",
+			Model:            runModel,
+			PromptTokens:     runPromptTk,
+			CompletionTokens: runComplTk,
+			Confidence:       runConf,
+			StopReason:       runStop,
+			HypothesisID:     runHypID,
+			ActionID:         runActionID,
+			CoupleID:         runCoupleID,
+			Monitor:          raw.Monitor,
+			StartedAt:        pipelineStart,
+			EndedAt:          &end,
+		}); err != nil {
+			log.Printf("[runs] record pipeline run for %s: %v", runObsID, err)
+		}
+	}()
+
 	t0 := time.Now()
 	obs, err := normalize.Normalize(raw)
 	if err != nil {
 		return StepResult{}, err
 	}
-
 	obs, err = o.Store.InsertObservation(obs)
 	if err != nil {
 		if errors.Is(err, store.ErrDuplicateObservation) {
@@ -94,6 +132,7 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, raw watchtower.RawEvent
 		}
 		return StepResult{}, err
 	}
+	runObsID = obs.ID
 	o.recordTiming("normalize", t0, obs.ID)
 	o.Store.Audit("social_observation", obs.ID, "observed", map[string]any{"handle": raw.Handle, "type": raw.Type}, raw.Monitor, -1)
 
@@ -135,9 +174,14 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, raw watchtower.RawEvent
 	// creation entirely. The override is permanent: the scorer won't
 	// re-surface hypotheses for a mistaken couple.
 	if res.Couple != nil && res.Couple.Mistaken {
+		runCoupleID = res.Couple.ID
+		runStop = "mistaken_couple"
 		o.Store.Audit("social_observation", obs.ID, "skipped_mistaken_couple",
 			map[string]any{"couple_id": res.Couple.ID, "reason": res.Couple.MistakenReason}, raw.Monitor, -1)
 		return StepResult{ObservationID: obs.ID, NoSignal: true}, nil
+	}
+	if res.Couple != nil {
+		runCoupleID = res.Couple.ID
 	}
 
 	var prior *ontology.Relationship
@@ -157,6 +201,7 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, raw watchtower.RawEvent
 	}
 	o.recordTiming("analyst", t2, obs.ID)
 	if cand == nil {
+		runStop = "no_signal"
 		o.Store.Audit("social_observation", obs.ID, "no_candidate_signal", nil, raw.Monitor, -1)
 		return StepResult{ObservationID: obs.ID, NoSignal: true}, nil
 	}
@@ -174,6 +219,7 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, raw watchtower.RawEvent
 	if err != nil {
 		return StepResult{}, err
 	}
+	runHypID = hyp.ID
 
 	var existingEvidence []string
 	if !isNew {
@@ -190,6 +236,9 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, raw watchtower.RawEvent
 	if err != nil {
 		return StepResult{}, err
 	}
+	runModel = interp.Source
+	runPromptTk = interp.PromptTokens
+	runComplTk = interp.CompletionTokens
 	if isNew {
 		if err := o.Store.UpdateHypothesisModelRule(hyp.ID, interp.Source); err != nil {
 			return StepResult{}, err
@@ -237,6 +286,7 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, raw watchtower.RawEvent
 		return StepResult{}, err
 	}
 	hyp.Confidence = finalScore // keep the in-memory copy in sync for the copy drafted below
+	runConf = &finalScore
 	auditDetail["final_confidence"] = finalScore
 	o.Store.Audit("hypothesis", hyp.ID, "scored", auditDetail, raw.Monitor, -1)
 	o.recordTiming("scorer", t3, obs.ID)
@@ -291,6 +341,7 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, raw watchtower.RawEvent
 
 	result := StepResult{ObservationID: obs.ID, HypothesisID: hyp.ID, FinalConfidence: finalScore}
 	if !decision.ShouldAct {
+		runStop = "policy_no_action"
 		o.recordTiming("operator", pipelineStart, obs.ID)
 		return result, nil
 	}
@@ -303,6 +354,8 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, raw watchtower.RawEvent
 	o.recordTiming("conversation", t5, obs.ID)
 	o.recordTiming("operator", pipelineStart, obs.ID)
 	result.ActionCreated = action.ID
+	runActionID = action.ID
+	runStop = "completed"
 	o.Store.Audit("recommended_action", action.ID, "action_recommended",
 		map[string]any{"action_type": action.ActionType}, raw.Monitor, -1)
 	o.publish("action_created", map[string]any{

@@ -75,10 +75,21 @@ type SignalRequest struct {
 }
 
 type Interpretation struct {
-	Confidence    float64 // model's suggestion only — policy re-validates/clamps
-	Rationale     string
-	ProposedStage string
-	Source        string `json:"-"` // e.g. "claude:claude-sonnet-5" or "template:bio_regex_v1", set by the interpreter that answered
+	Confidence       float64 // model's suggestion only — policy re-validates/clamps
+	Rationale        string
+	ProposedStage    string
+	Source           string  `json:"-"` // e.g. "claude:claude-sonnet-5" or "template:bio_regex_v1", set by the interpreter that answered
+	PromptTokens     int     `json:"-"`
+	CompletionTokens int     `json:"-"`
+	CostUSD          float64 `json:"-"`
+}
+
+// LLMUsage is the token/cost summary returned by a provider call. Captured
+// per-interpretation so pipeline_runs can attribute spend to the run that
+// caused it.
+type LLMUsage struct {
+	PromptTokens     int
+	CompletionTokens int
 }
 
 // CopyRequest asks for both the internal (funny, safe to be blunt) and

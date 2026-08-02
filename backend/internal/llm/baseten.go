@@ -52,18 +52,22 @@ type basetenResponse struct {
 			Content string `json:"content"`
 		} `json:"message"`
 	} `json:"choices"`
+	Usage *struct {
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+	} `json:"usage,omitempty"`
 	Error *struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`
 	} `json:"error,omitempty"`
 }
 
-func (b *BasetenInterpreter) complete(ctx context.Context, system, prompt string) (string, error) {
+func (b *BasetenInterpreter) complete(ctx context.Context, system, prompt string) (string, LLMUsage, error) {
 	if b.apiKey == "" {
-		return "", fmt.Errorf("BASETEN_API_KEY not set")
+		return "", LLMUsage{}, fmt.Errorf("BASETEN_API_KEY not set")
 	}
 	if b.model == "" {
-		return "", fmt.Errorf("BASETEN_MODEL not set")
+		return "", LLMUsage{}, fmt.Errorf("BASETEN_MODEL not set")
 	}
 
 	reqBody := basetenRequest{
@@ -76,42 +80,47 @@ func (b *BasetenInterpreter) complete(ctx context.Context, system, prompt string
 	}
 	buf, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", err
+		return "", LLMUsage{}, err
 	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, basetenEndpoint, bytes.NewReader(buf))
 	if err != nil {
-		return "", err
+		return "", LLMUsage{}, err
 	}
 	httpReq.Header.Set("content-type", "application/json")
 	httpReq.Header.Set("authorization", "Bearer "+b.apiKey)
 
 	resp, err := b.client.Do(httpReq)
 	if err != nil {
-		return "", fmt.Errorf("baseten request: %w", err)
+		return "", LLMUsage{}, fmt.Errorf("baseten request: %w", err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", LLMUsage{}, err
 	}
 	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("baseten http %d: %s", resp.StatusCode, string(body))
+		return "", LLMUsage{}, fmt.Errorf("baseten http %d: %s", resp.StatusCode, string(body))
 	}
 	var br basetenResponse
 	if err := json.Unmarshal(body, &br); err != nil {
-		return "", fmt.Errorf("decode baseten response: %w", err)
+		return "", LLMUsage{}, fmt.Errorf("decode baseten response: %w", err)
 	}
 	if br.Error != nil {
-		return "", fmt.Errorf("baseten error: %s", br.Error.Message)
+		return "", LLMUsage{}, fmt.Errorf("baseten error: %s", br.Error.Message)
 	}
 	if len(br.Choices) == 0 || br.Choices[0].Message.Content == "" {
-		return "", fmt.Errorf("baseten response had no content")
+		return "", LLMUsage{}, fmt.Errorf("baseten response had no content")
 	}
-	return br.Choices[0].Message.Content, nil
+	var u LLMUsage
+	if br.Usage != nil {
+		u.PromptTokens = br.Usage.PromptTokens
+		u.CompletionTokens = br.Usage.CompletionTokens
+	}
+	return br.Choices[0].Message.Content, u, nil
 }
 
 func (b *BasetenInterpreter) InterpretSignal(ctx context.Context, req SignalRequest) (Interpretation, error) {
-	raw, err := b.complete(ctx, signalSystemPrompt, formatSignalPrompt(req))
+	raw, usage, err := b.complete(ctx, signalSystemPrompt, formatSignalPrompt(req))
 	if err != nil {
 		return Interpretation{}, err
 	}
@@ -120,12 +129,13 @@ func (b *BasetenInterpreter) InterpretSignal(ctx context.Context, req SignalRequ
 		return Interpretation{}, fmt.Errorf("parse baseten interpretation: %w", err)
 	}
 	out.Source = "baseten:" + b.model
+	out.PromptTokens, out.CompletionTokens = usage.PromptTokens, usage.CompletionTokens
 	return out, nil
 }
 
 func (b *BasetenInterpreter) DraftCopy(ctx context.Context, req CopyRequest) (Copy, error) {
 	prompt := formatCopyPrompt(req)
-	raw, err := b.complete(ctx, copySystemPrompt, prompt)
+	raw, _, err := b.complete(ctx, copySystemPrompt, prompt)
 	if err != nil {
 		return Copy{}, err
 	}

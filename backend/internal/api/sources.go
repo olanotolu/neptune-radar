@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"neptune-social-radar/backend/internal/auth"
 	"neptune-social-radar/backend/internal/signals"
 	"neptune-social-radar/backend/internal/store"
 )
@@ -219,6 +220,9 @@ func (s *Server) listProspectPins(w http.ResponseWriter, r *http.Request) {
 // weight, so accepting junk classes here would silently corrupt scores.
 // Optional city/state are stored immediately; profile fetch then fills gaps.
 func (s *Server) addSource(w http.ResponseWriter, r *http.Request) {
+	if !auth.RequireAdmin(w, r) {
+		return
+	}
 	var req sourceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, err)
@@ -234,6 +238,9 @@ func (s *Server) addSource(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	s.Store.Audit("source", req.Handle, "added",
+		map[string]any{"source_class": req.SourceClass, "state": req.State, "city": req.City,
+			"by": "human:" + auth.UserFromContext(r.Context()).Email}, "", 0)
 	// Best-effort profile + location enrich so the source is useful immediately.
 	if s.Watch != nil {
 		if err := s.Watch.EnrichSourceProfile(r.Context(), req.Handle); err != nil {
@@ -246,10 +253,16 @@ func (s *Server) addSource(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) removeSource(w http.ResponseWriter, r *http.Request) {
-	if err := s.Store.DeactivateWatchedSource(r.PathValue("handle")); err != nil {
+	if !auth.RequireAdmin(w, r) {
+		return
+	}
+	handle := r.PathValue("handle")
+	if err := s.Store.DeactivateWatchedSource(handle); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	s.Store.Audit("source", handle, "removed",
+		map[string]any{"by": "human:" + auth.UserFromContext(r.Context()).Email}, "", 0)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deactivated"})
 }
 
@@ -457,12 +470,16 @@ func (s *Server) ingestStatus(w http.ResponseWriter, r *http.Request) {
 
 // pauseIngest freezes the global watch loop — no provider fetches until resume.
 func (s *Server) pauseIngest(w http.ResponseWriter, r *http.Request) {
+	if !auth.RequireAdmin(w, r) {
+		return
+	}
 	if s.Watch == nil {
 		writeError(w, http.StatusServiceUnavailable, errorString("watch loop not configured"))
 		return
 	}
 	s.Watch.Pause()
-	if _, err := s.Store.Audit("ingest", "watch_loop", "paused", "operator paused global watch loop via dashboard", "", 0); err != nil {
+	if _, err := s.Store.Audit("ingest", "watch_loop", "paused",
+		map[string]any{"msg": "operator paused global watch loop via dashboard", "by": "human:" + auth.UserFromContext(r.Context()).Email}, "", 0); err != nil {
 		log.Printf("audit pause: %v", err)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"paused": true, "running": false})
@@ -470,12 +487,16 @@ func (s *Server) pauseIngest(w http.ResponseWriter, r *http.Request) {
 
 // resumeIngest re-enables the global watch loop on the next tick.
 func (s *Server) resumeIngest(w http.ResponseWriter, r *http.Request) {
+	if !auth.RequireAdmin(w, r) {
+		return
+	}
 	if s.Watch == nil {
 		writeError(w, http.StatusServiceUnavailable, errorString("watch loop not configured"))
 		return
 	}
 	s.Watch.Resume()
-	if _, err := s.Store.Audit("ingest", "watch_loop", "resumed", "operator resumed global watch loop via dashboard", "", 0); err != nil {
+	if _, err := s.Store.Audit("ingest", "watch_loop", "resumed",
+		map[string]any{"msg": "operator resumed global watch loop via dashboard", "by": "human:" + auth.UserFromContext(r.Context()).Email}, "", 0); err != nil {
 		log.Printf("audit resume: %v", err)
 	}
 	running := s.Watch.ProviderAvailable()

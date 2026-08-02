@@ -120,3 +120,15 @@ var ErrUnauthorized = errors.New("unauthorized: insufficient role")
 func ScopeVisible(role store.Role, scope string) bool {
 	return store.CanAccessScope(role, scope)
 }
+
+// RequireAdmin is a handler-level guard for system-level operations (user
+// management, source configuration, ingest control, DLQ, janitor). Returns
+// true if the caller is admin; if not, it writes a 403 and returns false so
+// the handler can early-return: `if !auth.RequireAdmin(w, r) { return }`.
+func RequireAdmin(w http.ResponseWriter, r *http.Request) bool {
+	if UserFromContext(r.Context()).Role != store.RoleAdmin {
+		writeAuthError(w, "admin role required")
+		return false
+	}
+	return true
+}

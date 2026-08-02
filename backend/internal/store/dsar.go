@@ -22,20 +22,75 @@ import (
 // with one missing person is meaningless and would leave orphaned
 // relationship/hypothesis rows. The other person in the couple is NOT deleted.
 type DSARResult struct {
-	PersonID           string
-	CouplesDeleted     int
-	AccountsDeleted    int
+	PersonID            string
+	CouplesDeleted      int
+	AccountsDeleted     int
 	ObservationsDeleted int
-	HypothesesDeleted  int
-	EvidenceDeleted    int
-	ActionsCancelled   int
-	ConsentRevoked     int
-	LeadsDeleted       int
+	HypothesesDeleted   int
+	EvidenceDeleted     int
+	ActionsCancelled    int
+	ConsentRevoked      int
+	LeadsDeleted        int
 }
 
 // DSARDelete deletes a person and all their derived data. It runs in a single
 // transaction — either everything is deleted or nothing is.
-func (s *Store) DSARDelete(ctx context.Context, personID string) (DSARResult, error) {
+// DSARPreview returns what WOULD be deleted without actually deleting
+// anything. Same count queries as DSARDelete, but read-only — lets the
+// admin verify scope before committing to an irreversible deletion.
+func (s *Store) DSARPreview(ctx context.Context, personID string) (DSARResult, error) {
+	var result DSARResult
+	result.PersonID = personID
+
+	// Count couples involving this person.
+	row := s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM couples WHERE person_a_id = $1 OR person_b_id = $1`, personID)
+	if err := row.Scan(&result.CouplesDeleted); err != nil {
+		return result, err
+	}
+
+	// Count accounts, observations, hypotheses, evidence, actions, leads.
+	row = s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM social_accounts WHERE person_id = $1`, personID)
+	if err := row.Scan(&result.AccountsDeleted); err != nil {
+		return result, err
+	}
+	row = s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM social_observations WHERE account_id IN (SELECT id FROM social_accounts WHERE person_id = $1)`, personID)
+	if err := row.Scan(&result.ObservationsDeleted); err != nil {
+		return result, err
+	}
+	row = s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM life_event_hypotheses WHERE couple_id IN (SELECT id FROM couples WHERE person_a_id = $1 OR person_b_id = $1) OR person_id = $1`, personID)
+	if err := row.Scan(&result.HypothesesDeleted); err != nil {
+		return result, err
+	}
+	row = s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM evidence WHERE hypothesis_id IN (SELECT id FROM life_event_hypotheses WHERE couple_id IN (SELECT id FROM couples WHERE person_a_id = $1 OR person_b_id = $1) OR person_id = $1)`, personID)
+	if err := row.Scan(&result.EvidenceDeleted); err != nil {
+		return result, err
+	}
+	row = s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM recommended_actions WHERE status = 'pending' AND hypothesis_id IN (SELECT id FROM life_event_hypotheses WHERE couple_id IN (SELECT id FROM couples WHERE person_a_id = $1 OR person_b_id = $1))`, personID)
+	if err := row.Scan(&result.ActionsCancelled); err != nil {
+		return result, err
+	}
+	row = s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM consent_policies WHERE person_id = $1 AND revoked_at IS NULL`, personID)
+	if err := row.Scan(&result.ConsentRevoked); err != nil {
+		return result, err
+	}
+	row = s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM crm_leads WHERE person_id = $1`, personID)
+	if err := row.Scan(&result.LeadsDeleted); err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
+// DSARDelete performs the irreversible deletion. The actor parameter is the
+// admin's email, recorded in the audit trail so the deletion is attributable.
+func (s *Store) DSARDelete(ctx context.Context, personID, actor string) (DSARResult, error) {
 	var result DSARResult
 	result.PersonID = personID
 
@@ -180,6 +235,7 @@ func (s *Store) DSARDelete(ctx context.Context, personID string) (DSARResult, er
 		"actions_cancelled":    result.ActionsCancelled,
 		"consent_revoked":      result.ConsentRevoked,
 		"leads_deleted":        result.LeadsDeleted,
+		"by":                   actor,
 	}, "system:dsar", -1)
 
 	return result, nil

@@ -55,14 +55,18 @@ type anthropicResponse struct {
 	Content []struct {
 		Text string `json:"text"`
 	} `json:"content"`
+	Usage *struct {
+		InputTokens  int `json:"input_tokens"`
+		OutputTokens int `json:"output_tokens"`
+	} `json:"usage,omitempty"`
 	Error *struct {
 		Message string `json:"message"`
 	} `json:"error"`
 }
 
-func (c *ClaudeInterpreter) complete(ctx context.Context, system, prompt string) (string, error) {
+func (c *ClaudeInterpreter) complete(ctx context.Context, system, prompt string) (string, LLMUsage, error) {
 	if c.apiKey == "" {
-		return "", fmt.Errorf("ANTHROPIC_API_KEY not set")
+		return "", LLMUsage{}, fmt.Errorf("ANTHROPIC_API_KEY not set")
 	}
 	reqBody := anthropicRequest{
 		Model:     c.model,
@@ -72,11 +76,11 @@ func (c *ClaudeInterpreter) complete(ctx context.Context, system, prompt string)
 	}
 	buf, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", err
+		return "", LLMUsage{}, err
 	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, anthropicEndpoint, bytes.NewReader(buf))
 	if err != nil {
-		return "", err
+		return "", LLMUsage{}, err
 	}
 	httpReq.Header.Set("content-type", "application/json")
 	httpReq.Header.Set("x-api-key", c.apiKey)
@@ -84,24 +88,29 @@ func (c *ClaudeInterpreter) complete(ctx context.Context, system, prompt string)
 
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
-		return "", fmt.Errorf("anthropic request: %w", err)
+		return "", LLMUsage{}, fmt.Errorf("anthropic request: %w", err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", LLMUsage{}, err
 	}
 	var ar anthropicResponse
 	if err := json.Unmarshal(body, &ar); err != nil {
-		return "", fmt.Errorf("decode anthropic response: %w", err)
+		return "", LLMUsage{}, fmt.Errorf("decode anthropic response: %w", err)
 	}
 	if ar.Error != nil {
-		return "", fmt.Errorf("anthropic error: %s", ar.Error.Message)
+		return "", LLMUsage{}, fmt.Errorf("anthropic error: %s", ar.Error.Message)
 	}
 	if len(ar.Content) == 0 {
-		return "", fmt.Errorf("anthropic response had no content")
+		return "", LLMUsage{}, fmt.Errorf("anthropic response had no content")
 	}
-	return ar.Content[0].Text, nil
+	var u LLMUsage
+	if ar.Usage != nil {
+		u.PromptTokens = ar.Usage.InputTokens
+		u.CompletionTokens = ar.Usage.OutputTokens
+	}
+	return ar.Content[0].Text, u, nil
 }
 
 func extractJSON(s string) string {
@@ -146,7 +155,7 @@ func formatSignalPrompt(req SignalRequest) string {
 
 func (c *ClaudeInterpreter) InterpretSignal(ctx context.Context, req SignalRequest) (Interpretation, error) {
 	prompt := formatSignalPrompt(req)
-	raw, err := c.complete(ctx, signalSystemPrompt, prompt)
+	raw, usage, err := c.complete(ctx, signalSystemPrompt, prompt)
 	if err != nil {
 		return Interpretation{}, err
 	}
@@ -155,6 +164,7 @@ func (c *ClaudeInterpreter) InterpretSignal(ctx context.Context, req SignalReque
 		return Interpretation{}, fmt.Errorf("parse claude interpretation: %w", err)
 	}
 	out.Source = "claude:" + c.model
+	out.PromptTokens, out.CompletionTokens = usage.PromptTokens, usage.CompletionTokens
 	return out, nil
 }
 
@@ -177,7 +187,7 @@ Respond with ONLY a JSON object: {"internal_note": "...", "customer_facing": "..
 
 func (c *ClaudeInterpreter) DraftCopy(ctx context.Context, req CopyRequest) (Copy, error) {
 	prompt := formatCopyPrompt(req)
-	raw, err := c.complete(ctx, copySystemPrompt, prompt)
+	raw, _, err := c.complete(ctx, copySystemPrompt, prompt)
 	if err != nil {
 		return Copy{}, err
 	}

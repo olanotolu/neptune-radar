@@ -30,7 +30,17 @@ func (s *Server) dsarDelete(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("person_id is required"))
 		return
 	}
-	result, err := s.Store.DSARDelete(r.Context(), req.PersonID)
+	// Dry-run preview: returns what WOULD be deleted without committing.
+	if r.URL.Query().Get("dry_run") == "true" {
+		result, err := s.Store.DSARPreview(r.Context(), req.PersonID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, result)
+		return
+	}
+	result, err := s.Store.DSARDelete(r.Context(), req.PersonID, "human:"+identity.Email)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return

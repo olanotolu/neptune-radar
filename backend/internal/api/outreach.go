@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"neptune-social-radar/backend/internal/auth"
 	"neptune-social-radar/backend/internal/mail"
 	"neptune-social-radar/backend/internal/ops"
 	"neptune-social-radar/backend/internal/outreach"
@@ -178,6 +179,8 @@ func (s *Server) kitReadyToMail(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	s.Store.Audit("kit", kit.ID, "ready_to_mail",
+		map[string]any{"couple_id": kit.CoupleID, "by": "human:" + auth.UserFromContext(r.Context()).Email}, "", 0)
 	writeJSON(w, http.StatusOK, kit)
 }
 
@@ -191,6 +194,8 @@ func (s *Server) kitMarkMailed(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	s.Store.Audit("kit", kit.ID, "mailed",
+		map[string]any{"couple_id": kit.CoupleID, "by": "human:" + auth.UserFromContext(r.Context()).Email}, "", 0)
 	writeJSON(w, http.StatusOK, kit)
 }
 
@@ -290,6 +295,9 @@ func (s *Server) verifyKitAddress(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	s.Store.Audit("kit", kit.ID, "address_verified",
+		map[string]any{"couple_id": kit.CoupleID, "verified_by": body.VerifiedBy,
+			"by": "human:" + auth.UserFromContext(r.Context()).Email}, "", 0)
 	writeJSON(w, http.StatusOK, kit)
 }
 
@@ -304,6 +312,8 @@ func (s *Server) sendKitPostcard(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	s.Store.Audit("kit", kit.ID, "postcard_sent",
+		map[string]any{"couple_id": kit.CoupleID, "by": "human:" + auth.UserFromContext(r.Context()).Email}, "", 0)
 	writeJSON(w, http.StatusOK, kit)
 }
 
@@ -387,10 +397,10 @@ func (s *Server) countyRecordLinks(w http.ResponseWriter, r *http.Request) {
 	links := records.CountyRecordLinks(firstA, firstB, city, region)
 	countyName := records.CountyName(city, region)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"county":    countyName,
-		"city":      city,
-		"region":    region,
-		"links":     links,
+		"county":     countyName,
+		"city":       city,
+		"region":     region,
+		"links":      links,
 		"has_county": countyName != "",
 	})
 }
@@ -456,13 +466,13 @@ func (s *Server) batchVerifyAddresses(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type verifyResult struct {
-		KitID      string `json:"kit_id"`
-		Deliverable bool  `json:"deliverable"`
-		Line1      string `json:"line1,omitempty"`
-		City       string `json:"city,omitempty"`
-		Region     string `json:"region,omitempty"`
-		Postal     string `json:"postal,omitempty"`
-		Error      string `json:"error,omitempty"`
+		KitID       string `json:"kit_id"`
+		Deliverable bool   `json:"deliverable"`
+		Line1       string `json:"line1,omitempty"`
+		City        string `json:"city,omitempty"`
+		Region      string `json:"region,omitempty"`
+		Postal      string `json:"postal,omitempty"`
+		Error       string `json:"error,omitempty"`
 	}
 
 	var addresses []mail.Address
@@ -565,11 +575,11 @@ func (s *Server) operatorQueue(w http.ResponseWriter, r *http.Request) {
 		queue = []queueItem{}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"queue":      queue,
-		"total":      len(queue),
-		"gold":       countTier(queue, "gold"),
-		"silver":     countTier(queue, "silver"),
-		"bronze":     countTier(queue, "bronze"),
+		"queue":  queue,
+		"total":  len(queue),
+		"gold":   countTier(queue, "gold"),
+		"silver": countTier(queue, "silver"),
+		"bronze": countTier(queue, "bronze"),
 	})
 }
 
@@ -591,14 +601,14 @@ func (s *Server) followUpQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	type followUpItem struct {
-		KitID        string  `json:"kit_id"`
-		CoupleID     string  `json:"couple_id"`
-		PersonA      string  `json:"person_a"`
-		PersonB      string  `json:"person_b"`
-		MailedAt     string  `json:"mailed_at"`
-		DaysSince    int     `json:"days_since_mail"`
-		Template     string  `json:"template"`
-		Priority     float64 `json:"priority_score"`
+		KitID     string  `json:"kit_id"`
+		CoupleID  string  `json:"couple_id"`
+		PersonA   string  `json:"person_a"`
+		PersonB   string  `json:"person_b"`
+		MailedAt  string  `json:"mailed_at"`
+		DaysSince int     `json:"days_since_mail"`
+		Template  string  `json:"template"`
+		Priority  float64 `json:"priority_score"`
 	}
 	var queue []followUpItem
 	now := time.Now().UTC()
@@ -714,10 +724,10 @@ func (s *Server) sendFollowUp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"kit_id":         k.ID,
+			"kit_id":          k.ID,
 			"follow_up_count": k.FollowUpCount,
-			"external_id":    res.ExternalID,
-			"status":         "sent",
+			"external_id":     res.ExternalID,
+			"status":          "sent",
 		})
 	} else {
 		writeError(w, http.StatusServiceUnavailable, errorString("LOB_API_KEY not configured"))
@@ -763,6 +773,9 @@ func (s *Server) createHandoff(w http.ResponseWriter, r *http.Request) {
 	default:
 		_ = s.Store.SetJourneyStage(id, "invited")
 	}
+	s.Store.Audit("couple", id, "handoff_issued",
+		map[string]any{"handoff_code": code, "journey_stage": stage,
+			"by": "human:" + auth.UserFromContext(r.Context()).Email}, "", 0)
 	writeJSON(w, http.StatusOK, map[string]string{
 		"couple_id": id, "handoff_code": code, "handoff_url": url, "handoff_utm": utm,
 		"journey_stage": stage,
@@ -787,13 +800,17 @@ func (s *Server) setJourneyStage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	s.Store.Audit("couple", id, "journey_stage_set",
+		map[string]any{"stage": body.Stage, "by": "human:" + auth.UserFromContext(r.Context()).Email}, "", 0)
 	writeJSON(w, http.StatusOK, map[string]string{"couple_id": id, "journey_stage": body.Stage})
 }
 
 // runJanitor executes maintenance cleanup.
 func (s *Server) runJanitor(w http.ResponseWriter, r *http.Request) {
+	if !auth.RequireAdmin(w, r) {
+		return
+	}
 	j := &ops.Janitor{Store: s.Store}
 	res := j.Run(r.Context())
 	writeJSON(w, http.StatusOK, res)
 }
-

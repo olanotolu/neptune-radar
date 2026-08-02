@@ -11,9 +11,10 @@ import (
 
 // JanitorResult summarizes a cleanup pass.
 type JanitorResult struct {
-	VendorPairsSuppressed int `json:"vendor_pairs_suppressed"`
-	ObservationFacts      int `json:"observation_facts_backfilled"`
-	Errors                []string `json:"errors,omitempty"`
+	VendorPairsSuppressed int                 `json:"vendor_pairs_suppressed"`
+	ObservationFacts      int                 `json:"observation_facts_backfilled"`
+	RetentionPurged       []store.PurgeResult `json:"retention_purged,omitempty"`
+	Errors                []string            `json:"errors,omitempty"`
 }
 
 // Janitor keeps Supabase tidy so detective agents see clean evidence.
@@ -48,6 +49,13 @@ func (j *Janitor) Run(ctx context.Context) JanitorResult {
 	} else {
 		r.ObservationFacts = facts
 	}
-	log.Printf("[janitor] vendor_pairs=%d obs_facts=%d errs=%v", r.VendorPairsSuppressed, r.ObservationFacts, r.Errors)
+	// Purge expired rows per retention_classes config.
+	purged, err := j.Store.PurgeExpired(ctx)
+	if err != nil {
+		r.Errors = append(r.Errors, "retention purge: "+err.Error())
+	} else {
+		r.RetentionPurged = purged
+	}
+	log.Printf("[janitor] vendor_pairs=%d obs_facts=%d purge=%v errs=%v", r.VendorPairsSuppressed, r.ObservationFacts, r.RetentionPurged, r.Errors)
 	return r
 }

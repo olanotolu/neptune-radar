@@ -263,6 +263,29 @@ type AuditEvent struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+// PipelineRun is the summary index row for one orchestrator ProcessEvent
+// execution. Per-stage detail lives in audit_events and pipeline_timings
+// (both keyed by observation_id); this row is the cross-cutting summary that
+// makes "show me this run" one query instead of a four-table join.
+type PipelineRun struct {
+	ID               string     `json:"id"`
+	ObservationID    string     `json:"observation_id"`
+	AgentName        string     `json:"agent_name"`
+	Model            string     `json:"model,omitempty"`
+	PromptTokens     int        `json:"prompt_tokens"`
+	CompletionTokens int        `json:"completion_tokens"`
+	CostUSD          float64    `json:"cost_usd"`
+	Confidence       *float64   `json:"confidence,omitempty"`
+	StopReason       string     `json:"stop_reason"`
+	HypothesisID     string     `json:"hypothesis_id,omitempty"`
+	ActionID         string     `json:"action_id,omitempty"`
+	CoupleID         string     `json:"couple_id,omitempty"`
+	Monitor          string     `json:"monitor,omitempty"`
+	StartedAt        time.Time  `json:"started_at"`
+	EndedAt          *time.Time `json:"ended_at,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+}
+
 // WatchedSource is a curated public account the radar monitors (an engagement
 // photographer, proposal planner, venue, jeweler, publication, registry
 // provider, or boutique — the classes in signals.WatchedSourceClasses).

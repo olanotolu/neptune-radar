@@ -215,7 +215,7 @@ func (s *Server) pauseCouple(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Store.Audit("relationship", rel.ID, "automation_paused",
-		map[string]any{"couple_id": coupleID, "by": "human:concierge"}, "", -1)
+		map[string]any{"couple_id": coupleID, "by": "human:" + auth.UserFromContext(r.Context()).Email}, "", -1)
 	writeJSON(w, http.StatusOK, rel)
 }
 
@@ -229,7 +229,7 @@ func (s *Server) resumeCouple(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Store.Audit("relationship", rel.ID, "automation_resumed",
-		map[string]any{"couple_id": coupleID, "by": "human:concierge"}, "", -1)
+		map[string]any{"couple_id": coupleID, "by": "human:" + auth.UserFromContext(r.Context()).Email}, "", -1)
 	writeJSON(w, http.StatusOK, rel)
 }
 

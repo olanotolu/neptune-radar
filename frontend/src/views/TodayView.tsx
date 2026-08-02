@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useBackfillLocations, useEnrichMissing, useOpsSummary, useRunJanitor } from "../api/hooks";
+import { useActions, useBackfillLocations, useDLQ, useEnrichMissing, useOpsSummary, useRunJanitor, useSources } from "../api/hooks";
 import { useToast } from "../components/Toast";
 
 const TODAY_DATE = new Date().toLocaleDateString("en-US", {
@@ -149,6 +149,8 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
             </button>
           </div>
 
+          <BriefingSection onNavigate={onNavigate} />
+
           <div className="today-panels">
             <section className="today-panel">
               <h3 className="today-panel__title">
@@ -256,5 +258,77 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
         </>
       )}
     </div>
+  );
+}
+
+// BriefingSection shows the top prioritized items needing human attention,
+// pulled from existing hooks — no new API needed. Each item has a one-click
+// navigate to the right view.
+function BriefingSection({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const { data: actions } = useActions("pending");
+  const { data: dlq } = useDLQ("pending", 5);
+  const { data: sources } = useSources(false);
+
+  const pendingActions = (actions ?? []).slice(0, 5);
+  const dlqItems = (dlq ?? []).slice(0, 3);
+  const staleSources = (sources ?? []).filter((s) => !s.active).slice(0, 3);
+
+  const hasItems = pendingActions.length > 0 || dlqItems.length > 0 || staleSources.length > 0;
+  if (!hasItems) return null;
+
+  return (
+    <section className="briefing">
+      <h3 className="briefing__title">
+        <span className="briefing__icon" aria-hidden>📋</span>Concierge briefing
+      </h3>
+      <p className="briefing__sub">What deserves attention right now.</p>
+      <div className="briefing__grid">
+        {pendingActions.length > 0 && (
+          <div className="briefing__col">
+            <h4 className="briefing__col-title">
+              Pending approvals ({pendingActions.length})
+            </h4>
+            <ul className="briefing__list">
+              {pendingActions.map((a) => (
+                <li key={a.id} className="briefing__item briefing__item--action" onClick={() => onNavigate("/work?filter=action")}>
+                  <span className="briefing__item-type">{a.action_type}</span>
+                  <span className="briefing__item-meta">{a.id.slice(0, 12)}…</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {dlqItems.length > 0 && (
+          <div className="briefing__col">
+            <h4 className="briefing__col-title">
+              Failed signals ({dlqItems.length})
+            </h4>
+            <ul className="briefing__list">
+              {dlqItems.map((d) => (
+                <li key={d.id} className="briefing__item briefing__item--dlq" onClick={() => onNavigate("/dlq")}>
+                  <span className="briefing__item-type">{d.source}</span>
+                  <span className="briefing__item-meta">{d.error_message.slice(0, 60)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {staleSources.length > 0 && (
+          <div className="briefing__col">
+            <h4 className="briefing__col-title">
+              Inactive sources ({staleSources.length})
+            </h4>
+            <ul className="briefing__list">
+              {staleSources.map((s) => (
+                <li key={s.id} className="briefing__item briefing__item--source" onClick={() => onNavigate("/sources")}>
+                  <span className="briefing__item-type">@{s.handle}</span>
+                  <span className="briefing__item-meta">{s.source_class}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

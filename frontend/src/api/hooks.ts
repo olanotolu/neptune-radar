@@ -32,6 +32,8 @@ import type {
   DLQItem,
   UserSummary,
   LiveEvent,
+  PipelineRun,
+  PipelineRunDetail,
 } from "./types";
 
 const keys = {
@@ -67,6 +69,8 @@ const keys = {
   dlq: (status: string, limit: number) => ["dlq", status, limit] as const,
   scanJobs: (limit: number, status: string) => ["scan-jobs", limit, status] as const,
   users: ["users"] as const,
+  runs: ["runs"] as const,
+  run: (id: string) => ["runs", id] as const,
 };
 
 function useInvalidateAll() {
@@ -846,4 +850,21 @@ export function useLiveEvents() {
   }, []);
 
   return { events, connected };
+}
+
+export function useRuns() {
+  const interval = useLiveRefetch(15_000);
+  return useQuery({
+    queryKey: keys.runs,
+    queryFn: () => api.get<PipelineRun[]>("/api/runs?limit=200"),
+    refetchInterval: interval,
+  });
+}
+
+export function useRun(id?: string) {
+  return useQuery({
+    queryKey: keys.run(id ?? ""),
+    queryFn: () => api.get<PipelineRunDetail>(`/api/runs/${encodeURIComponent(id!)}`),
+    enabled: !!id,
+  });
 }

@@ -784,3 +784,36 @@ export interface UserSummary {
   api_key_masked?: string;
   disabled?: boolean;
 }
+
+// Pipeline run ledger — one summary row per orchestrator ProcessEvent call.
+// Per-stage detail (audit events, timings) is joinable by observation_id.
+export interface PipelineRun {
+  id: string;
+  observation_id: string;
+  agent_name: string;
+  model?: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  cost_usd: number;
+  confidence?: number;
+  stop_reason: string;
+  hypothesis_id?: string;
+  action_id?: string;
+  couple_id?: string;
+  monitor?: string;
+  started_at: string;
+  ended_at?: string;
+  created_at: string;
+}
+
+export interface StageTiming {
+  stage: string;
+  duration_ms: number;
+  event_id?: string;
+  timestamp: string;
+}
+
+export interface PipelineRunDetail extends PipelineRun {
+  timings: StageTiming[];
+  events: AuditEvent[];
+}
