@@ -791,7 +791,6 @@ export interface UserSummary {
 
 // Pipeline run ledger — one summary row per orchestrator ProcessEvent call.
 // Per-stage detail (audit events, timings) is joinable by observation_id.
-export interface PipelineRun {
   id: string;
   observation_id: string;
   agent_name: string;
@@ -820,4 +819,18 @@ export interface StageTiming {
 export interface PipelineRunDetail extends PipelineRun {
   timings: StageTiming[];
   events: AuditEvent[];
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  body?: string;
+  entity_type?: string;
+  entity_id?: string;
+  severity: "info" | "warn" | "critical";
+  read_at?: string;
+  acked_at?: string;
+  acked_by?: string;
+  created_at: string;
 }

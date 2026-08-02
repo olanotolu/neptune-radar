@@ -14,6 +14,7 @@ type JanitorResult struct {
 	VendorPairsSuppressed int                 `json:"vendor_pairs_suppressed"`
 	ObservationFacts      int                 `json:"observation_facts_backfilled"`
 	RetentionPurged       []store.PurgeResult `json:"retention_purged,omitempty"`
+	SourceRepairActions   int                 `json:"source_repair_actions,omitempty"`
 	Errors                []string            `json:"errors,omitempty"`
 }
 
@@ -56,6 +57,14 @@ func (j *Janitor) Run(ctx context.Context) JanitorResult {
 	} else {
 		r.RetentionPurged = purged
 	}
-	log.Printf("[janitor] vendor_pairs=%d obs_facts=%d purge=%v errs=%v", r.VendorPairsSuppressed, r.ObservationFacts, r.RetentionPurged, r.Errors)
+	// Create repair tasks for stale sources so they appear in the work queue.
+	repairs, err := j.Store.CreateSourceRepairActions()
+	if err != nil {
+		r.Errors = append(r.Errors, "source repair: "+err.Error())
+	} else {
+		r.SourceRepairActions = repairs
+	}
+	log.Printf("[janitor] vendor_pairs=%d obs_facts=%d purge=%v repairs=%d errs=%v",
+		r.VendorPairsSuppressed, r.ObservationFacts, r.RetentionPurged, r.SourceRepairActions, r.Errors)
 	return r
 }

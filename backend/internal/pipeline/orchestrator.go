@@ -56,6 +56,24 @@ func (o *Orchestrator) publish(eventType string, data interface{}) {
 	o.Hub.Publish(notify.Event{Type: eventType, Data: data, Time: time.Now().UTC()})
 }
 
+// notifyAndPublish creates a durable notification AND pushes an SSE event,
+// so operators who aren't watching the dashboard still get a persistent
+// record of what happened. Non-blocking: notification errors are logged,
+// never returned, so a DB issue can't stall the pipeline.
+func (o *Orchestrator) notifyAndPublish(eventType, title, body, entityType, entityID, severity string, data interface{}) {
+	o.publish(eventType, data)
+	if err := o.Store.CreateNotification(store.Notification{
+		Type:       eventType,
+		Title:      title,
+		Body:       body,
+		EntityType: entityType,
+		EntityID:   entityID,
+		Severity:   severity,
+	}); err != nil {
+		log.Printf("[notify] create notification %s: %v", eventType, err)
+	}
+}
+
 // recordTiming is a nil-safe helper: logs but never returns the error so a
 // metrics DB failure can't stall the pipeline.
 func (o *Orchestrator) recordTiming(stage string, start time.Time, eventID string) {
@@ -315,11 +333,22 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, raw watchtower.RawEvent
 		}
 		o.Store.Audit("relationship", res.Couple.ID, "stage_transition",
 			map[string]any{"stage": cand.ProposedStage, "confidence": finalScore}, raw.Monitor, -1)
-		o.publish("stage_transition", map[string]any{
-			"couple_id":  res.Couple.ID,
-			"stage":      string(cand.ProposedStage),
-			"confidence": finalScore,
-		})
+		stageStr := string(cand.ProposedStage)
+		sev := "info"
+		if finalScore >= 0.90 {
+			sev = "critical"
+		} else if finalScore >= 0.70 {
+			sev = "warn"
+		}
+		o.notifyAndPublish("stage_transition",
+			"Couple → "+stageStr,
+			"Confidence: "+fmt.Sprintf("%.0f%%", finalScore*100),
+			"couple", res.Couple.ID, sev,
+			map[string]any{
+				"couple_id":  res.Couple.ID,
+				"stage":      stageStr,
+				"confidence": finalScore,
+			})
 
 		// Slack alert when a couple transitions to engaged/married at
 		// high confidence (>= 0.90). Non-blocking: a 5s-timeout goroutine
@@ -358,16 +387,21 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, raw watchtower.RawEvent
 	runStop = "completed"
 	o.Store.Audit("recommended_action", action.ID, "action_recommended",
 		map[string]any{"action_type": action.ActionType}, raw.Monitor, -1)
-	o.publish("action_created", map[string]any{
-		"action_id":   action.ID,
-		"action_type": action.ActionType,
-		"couple_id": func() string {
-			if res.Couple != nil {
-				return res.Couple.ID
-			}
-			return ""
-		}(),
-	})
+	coupleID := func() string {
+		if res.Couple != nil {
+			return res.Couple.ID
+		}
+		return ""
+	}()
+	o.notifyAndPublish("action_created",
+		"New action: "+string(action.ActionType),
+		"Couple: "+coupleID,
+		"recommended_action", action.ID, "info",
+		map[string]any{
+			"action_id":   action.ID,
+			"action_type": action.ActionType,
+			"couple_id":   coupleID,
+		})
 	return result, nil
 }
 

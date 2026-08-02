@@ -34,6 +34,7 @@ import type {
   LiveEvent,
   PipelineRun,
   PipelineRunDetail,
+  Notification,
 } from "./types";
 
 const keys = {
@@ -71,6 +72,7 @@ const keys = {
   users: ["users"] as const,
   runs: ["runs"] as const,
   run: (id: string) => ["runs", id] as const,
+  notifications: ["notifications"] as const,
 };
 
 function useInvalidateAll() {
@@ -884,5 +886,38 @@ export function useRun(id?: string) {
     queryKey: keys.run(id ?? ""),
     queryFn: () => api.get<PipelineRunDetail>(`/api/runs/${encodeURIComponent(id!)}`),
     enabled: !!id,
+  });
+}
+
+export function useNotifications(unreadOnly = false) {
+  const interval = useLiveRefetch(15_000);
+  return useQuery({
+    queryKey: keys.notifications,
+    queryFn: () => api.get<Notification[]>(`/api/notifications${unreadOnly ? "?unread=true" : ""}`),
+    refetchInterval: interval,
+  });
+}
+
+export function useMarkNotificationRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/api/notifications/${id}/read`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.notifications }),
+  });
+}
+
+export function useAckNotification() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/api/notifications/${id}/ack`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.notifications }),
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post(`/api/notifications/read-all`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.notifications }),
   });
 }

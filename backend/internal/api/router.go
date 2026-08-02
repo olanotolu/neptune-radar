@@ -166,6 +166,15 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("PUT /api/retention", srv.setRetention)
 	mux.HandleFunc("GET /api/retention/preview", srv.purgePreview)
 
+	// Source health — per-source freshness, yield, stale status.
+	mux.HandleFunc("GET /api/sources/health", srv.sourceHealth)
+
+	// Durable notifications — in-app inbox with read/ack tracking.
+	mux.HandleFunc("GET /api/notifications", srv.listNotifications)
+	mux.HandleFunc("POST /api/notifications/{id}/read", srv.markNotificationRead)
+	mux.HandleFunc("POST /api/notifications/{id}/ack", srv.ackNotification)
+	mux.HandleFunc("POST /api/notifications/read-all", srv.markAllNotificationsRead)
+
 	return mux
 }
 

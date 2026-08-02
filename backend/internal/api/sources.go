@@ -502,3 +502,13 @@ func (s *Server) resumeIngest(w http.ResponseWriter, r *http.Request) {
 	running := s.Watch.ProviderAvailable()
 	writeJSON(w, http.StatusOK, map[string]any{"paused": false, "running": running})
 }
+
+// sourceHealth returns per-source health metrics for the repair center.
+func (s *Server) sourceHealth(w http.ResponseWriter, r *http.Request) {
+	health, err := s.Store.ListSourceHealth()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, health)
+}
