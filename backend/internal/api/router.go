@@ -175,6 +175,16 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("POST /api/notifications/{id}/ack", srv.ackNotification)
 	mux.HandleFunc("POST /api/notifications/read-all", srv.markAllNotificationsRead)
 
+	// Calibration cockpit — confidence vs outcome, per-source yield.
+	mux.HandleFunc("GET /api/calibration", srv.calibration)
+	mux.HandleFunc("GET /api/calibration/sources", srv.sourceYield)
+
+	// Agent evaluation harness — run golden cases against current interpreter.
+	mux.HandleFunc("GET /api/eval", srv.runEval)
+
+	// Attorney handoff packet — evidence-cited alignment narrative export.
+	mux.HandleFunc("GET /api/couples/{id}/packet", srv.handoffPacket)
+
 	return mux
 }
 

@@ -35,12 +35,16 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 
 	pendingActions := 0
 	dlqPending := 0
+	unreadNotifs := 0
 	if dbOK {
 		if n, err := s.Store.CountPendingActions(); err == nil {
 			pendingActions = n
 		}
 		if n, err := s.Store.CountDLQPending(); err == nil {
 			dlqPending = n
+		}
+		if n, err := s.Store.CountUnreadNotifications(); err == nil {
+			unreadNotifs = n
 		}
 	}
 
@@ -61,11 +65,12 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, httpCode, map[string]any{
 		"status": status,
 		"checks": map[string]any{
-			"database":        dbCheck,
-			"provider":        providerStatus,
-			"ingest_running":  ingestRunning,
-			"pending_actions": pendingActions,
-			"dlq_pending":     dlqPending,
+			"database":             dbCheck,
+			"provider":             providerStatus,
+			"ingest_running":       ingestRunning,
+			"pending_actions":      pendingActions,
+			"dlq_pending":          dlqPending,
+			"unread_notifications": unreadNotifs,
 		},
 		"version": BuildVersion,
 	})

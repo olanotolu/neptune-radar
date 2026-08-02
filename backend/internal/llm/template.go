@@ -18,15 +18,27 @@ func NewTemplateInterpreter() *TemplateInterpreter { return &TemplateInterpreter
 
 var breakupWords = []string{"breakup", "broke up", "single again", "ex-fiance", "ex fiancé"}
 
+var marriedWords = []string{"just married", "married", "wedding day", "we got married", "mr and mrs", "mr & mrs"}
+
 func (t *TemplateInterpreter) InterpretSignal(ctx context.Context, req SignalRequest) (Interpretation, error) {
 	text := strings.ToLower(req.Text)
 	switch req.CandidateEventType {
 	case "engagement":
-		// The confidence means "this text is explicit engagement language."
+		// The confidence means "this text is explicit engagement/marriage language."
 		// It is judged against the shared signal vocabulary — the same
 		// deterministic phrases/hashtags the analyst used, plus bio-style
 		// fiancé references — never a private keyword list that could drift.
 		sig := signals.ExtractFromPayload(map[string]any{"caption": req.Text})
+		// Married language is a stronger signal than engagement — it implies
+		// the wedding already happened, not just that a ring was given.
+		if countHits(text, marriedWords) > 0 {
+			return Interpretation{
+				Confidence:    0.9,
+				ProposedStage: "married",
+				Rationale:     "template: explicit marriage language confirmed" + templateDetail(sig),
+				Source:        "template:signal_vocabulary_v2",
+			}, nil
+		}
 		switch {
 		case sig.HasExplicitLanguage() || signals.HasExplicitBioLanguage(req.Text):
 			return Interpretation{
