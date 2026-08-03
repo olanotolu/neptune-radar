@@ -5268,6 +5268,12 @@
   }
 }
 
+@media (max-width: 480px) {
+  .queue-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .queue-card {
   text-align: left;
   border: 1px solid var(--border);
@@ -6688,8 +6694,11 @@ select:focus-visible {
 
 @media (max-width: 768px) {
   .app-header {
-    padding: 10px 14px;
-    gap: 10px;
+    padding: 0 16px;
+  }
+
+  .app-header__top {
+    height: 52px;
   }
 
   .app-header__subtitle {
@@ -6701,23 +6710,32 @@ select:focus-visible {
   }
 
   .app-search__input {
-    width: 140px;
-  }
-
-  .app-nav {
-    gap: 1px;
-    padding: 2px;
+    width: 160px;
   }
 
   .app-nav__tab {
-    padding: 6px 10px;
-    font-size: 10.5px;
+    padding: 8px 12px;
+    font-size: 12px;
     white-space: nowrap;
     flex-shrink: 0;
   }
 
   .app-main {
-    padding: 12px !important;
+    padding: 24px 16px 48px !important;
+  }
+
+  .watch-transport__meta,
+  .watch-transport__queue {
+    display: none;
+  }
+
+  .watch-transport__btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .watch-transport__btn .watch-transport__icon {
+    display: none;
   }
 }
 
@@ -6725,17 +6743,49 @@ select:focus-visible {
 
 @media (max-width: 480px) {
   .app-header {
-    padding: 8px 12px;
-    gap: 8px;
+    padding: 0 12px;
+  }
+
+  .app-header__top {
+    height: 48px;
+  }
+
+  .app-header__title {
+    font-size: 15px;
+  }
+
+  .app-header__logo {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+  }
+
+  .app-search__input {
+    width: 120px;
+    padding: 6px 10px;
+    font-size: 13px;
   }
 
   .app-nav__tab {
-    padding: 6px 8px;
-    font-size: 10px;
+    padding: 8px 10px;
+    font-size: 11px;
   }
 
   .app-main {
-    padding: 8px !important;
+    padding: 20px 12px 40px !important;
+  }
+
+  .app-search {
+    display: none;
+  }
+
+  .watch-transport__pill {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+
+  .live-indicator {
+    display: none;
   }
 }
 

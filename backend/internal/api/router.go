@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"neptune-social-radar/backend/internal/auth"
 	"neptune-social-radar/backend/internal/ingest"
@@ -206,10 +207,31 @@ func Wrap(handler http.Handler, s *store.Store, adminToken, dashboardOrigin stri
 }
 
 func withCORS(origin string, next http.Handler) http.Handler {
+	allowed := strings.Split(origin, ",")
+	for i, o := range allowed {
+		allowed[i] = strings.TrimSpace(o)
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", origin)
+		reqOrigin := r.Header.Get("Origin")
+		match := origin == "*" || reqOrigin == ""
+		if !match {
+			for _, o := range allowed {
+				if o == reqOrigin {
+					match = true
+					break
+				}
+			}
+		}
+		if match {
+			if origin == "*" {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			} else {
+				w.Header().Set("Access-Control-Allow-Origin", reqOrigin)
+			}
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return
