@@ -35,6 +35,10 @@ import type {
   PipelineRun,
   PipelineRunDetail,
   Notification,
+  InterviewSession,
+  InterviewSessionDetail,
+  InterviewMessage,
+  InterviewExtraction,
 } from "./types";
 
 const keys = {
@@ -919,5 +923,67 @@ export function useMarkAllNotificationsRead() {
   return useMutation({
     mutationFn: () => api.post(`/api/notifications/read-all`),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.notifications }),
+  });
+}
+
+// --- Couple Interview Session ---------------------------------------------
+
+const interviewKeys = {
+  sessions: ["interview", "sessions"] as const,
+  session: (id: string) => ["interview", "sessions", id] as const,
+};
+
+export function useInterviewSessions() {
+  return useQuery({
+    queryKey: interviewKeys.sessions,
+    queryFn: () => api.get<InterviewSession[]>("/api/interview/sessions"),
+  });
+}
+
+export function useInterviewSession(id: string | null) {
+  return useQuery({
+    queryKey: interviewKeys.session(id ?? ""),
+    queryFn: () => api.get<InterviewSessionDetail>(`/api/interview/sessions/${encodeURIComponent(id!)}`),
+    enabled: !!id,
+    refetchInterval: 3_000,
+  });
+}
+
+export function useCreateInterviewSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ couple_a_label, couple_b_label }: { couple_a_label: string; couple_b_label: string }) =>
+      api.post<InterviewSession>("/api/interview/sessions", { couple_a_label, couple_b_label }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["interview"] }),
+  });
+}
+
+export function useAddInterviewMessage(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ speaker, couple, text, audio_url }: { speaker: string; couple: string; text: string; audio_url?: string }) =>
+      api.post<InterviewMessage>(`/api/interview/sessions/${encodeURIComponent(sessionId)}/messages`, {
+        speaker,
+        couple,
+        text,
+        audio_url,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: interviewKeys.session(sessionId) }),
+  });
+}
+
+export function useRunExtraction(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<InterviewExtraction[]>(`/api/interview/sessions/${encodeURIComponent(sessionId)}/extract`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: interviewKeys.session(sessionId) }),
+  });
+}
+
+export function useEndInterviewSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<{ status: string }>(`/api/interview/sessions/${encodeURIComponent(id)}/end`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["interview"] }),
   });
 }

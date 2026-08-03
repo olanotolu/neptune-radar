@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const basetenEndpoint = "https://api.baseten.co/v1/chat/completions"
+const basetenEndpoint = "https://inference.baseten.co/v1/chat/completions"
 
 // BasetenInterpreter calls a model deployed on Baseten via their
 // OpenAI-compatible chat completions endpoint.

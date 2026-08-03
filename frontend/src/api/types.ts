@@ -835,3 +835,40 @@ export interface Notification {
   acked_by?: string;
   created_at: string;
 }
+
+// --- Couple Interview Session ---------------------------------------------
+
+export interface InterviewSession {
+  id: string;
+  couple_a_label: string;
+  couple_b_label: string;
+  status: string; // "active" | "completed"
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InterviewMessage {
+  id: string;
+  session_id: string;
+  speaker: string; // "a1", "a2", "b1", "b2"
+  couple: string; // "A" or "B"
+  text: string;
+  audio_url?: string;
+  created_at: string;
+}
+
+export interface InterviewExtraction {
+  id: string;
+  session_id: string;
+  agent_type: string; // "relationship_stage", "wedding_timeline", "vendor_interest", "location", "budget"
+  findings: Record<string, unknown>;
+  confidence: number;
+  summary: string;
+  created_at: string;
+}
+
+export interface InterviewSessionDetail {
+  session: InterviewSession;
+  messages: InterviewMessage[];
+  extractions: InterviewExtraction[];
+}

@@ -24,6 +24,7 @@ import { SettingsView } from "./views/SettingsView";
 import { FunnelView } from "./views/FunnelView";
 import { CostView } from "./views/CostView";
 import { OpsView } from "./views/OpsView";
+import { InterviewView } from "./views/InterviewView";
 
 // Map (d3 + both us-atlas topojson files) and Congratulate (postcard kit)
 // are the two heaviest views — lazy so the main bundle doesn't carry them.
@@ -75,6 +76,7 @@ const NAV: { id: string; label: string; path: string }[] = [
   { id: "today", label: "Today", path: "/today" },
   { id: "work", label: "Work", path: "/work?filter=action" },
   { id: "congratulate", label: "Congratulate", path: "/congratulate" },
+  { id: "interview", label: "Interview", path: "/interview" },
   { id: "sources", label: "Sources", path: "/sources" },
   { id: "map", label: "Map", path: "/map" },
   { id: "feed", label: "Feed", path: "/feed" },
@@ -308,6 +310,8 @@ function Shell() {
       case "congratulate":
       case "kits":
         return <CongratulateView initialCoupleId={route.coupleId} />;
+      case "interview":
+        return <InterviewView />;
       case "sources":
         return (
           <SourcesView

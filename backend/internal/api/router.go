@@ -188,6 +188,14 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	// Celebration operations — kit pipeline stats.
 	mux.HandleFunc("GET /api/kits/stats", srv.kitStats)
 
+	// Couple interview sessions — two-couple conversation with multi-agent extraction.
+	mux.HandleFunc("POST /api/interview/sessions", srv.createInterviewSession)
+	mux.HandleFunc("GET /api/interview/sessions", srv.listInterviewSessions)
+	mux.HandleFunc("GET /api/interview/sessions/{id}", srv.getInterviewSession)
+	mux.HandleFunc("POST /api/interview/sessions/{id}/messages", srv.addInterviewMessage)
+	mux.HandleFunc("POST /api/interview/sessions/{id}/extract", srv.runExtraction)
+	mux.HandleFunc("POST /api/interview/sessions/{id}/end", srv.endInterviewSession)
+
 	return mux
 }
 
