@@ -180,5 +180,30 @@ var ctPack = StatePack{
 			Handle: "armeny_custom_jewelry_design", SourceClass: "jeweler",
 			CityID: "city_hartford_ct", State: "CT", City: "West Hartford", Verified: "2026-08-01",
 		},
+		{
+			Name: "Carla Ten Eyck Photography", OfficialURL: "https://carlateneyck.com/",
+			Handle: "c10ike", SourceClass: "engagement_photographer",
+			CityID: "city_hartford_ct", State: "CT", City: "Hartford", Verified: "2026-08-03",
+		},
+		{
+			Name: "Stamford Museum & Nature Center", OfficialURL: "https://www.stamfordmuseum.org/",
+			Handle: "stamford_museum_naturecenter", SourceClass: "wedding_venue",
+			CityID: "city_stamford_ct", State: "CT", City: "Stamford", Verified: "2026-08-03",
+		},
+		{
+			Name: "Serafresca at the IC", OfficialURL: "https://serafrescaic.com/",
+			Handle: "serafrescaic", SourceClass: "wedding_venue",
+			CityID: "city_stamford_ct", State: "CT", City: "Stamford", Verified: "2026-08-03",
+		},
+		{
+			Name: "First Blush Weddings", OfficialURL: "https://www.firstblushweddings.com/",
+			Handle: "firstblushweddings", SourceClass: "florist",
+			CityID: "city_new_haven_ct", State: "CT", City: "New Haven", Verified: "2026-08-03",
+		},
+		{
+			Name: "Fairy Meadow Flowers", OfficialURL: "https://fairymeadowflowers.com/",
+			Handle: "fairy_meadow_flowers", SourceClass: "florist",
+			CityID: "city_new_haven_ct", State: "CT", City: "New Haven", Verified: "2026-08-03",
+		},
 	},
 }

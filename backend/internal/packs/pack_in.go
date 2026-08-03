@@ -200,5 +200,25 @@ var inPack = StatePack{
 			Handle: "moyerfinejewelers", SourceClass: "jeweler",
 			CityID: "city_indianapolis_in", State: "IN", City: "Indianapolis", Verified: "2026-08-01",
 		},
+		{
+			Name: "Duet Floral Studio", OfficialURL: "https://www.duetfloral.com/",
+			Handle: "duetfloral", SourceClass: "florist",
+			CityID: "city_indianapolis_in", State: "IN", City: "Indianapolis", Verified: "2026-08-03",
+		},
+		{
+			Name: "RK Florals", OfficialURL: "https://www.rkflorals.com/",
+			Handle: "rkflorals", SourceClass: "florist",
+			CityID: "city_indianapolis_in", State: "IN", City: "Indianapolis", Verified: "2026-08-03",
+		},
+		{
+			Name: "Windsor Jewelry", OfficialURL: "https://windsorjewelry.com/",
+			Handle: "windsorjewelry", SourceClass: "jeweler",
+			CityID: "city_indianapolis_in", State: "IN", City: "Indianapolis", Verified: "2026-08-03",
+		},
+		{
+			Name: "Reis-Nichols Jewelers", OfficialURL: "https://www.reisnichols.com/",
+			Handle: "reisnichols", SourceClass: "jeweler",
+			CityID: "city_indianapolis_in", State: "IN", City: "Indianapolis", Verified: "2026-08-03",
+		},
 	},
 }

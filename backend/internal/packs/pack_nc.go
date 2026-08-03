@@ -119,5 +119,30 @@ var ncPack = StatePack{
 		{Name: "Southern Oak Events", OfficialURL: "https://www.southernoakevents.com/",
 			Handle: "southernoakevents", SourceClass: "wedding_planner",
 			CityID: "city_raleigh_nc", State: "NC", City: "Raleigh", Verified: "2026-08-01"},
+		{
+			Name: "Robert Burns II Photography", OfficialURL: "https://www.robertburnsiiwedding.com/",
+			Handle: "robertburnsiiphotography", SourceClass: "engagement_photographer",
+			CityID: "city_charlotte_nc", State: "NC", City: "Charlotte", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Merrimon-Wynne House", OfficialURL: "https://www.merrimonwynne.com/",
+			Handle: "merrimonwynne", SourceClass: "wedding_venue",
+			CityID: "city_raleigh_nc", State: "NC", City: "Raleigh", Verified: "2026-08-03",
+		},
+		{
+			Name: "Carolina Flowers", OfficialURL: "https://carolinaflowers.com/",
+			Handle: "carolinaflowrs", SourceClass: "florist",
+			CityID: "city_asheville_nc", State: "NC", City: "Asheville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Jordan Christine Photo", OfficialURL: "https://www.jordanchristine.com/",
+			Handle: "jordanchristine.photo", SourceClass: "engagement_photographer",
+			CityID: "city_charlotte_nc", State: "NC", City: "Charlotte", Verified: "2026-08-03",
+		},
+		{
+			Name: "Flourish Flower Farm", OfficialURL: "https://flourishflowerfarm.com/",
+			Handle: "flourishflowerfarm", SourceClass: "florist",
+			CityID: "city_asheville_nc", State: "NC", City: "Asheville", Verified: "2026-08-03",
+		},
 	},
 }

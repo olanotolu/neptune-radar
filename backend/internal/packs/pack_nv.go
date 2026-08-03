@@ -180,5 +180,35 @@ var nvPack = StatePack{
 			Handle: "lyght", SourceClass: "jeweler",
 			CityID: "city_las_vegas_nv", State: "NV", City: "Las Vegas", Verified: "2026-08-01",
 		},
+		{
+			Name: "Gaby J Photography", OfficialURL: "https://www.gabyjphotography.com/",
+			Handle: "hellogabyj", SourceClass: "engagement_photographer",
+			CityID: "city_las_vegas_nv", State: "NV", City: "Las Vegas", Verified: "2026-08-03",
+		},
+		{
+			Name: "Karissa Russ & Co", OfficialURL: "https://karissaruss.co/",
+			Handle: "karissaruss", SourceClass: "engagement_photographer",
+			CityID: "city_las_vegas_nv", State: "NV", City: "Las Vegas", Verified: "2026-08-03",
+		},
+		{
+			Name: "Bowties Bridal", OfficialURL: "https://bowtiesbridal.com/",
+			Handle: "bowtiesbridal", SourceClass: "bridal_shop",
+			CityID: "city_las_vegas_nv", State: "NV", City: "Las Vegas", Verified: "2026-08-03",
+		},
+		{
+			Name: "MaidenWhite", OfficialURL: "https://maidenwhite.com/",
+			Handle: "maidenwhitebride", SourceClass: "bridal_shop",
+			CityID: "city_las_vegas_nv", State: "NV", City: "Las Vegas", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Elm Estate", OfficialURL: "https://theelmestate.com/",
+			Handle: "theelmestate", SourceClass: "wedding_venue",
+			CityID: "city_reno_nv", State: "NV", City: "Reno", Verified: "2026-08-03",
+		},
+		{
+			Name: "Lavender Ridge", OfficialURL: "https://www.lavenderridgereno.com/",
+			Handle: "lavenderridgeweddings", SourceClass: "wedding_venue",
+			CityID: "city_reno_nv", State: "NV", City: "Reno", Verified: "2026-08-03",
+		},
 	},
 }

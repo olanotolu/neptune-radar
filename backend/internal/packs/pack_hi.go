@@ -24,6 +24,11 @@ var hiPack = StatePack{
 
 	// --- Cities ----------------------------------------------------------
 	Cities: []CityDef{
+	{
+		ID: "city_maui_hi", State: "HI", County: "15009", Name: "Maui",
+		Lat: 20.8893, Lng: -156.4739,
+		Markets: []string{"maui", "lahaina", "kahului", "wailea"},
+	},
 		{ID: "city_honolulu_hi", State: "HI", County: "15003", Name: "Honolulu",
 			Lat: 21.3069, Lng: -157.8583, Markets: []string{"honolulu", "hi", "hawaii", "oahu"}},
 	},
@@ -172,6 +177,21 @@ var hiPack = StatePack{
 			Name: "The Wedding Ring Shop", OfficialURL: "https://www.weddingringshop.com/",
 			Handle: "weddingringshop", SourceClass: "jeweler",
 			CityID: "city_honolulu_hi", State: "HI", City: "Honolulu", Verified: "2026-08-01",
+		},
+		{
+			Name: "Jenny Vargas Photography", OfficialURL: "https://jennyvargasphotography.com/",
+			Handle: "jennyvargasphotography", SourceClass: "engagement_photographer",
+			CityID: "city_maui_hi", State: "HI", City: "Maui", Verified: "2026-08-03",
+		},
+		{
+			Name: "Tara Lee Photography", OfficialURL: "https://taraleephotography.net/",
+			Handle: "taralee.photo", SourceClass: "engagement_photographer",
+			CityID: "city_maui_hi", State: "HI", City: "Maui", Verified: "2026-08-03",
+		},
+		{
+			Name: "Kylene Morgan Photography", OfficialURL: "https://kylenemorganphotography.com/",
+			Handle: "kylenemorganphotography", SourceClass: "engagement_photographer",
+			CityID: "city_honolulu_hi", State: "HI", City: "Honolulu", Verified: "2026-08-03",
 		},
 	},
 }

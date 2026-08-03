@@ -243,5 +243,25 @@ var mnPack = StatePack{
 			Handle: "gittelsonj", SourceClass: "jeweler",
 			CityID: "city_minneapolis_mn", State: "MN", City: "Minneapolis", Verified: "2026-08-01",
 		},
+		{
+			Name: "A Frame Forward Photography", OfficialURL: "https://www.aframeforward.com/",
+			Handle: "aframeforward", SourceClass: "engagement_photographer",
+			CityID: "city_minneapolis_mn", State: "MN", City: "Minneapolis", Verified: "2026-08-03",
+		},
+		{
+			Name: "Matthew Eberle Photography", OfficialURL: "https://www.mattheweberlephotography.com/",
+			Handle: "mattheweberlephotography", SourceClass: "engagement_photographer",
+			CityID: "city_minneapolis_mn", State: "MN", City: "Minneapolis", Verified: "2026-08-03",
+		},
+		{
+			Name: "Samantha Kleven Photography", OfficialURL: "https://samanthaklevenphotography.com/",
+			Handle: "samanthakphotos", SourceClass: "engagement_photographer",
+			CityID: "city_minneapolis_mn", State: "MN", City: "Minneapolis", Verified: "2026-08-03",
+		},
+		{
+			Name: "Semple Mansion", OfficialURL: "https://semplemansion.com/",
+			Handle: "semplemansion", SourceClass: "wedding_venue",
+			CityID: "city_minneapolis_mn", State: "MN", City: "Minneapolis", Verified: "2026-08-03",
+		},
 	},
 }

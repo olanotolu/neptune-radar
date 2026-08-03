@@ -175,5 +175,20 @@ var wyPack = StatePack{
 			Handle: "jburri1922", SourceClass: "jeweler",
 			CityID: "city_cheyenne_wy", State: "WY", City: "Cheyenne", Verified: "2026-08-01",
 		},
+		{
+			Name: "Three Crowns Golf Club", OfficialURL: "https://www.threecrownsgolfclub.com/",
+			Handle: "threecrownsgolf", SourceClass: "wedding_venue",
+			CityID: "city_casper_wy", State: "WY", City: "Casper", Verified: "2026-08-03",
+		},
+		{
+			Name: "Trout On Inn", OfficialURL: "https://troutoninn.com/",
+			Handle: "rusticelegance_at_troutoninn", SourceClass: "wedding_venue",
+			CityID: "city_casper_wy", State: "WY", City: "Casper", Verified: "2026-08-03",
+		},
+		{
+			Name: "Wild One Floral", OfficialURL: "https://www.wildonefloral.com/",
+			Handle: "wildonefloral", SourceClass: "florist",
+			CityID: "city_cheyenne_wy", State: "WY", City: "Cheyenne", Verified: "2026-08-03",
+		},
 	},
 }

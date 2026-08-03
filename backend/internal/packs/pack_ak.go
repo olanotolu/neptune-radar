@@ -170,5 +170,10 @@ var akPack = StatePack{
 			Handle: "akdiamondco", SourceClass: "jeweler",
 			CityID: "city_anchorage_ak", State: "AK", City: "Anchorage", Verified: "2026-08-01",
 		},
+		{
+			Name: "Vania Lynd Photography", OfficialURL: "https://vanialynd.com/",
+			Handle: "vanialynd", SourceClass: "engagement_photographer",
+			CityID: "city_anchorage_ak", State: "AK", City: "Anchorage", Verified: "2026-08-03",
+		},
 	},
 }

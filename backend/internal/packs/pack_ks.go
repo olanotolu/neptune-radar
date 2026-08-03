@@ -210,5 +210,15 @@ var ksPack = StatePack{
 			CityID: "city_kansas_city_ks", State: "KS", City: "Kansas City", Verified: "2026-08-01",
 			TikTokHandle: "thekcmint",
 		},
+		{
+			Name: "Chris & Lara", OfficialURL: "https://chrisandlara.com/",
+			Handle: "chrisandlara", SourceClass: "engagement_photographer",
+			CityID: "city_wichita_ks", State: "KS", City: "Wichita", Verified: "2026-08-03",
+		},
+		{
+			Name: "Botanica", OfficialURL: "https://botanica.org/",
+			Handle: "botanicawichita", SourceClass: "wedding_venue",
+			CityID: "city_wichita_ks", State: "KS", City: "Wichita", Verified: "2026-08-03",
+		},
 	},
 }

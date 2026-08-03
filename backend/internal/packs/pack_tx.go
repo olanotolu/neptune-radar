@@ -458,5 +458,25 @@ var txPack = StatePack{
 			Handle: "houstonweddingofficiant", SourceClass: "officiant",
 			CityID: "city_houston_tx", State: "TX", City: "Houston", Verified: "2026-08-01",
 		},
+		{
+			Name: "Sara Abdulaziz Photography", OfficialURL: "https://saraabdulaziz.com/",
+			Handle: "saraabdulazizphotography", SourceClass: "engagement_photographer",
+			CityID: "city_houston_tx", State: "TX", City: "Houston", Verified: "2026-08-03",
+		},
+		{
+			Name: "Christina Elliott Photography", OfficialURL: "https://christinaelliottphotography.com/",
+			Handle: "christinaelliottphoto", SourceClass: "engagement_photographer",
+			CityID: "city_houston_tx", State: "TX", City: "Houston", Verified: "2026-08-03",
+		},
+		{
+			Name: "Nate Messarra Photography", OfficialURL: "https://natemessarra.com/",
+			Handle: "natemessphoto", SourceClass: "engagement_photographer",
+			CityID: "city_houston_tx", State: "TX", City: "Houston", Verified: "2026-08-03",
+		},
+		{
+			Name: "Always Floral", OfficialURL: "https://www.alwaysfloral.com/",
+			Handle: "alwaysfloralspring", SourceClass: "florist",
+			CityID: "city_houston_tx", State: "TX", City: "Houston", Verified: "2026-08-03",
+		},
 	},
 }

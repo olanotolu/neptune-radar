@@ -205,5 +205,20 @@ var alPack = StatePack{
 			Handle: "zundels_jewelry", SourceClass: "jeweler",
 			CityID: "city_mobile_al", State: "AL", City: "Mobile", Verified: "2026-08-01",
 		},
+		{
+			Name: "Katie & Alec Photography", OfficialURL: "https://katieandalec.com/",
+			Handle: "katieandalecphoto", SourceClass: "engagement_photographer",
+			CityID: "city_birmingham_al", State: "AL", City: "Birmingham", Verified: "2026-08-03",
+		},
+		{
+			Name: "Stanley Parrish Photography", OfficialURL: "https://www.stanleyparrish.com/",
+			Handle: "stanleyparrish", SourceClass: "engagement_photographer",
+			CityID: "city_birmingham_al", State: "AL", City: "Birmingham", Verified: "2026-08-03",
+		},
+		{
+			Name: "Hatcher Farms Venue", OfficialURL: "https://hatcherfarmsvenue.com/",
+			Handle: "hatcherfarmsvenue", SourceClass: "wedding_venue",
+			CityID: "city_mobile_al", State: "AL", City: "Mobile", Verified: "2026-08-03",
+		},
 	},
 }

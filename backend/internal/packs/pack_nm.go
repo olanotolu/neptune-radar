@@ -187,5 +187,50 @@ var nmPack = StatePack{
 			// ponytail: KnotURL placeholder — verify on theknot.com before production use
 			KnotURL: "https://www.theknot.com/marketplace/wedding-photographers/caitlin-elizabeth-photography-7677841",
 		},
+		{
+			Name: "DBK Photography", OfficialURL: "https://dbkphotos.com/",
+			Handle: "dbkphotography", SourceClass: "engagement_photographer",
+			CityID: "city_albuquerque_nm", State: "NM", City: "Albuquerque", Verified: "2026-08-03",
+		},
+		{
+			Name: "La Fonda on the Plaza", OfficialURL: "https://lafondasantafe.com/",
+			Handle: "lafondasantafe", SourceClass: "wedding_venue",
+			CityID: "city_santa_fe_nm", State: "NM", City: "Santa Fe", Verified: "2026-08-03",
+		},
+		{
+			Name: "Uncommon Arrangement", OfficialURL: "https://www.uncommonarrangement.com/",
+			Handle: "uncommon_arrangement", SourceClass: "florist",
+			CityID: "city_albuquerque_nm", State: "NM", City: "Albuquerque", Verified: "2026-08-03",
+		},
+		{
+			Name: "Thursday Floral Co", OfficialURL: "https://thursdayfloralco.com/",
+			Handle: "thursdayfloralco", SourceClass: "florist",
+			CityID: "city_santa_fe_nm", State: "NM", City: "Santa Fe", Verified: "2026-08-03",
+		},
+		{
+			Name: "John Thomas Jewelers", OfficialURL: "https://johnthomasjewelers.com/",
+			Handle: "johnthomasjewelers", SourceClass: "jeweler",
+			CityID: "city_albuquerque_nm", State: "NM", City: "Albuquerque", Verified: "2026-08-03",
+		},
+		{
+			Name: "Crown Jewels and Coin", OfficialURL: "https://crownjewelsandcoin.com/",
+			Handle: "crownjewelsandcoin", SourceClass: "jeweler",
+			CityID: "city_albuquerque_nm", State: "NM", City: "Albuquerque", Verified: "2026-08-03",
+		},
+		{
+			Name: "Diva Diamonds and Jewels", OfficialURL: "https://divadiamondssantafe.com/",
+			Handle: "divadiamondsjewelry", SourceClass: "jeweler",
+			CityID: "city_santa_fe_nm", State: "NM", City: "Santa Fe", Verified: "2026-08-03",
+		},
+		{
+			Name: "Corazon Events", OfficialURL: "https://www.corazonevents.com/",
+			Handle: "corazon_events", SourceClass: "wedding_planner",
+			CityID: "city_albuquerque_nm", State: "NM", City: "Albuquerque", Verified: "2026-08-03",
+		},
+		{
+			Name: "Murphy Jones Collaborative", OfficialURL: "https://www.murphyjonesco.com/",
+			Handle: "murphyjonesco", SourceClass: "wedding_planner",
+			CityID: "city_albuquerque_nm", State: "NM", City: "Albuquerque", Verified: "2026-08-03",
+		},
 	},
 }

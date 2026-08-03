@@ -6,6 +6,11 @@ package packs
 
 var caCities = []CityDef{
 	{
+		ID: "city_san_diego_ca", State: "CA", County: "06073", Name: "San Diego",
+		Lat: 32.7157, Lng: -117.1611,
+		Markets: []string{"sandiego", "sd", "lajolla", "coronado"},
+	},
+	{
 		ID: "city_los_angeles_ca", State: "CA", County: "06037", Name: "Los Angeles",
 		Lat: 34.0522, Lng: -118.2437,
 		Markets: []string{"losangeles", "la", "hollywood", "santamonica", "beverlyhills", "malibu"},
@@ -172,6 +177,21 @@ var caVendors = []VendorDef{
 		Name: "SF Wedding Officiant", OfficialURL: "https://www.sfweddingofficiant.com/",
 		Handle: "sfweddingofficiant", SourceClass: "officiant",
 		CityID: "city_san_francisco_ca", State: "CA", City: "San Francisco", Verified: "2026-08-01",
+	},
+	{
+		Name: "Narrative Images", OfficialURL: "https://narrativeimagesphoto.com/",
+		Handle: "narrativeimages", SourceClass: "engagement_photographer",
+		CityID: "city_san_diego_ca", State: "CA", City: "San Diego", Verified: "2026-08-03",
+	},
+	{
+		Name: "Tim Otto Photography", OfficialURL: "https://timotto.com/",
+		Handle: "timottophoto", SourceClass: "engagement_photographer",
+		CityID: "city_san_diego_ca", State: "CA", City: "San Diego", Verified: "2026-08-03",
+	},
+	{
+		Name: "Bri Berry Photography", OfficialURL: "https://briberryphotography.com/",
+		Handle: "briberryphotography", SourceClass: "engagement_photographer",
+		CityID: "city_san_diego_ca", State: "CA", City: "San Diego", Verified: "2026-08-03",
 	},
 }
 

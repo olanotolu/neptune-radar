@@ -24,6 +24,11 @@ var ohPack = StatePack{
 
 	// --- Cities ----------------------------------------------------------
 	Cities: []CityDef{
+	{
+		ID: "city_cleveland_oh", State: "OH", County: "39035", Name: "Cleveland",
+		Lat: 41.4993, Lng: -81.6944,
+		Markets: []string{"cleveland", "cuyahoga", "clevelandheights"},
+	},
 		{
 			ID: "city_columbus_oh", State: "OH", County: "39049", Name: "Columbus",
 			Lat: 39.9612, Lng: -82.9988,
@@ -345,6 +350,26 @@ var ohPack = StatePack{
 			Name: "Ohio Wedding Officiant", OfficialURL: "https://www.ohioweddingofficiant.com/",
 			Handle: "ohioweddingofficiant", SourceClass: "officiant",
 			CityID: "city_columbus_oh", State: "OH", City: "Columbus", Verified: "2026-08-01",
+		},
+		{
+			Name: "Fiori Floral Design Studio", OfficialURL: "https://fioriflorals.biz/",
+			Handle: "fiori.florals", SourceClass: "florist",
+			CityID: "city_columbus_oh", State: "OH", City: "Columbus", Verified: "2026-08-03",
+		},
+		{
+			Name: "Alexander's Jewelers", OfficialURL: "https://alexanderscolumbus.com/",
+			Handle: "alexandersjewelerscolumbus", SourceClass: "jeweler",
+			CityID: "city_columbus_oh", State: "OH", City: "Columbus", Verified: "2026-08-03",
+		},
+		{
+			Name: "Zolana Weddings", OfficialURL: "https://zolanaweddings.com/",
+			Handle: "zolana.weddings", SourceClass: "wedding_planner",
+			CityID: "city_columbus_oh", State: "OH", City: "Columbus", Verified: "2026-08-03",
+		},
+		{
+			Name: "Glidden House", OfficialURL: "https://www.gliddenhouse.com/weddings/",
+			Handle: "gliddenhousehotel", SourceClass: "wedding_venue",
+			CityID: "city_cleveland_oh", State: "OH", City: "Cleveland", Verified: "2026-08-03",
 		},
 	},
 }

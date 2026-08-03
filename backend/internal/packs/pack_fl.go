@@ -190,5 +190,40 @@ var flPack = StatePack{
 		{Name: "Orlando Wedding Officiant", OfficialURL: "https://www.orlandoweddingofficiant.com/",
 			Handle: "orlandoweddingofficiant", SourceClass: "officiant",
 			CityID: "city_orlando_fl", State: "FL", City: "Orlando", Verified: "2026-08-01"},
+		{
+			Name: "Ambrosio Photography", OfficialURL: "https://ambrosiophotography.com/",
+			Handle: "ambrosiophotography", SourceClass: "engagement_photographer",
+			CityID: "city_miami_fl", State: "FL", City: "Miami", Verified: "2026-08-03",
+		},
+		{
+			Name: "Jessica Vilchez Photography", OfficialURL: "https://jessicavilchez.com/",
+			Handle: "jessicavilchezphoto", SourceClass: "engagement_photographer",
+			CityID: "city_miami_fl", State: "FL", City: "Miami", Verified: "2026-08-03",
+		},
+		{
+			Name: "Kristen Weaver Photography", OfficialURL: "https://kristenweaver.com/",
+			Handle: "kristenweaverphoto", SourceClass: "engagement_photographer",
+			CityID: "city_orlando_fl", State: "FL", City: "Orlando", Verified: "2026-08-03",
+		},
+		{
+			Name: "Jerzy Nieves Photo & Film", OfficialURL: "https://jerzynieves.com/",
+			Handle: "jerzynievesphotos", SourceClass: "engagement_photographer",
+			CityID: "city_orlando_fl", State: "FL", City: "Orlando", Verified: "2026-08-03",
+		},
+		{
+			Name: "Trans4mation Photography", OfficialURL: "https://www.trans4mationphotography.com/",
+			Handle: "trans4mationphotography", SourceClass: "engagement_photographer",
+			CityID: "city_tampa_fl", State: "FL", City: "Tampa", Verified: "2026-08-03",
+		},
+		{
+			Name: "Sarah Hedden Photography", OfficialURL: "https://sarahheddenphotography.com/",
+			Handle: "sarahheddenphotography", SourceClass: "engagement_photographer",
+			CityID: "city_jacksonville_fl", State: "FL", City: "Jacksonville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Lee Photo + Video", OfficialURL: "https://leephotovideo.com/",
+			Handle: "leephotovideo", SourceClass: "engagement_photographer",
+			CityID: "city_jacksonville_fl", State: "FL", City: "Jacksonville", Verified: "2026-08-03",
+		},
 	},
 }

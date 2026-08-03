@@ -20,6 +20,11 @@ var riPack = StatePack{
 
 	// --- Cities ----------------------------------------------------------
 	Cities: []CityDef{
+	{
+		ID: "city_newport_ri", State: "RI", County: "44005", Name: "Newport",
+		Lat: 41.4901, Lng: -71.3128,
+		Markets: []string{"newport", "aquidneck"},
+	},
 		{ID: "city_providence_ri", State: "RI", County: "44007", Name: "Providence",
 			Lat: 41.8240, Lng: -71.4128, Markets: []string{"providence", "ri", "rhodeisland", "providencecounty"}},
 	},
@@ -113,6 +118,16 @@ var riPack = StatePack{
 			Name: "Providence Diamond", OfficialURL: "https://www.providencediamond.com/",
 			Handle: "providencediamond", SourceClass: "jeweler",
 			CityID: "city_providence_ri", State: "RI", City: "Providence", Verified: "2026-08-01",
+		},
+		{
+			Name: "Madilacie Photography", OfficialURL: "https://madilaciephotography.com/",
+			Handle: "madilaciephotography", SourceClass: "engagement_photographer",
+			CityID: "city_providence_ri", State: "RI", City: "Providence", Verified: "2026-08-03",
+		},
+		{
+			Name: "OceanCliff", OfficialURL: "https://www.newportexperience.com/venues/oceancliff/",
+			Handle: "oceancliffnewport", SourceClass: "wedding_venue",
+			CityID: "city_newport_ri", State: "RI", City: "Newport", Verified: "2026-08-03",
 		},
 	},
 }

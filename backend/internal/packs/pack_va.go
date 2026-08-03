@@ -239,5 +239,20 @@ var vaPack = StatePack{
 			Handle: "midtownjewelers", SourceClass: "jeweler",
 			CityID: "city_arlington_va", State: "VA", City: "Arlington", Verified: "2026-08-01",
 		},
+		{
+			Name: "Maymont", OfficialURL: "https://maymont.org/",
+			Handle: "maymont_rva", SourceClass: "wedding_venue",
+			CityID: "city_richmond_va", State: "VA", City: "Richmond", Verified: "2026-08-03",
+		},
+		{
+			Name: "Weddings by Vogue", OfficialURL: "https://www.weddingsbyvogue.com/",
+			Handle: "weddingsbyvogue", SourceClass: "florist",
+			CityID: "city_richmond_va", State: "VA", City: "Richmond", Verified: "2026-08-03",
+		},
+		{
+			Name: "Josh Boone Photography", OfficialURL: "https://www.joshboonephotography.com/",
+			Handle: "_joshboone", SourceClass: "engagement_photographer",
+			CityID: "city_virginia_beach_va", State: "VA", City: "Virginia Beach", Verified: "2026-08-03",
+		},
 	},
 }

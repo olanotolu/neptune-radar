@@ -24,6 +24,11 @@ var wvPack = StatePack{
 
 	// --- Cities ----------------------------------------------------------
 	Cities: []CityDef{
+	{
+		ID: "city_morgantown_wv", State: "WV", County: "54061", Name: "Morgantown",
+		Lat: 39.6296, Lng: -79.956,
+		Markets: []string{"morgantown", "monongalia"},
+	},
 		{ID: "city_charleston_wv", State: "WV", County: "54039", Name: "Charleston",
 			Lat: 38.3498, Lng: -81.6326, Markets: []string{"charleston", "wv", "westvirginia", "kanawha"}},
 		{ID: "city_huntington_wv", State: "WV", County: "54011", Name: "Huntington",
@@ -190,6 +195,21 @@ var wvPack = StatePack{
 			Name: "T.K. Dodrill Jewelers", OfficialURL: "https://dodrilljewelers.com/",
 			Handle: "dodrilljewelers", SourceClass: "jeweler",
 			CityID: "city_huntington_wv", State: "WV", City: "Huntington", Verified: "2026-08-01",
+		},
+		{
+			Name: "The Oberports", OfficialURL: "https://theoberports.com/",
+			Handle: "theoberports", SourceClass: "engagement_photographer",
+			CityID: "city_charleston_wv", State: "WV", City: "Charleston", Verified: "2026-08-03",
+		},
+		{
+			Name: "Lakeview Golf Resort", OfficialURL: "https://www.lakeviewresort.com/",
+			Handle: "lakeviewgolfwv", SourceClass: "wedding_venue",
+			CityID: "city_morgantown_wv", State: "WV", City: "Morgantown", Verified: "2026-08-03",
+		},
+		{
+			Name: "Hotel Morgan", OfficialURL: "https://hotelmorgan.com/",
+			Handle: "thehotelmorgan", SourceClass: "wedding_venue",
+			CityID: "city_morgantown_wv", State: "WV", City: "Morgantown", Verified: "2026-08-03",
 		},
 	},
 }

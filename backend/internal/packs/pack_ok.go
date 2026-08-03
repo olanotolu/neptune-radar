@@ -218,5 +218,25 @@ var okPack = StatePack{
 			Handle: "huntingtonfinejewelers", SourceClass: "jeweler",
 			CityID: "city_oklahoma_city_ok", State: "OK", City: "Oklahoma City", Verified: "2026-08-01",
 		},
+		{
+			Name: "Tricia Bailey Photography", OfficialURL: "https://triciabailey.co/",
+			Handle: "triciabailey.co", SourceClass: "engagement_photographer",
+			CityID: "city_oklahoma_city_ok", State: "OK", City: "Oklahoma City", Verified: "2026-08-03",
+		},
+		{
+			Name: "Maddi Renee Photography", OfficialURL: "https://maddireneephotography.com/",
+			Handle: "maddireneephotography", SourceClass: "engagement_photographer",
+			CityID: "city_tulsa_ok", State: "OK", City: "Tulsa", Verified: "2026-08-03",
+		},
+		{
+			Name: "Slate at Founders Tower", OfficialURL: "https://www.slatevenue.com/",
+			Handle: "slateatfounderstower", SourceClass: "wedding_venue",
+			CityID: "city_oklahoma_city_ok", State: "OK", City: "Oklahoma City", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Mayo Hotel", OfficialURL: "https://www.themayohotel.com/",
+			Handle: "themayohotel", SourceClass: "wedding_venue",
+			CityID: "city_tulsa_ok", State: "OK", City: "Tulsa", Verified: "2026-08-03",
+		},
 	},
 }

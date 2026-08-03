@@ -223,5 +223,30 @@ var moPack = StatePack{
 			Handle: "clarksonjewelers", SourceClass: "jeweler",
 			CityID: "city_st_louis_mo", State: "MO", City: "St. Louis", Verified: "2026-08-01",
 		},
+		{
+			Name: "White Klump Photography", OfficialURL: "https://whiteklumpphotography.com/home",
+			Handle: "whiteklump_photog", SourceClass: "engagement_photographer",
+			CityID: "city_st_louis_mo", State: "MO", City: "St. Louis", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Coronado", OfficialURL: "https://thecoronado.com/",
+			Handle: "thecoronadostl", SourceClass: "wedding_venue",
+			CityID: "city_st_louis_mo", State: "MO", City: "St. Louis", Verified: "2026-08-03",
+		},
+		{
+			Name: "Haue Valley", OfficialURL: "https://hauevalleyweddings.com/",
+			Handle: "hauevalleyweddings", SourceClass: "wedding_venue",
+			CityID: "city_st_louis_mo", State: "MO", City: "St. Louis", Verified: "2026-08-03",
+		},
+		{
+			Name: "Four Seasons Hotel St. Louis", OfficialURL: "https://www.fourseasons.com/stlouis/weddings/venues/",
+			Handle: "fourseasonsstlouis", SourceClass: "wedding_venue",
+			CityID: "city_st_louis_mo", State: "MO", City: "St. Louis", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Christy", OfficialURL: "https://www.thechristy.com/weddings/weddings-st-louis/",
+			Handle: "thechristystl", SourceClass: "wedding_venue",
+			CityID: "city_st_louis_mo", State: "MO", City: "St. Louis", Verified: "2026-08-03",
+		},
 	},
 }

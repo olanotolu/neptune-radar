@@ -208,5 +208,35 @@ var orPack = StatePack{
 			Handle: "malkadiamonds", SourceClass: "jeweler",
 			CityID: "city_portland_or", State: "OR", City: "Portland", Verified: "2026-08-01",
 		},
+		{
+			Name: "Starflower", OfficialURL: "https://www.starflowerpassion.com/",
+			Handle: "starflowerpdx", SourceClass: "florist",
+			CityID: "city_portland_or", State: "OR", City: "Portland", Verified: "2026-08-03",
+		},
+		{
+			Name: "Wrong Number Floral", OfficialURL: "https://wrongnumberfloral.com/",
+			Handle: "wrongnumberfloral", SourceClass: "florist",
+			CityID: "city_eugene_or", State: "OR", City: "Eugene", Verified: "2026-08-03",
+		},
+		{
+			Name: "Darling Dahlia Floral", OfficialURL: "https://darlingdahliafloral.com/",
+			Handle: "darling_dahlia_floral", SourceClass: "florist",
+			CityID: "city_portland_or", State: "OR", City: "Portland", Verified: "2026-08-03",
+		},
+		{
+			Name: "Little Banana Bakery", OfficialURL: "https://littlebananabakery.com/",
+			Handle: "littlebananabakery", SourceClass: "wedding_cake",
+			CityID: "city_portland_or", State: "OR", City: "Portland", Verified: "2026-08-03",
+		},
+		{
+			Name: "Next Dimension Bakery", OfficialURL: "https://www.nextdimensionbakery.com/",
+			Handle: "next_dimension_bakery", SourceClass: "wedding_cake",
+			CityID: "city_portland_or", State: "OR", City: "Portland", Verified: "2026-08-03",
+		},
+		{
+			Name: "Banquette Bakery", OfficialURL: "https://www.banquettepdx.com/",
+			Handle: "banquettepdx", SourceClass: "wedding_cake",
+			CityID: "city_portland_or", State: "OR", City: "Portland", Verified: "2026-08-03",
+		},
 	},
 }

@@ -200,5 +200,30 @@ var sdPack = StatePack{
 			Handle: "faini_designs", SourceClass: "jeweler",
 			CityID: "city_sioux_falls_sd", State: "SD", City: "Sioux Falls", Verified: "2026-08-01",
 		},
+		{
+			Name: "Jase Dewald Photography", OfficialURL: "https://jasedewaldphoto.com/",
+			Handle: "jasedewaldphoto", SourceClass: "engagement_photographer",
+			CityID: "city_sioux_falls_sd", State: "SD", City: "Sioux Falls", Verified: "2026-08-03",
+		},
+		{
+			Name: "Luke and Savannah Photography", OfficialURL: "https://lukeandsavannah.com/",
+			Handle: "lukeandsavannah", SourceClass: "engagement_photographer",
+			CityID: "city_sioux_falls_sd", State: "SD", City: "Sioux Falls", Verified: "2026-08-03",
+		},
+		{
+			Name: "Thistle & Dot Floral", OfficialURL: "https://thistledotfloral.com/",
+			Handle: "thistle.dot.floral", SourceClass: "florist",
+			CityID: "city_sioux_falls_sd", State: "SD", City: "Sioux Falls", Verified: "2026-08-03",
+		},
+		{
+			Name: "Bridal Gallery", OfficialURL: "https://www.bridalgallerysf.com/",
+			Handle: "bridalgallerysiouxfalls", SourceClass: "bridal_shop",
+			CityID: "city_sioux_falls_sd", State: "SD", City: "Sioux Falls", Verified: "2026-08-03",
+		},
+		{
+			Name: "Diamond Spur Events Center", OfficialURL: "https://www.diamondspurevents.com/",
+			Handle: "diamondspurevents", SourceClass: "wedding_venue",
+			CityID: "city_rapid_city_sd", State: "SD", City: "Rapid City", Verified: "2026-08-03",
+		},
 	},
 }

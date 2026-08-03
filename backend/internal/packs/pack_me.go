@@ -20,6 +20,11 @@ var mePack = StatePack{
 
 	// --- Cities ----------------------------------------------------------
 	Cities: []CityDef{
+	{
+		ID: "city_bangor_me", State: "ME", County: "23019", Name: "Bangor",
+		Lat: 44.8015, Lng: -68.7778,
+		Markets: []string{"bangor", "penobscot"},
+	},
 		{ID: "city_portland_me", State: "ME", County: "23005", Name: "Portland",
 			Lat: 43.6591, Lng: -70.2568, Markets: []string{"portland", "me", "maine", "cumberland"}},
 	},
@@ -111,6 +116,36 @@ var mePack = StatePack{
 			TikTokHandle: "omainestudios",
 			// ponytail: KnotURL placeholder — verify on theknot.com before production use
 			KnotURL: "https://www.theknot.com/marketplace/wedding-venues/omaine-studios-2906935",
+		},
+		{
+			Name: "Linda Barry Photography", OfficialURL: "https://lindabarryphotography.com/",
+			Handle: "linda__barry", SourceClass: "engagement_photographer",
+			CityID: "city_portland_me", State: "ME", City: "Portland", Verified: "2026-08-03",
+		},
+		{
+			Name: "Wintertide Floral", OfficialURL: "https://www.wintertidefloral.com/",
+			Handle: "wintertidefloral", SourceClass: "florist",
+			CityID: "city_portland_me", State: "ME", City: "Portland", Verified: "2026-08-03",
+		},
+		{
+			Name: "Field Floral Studio", OfficialURL: "https://www.fieldfloralstudio.com/",
+			Handle: "fieldfloralstudio", SourceClass: "florist",
+			CityID: "city_portland_me", State: "ME", City: "Portland", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Tarratine", OfficialURL: "https://www.tarratinebangor.com/",
+			Handle: "thetarratine", SourceClass: "wedding_venue",
+			CityID: "city_bangor_me", State: "ME", City: "Bangor", Verified: "2026-08-03",
+		},
+		{
+			Name: "Olive and Co Events", OfficialURL: "https://oliveandcoevents.com/",
+			Handle: "oliveandcoevents", SourceClass: "wedding_planner",
+			CityID: "city_portland_me", State: "ME", City: "Portland", Verified: "2026-08-03",
+		},
+		{
+			Name: "Andrea's Bridal", OfficialURL: "https://www.andreasbridalmaine.com/",
+			Handle: "andreasbridal", SourceClass: "bridal_shop",
+			CityID: "city_portland_me", State: "ME", City: "Portland", Verified: "2026-08-03",
 		},
 	},
 }

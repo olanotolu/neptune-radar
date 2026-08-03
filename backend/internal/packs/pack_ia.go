@@ -200,5 +200,35 @@ var iaPack = StatePack{
 			Handle: "christophersjewelrydsm", SourceClass: "jeweler",
 			CityID: "city_des_moines_ia", State: "IA", City: "Des Moines", Verified: "2026-08-01",
 		},
+		{
+			Name: "Boesen the Florist", OfficialURL: "https://www.boesen.com/",
+			Handle: "boesentheflorist_dsm", SourceClass: "florist",
+			CityID: "city_des_moines_ia", State: "IA", City: "Des Moines", Verified: "2026-08-03",
+		},
+		{
+			Name: "Lavender Blue Floral", OfficialURL: "https://www.lavenderblueweddings.com/",
+			Handle: "lavenderbluefloral", SourceClass: "florist",
+			CityID: "city_des_moines_ia", State: "IA", City: "Des Moines", Verified: "2026-08-03",
+		},
+		{
+			Name: "Eastbank Venue", OfficialURL: "https://www.eastbankvenue.com/",
+			Handle: "eastbankvenue", SourceClass: "wedding_venue",
+			CityID: "city_cedar_rapids_ia", State: "IA", City: "Cedar Rapids", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Hotel at Kirkwood Center", OfficialURL: "https://www.thehotelatkirkwood.com/",
+			Handle: "thehotelatkirkwoodcenter", SourceClass: "wedding_venue",
+			CityID: "city_cedar_rapids_ia", State: "IA", City: "Cedar Rapids", Verified: "2026-08-03",
+		},
+		{
+			Name: "Honey & Joy Events", OfficialURL: "https://honeyandjoyevents.com/",
+			Handle: "honeyandjoyevents", SourceClass: "wedding_planner",
+			CityID: "city_des_moines_ia", State: "IA", City: "Des Moines", Verified: "2026-08-03",
+		},
+		{
+			Name: "Fiscus Jewelers", OfficialURL: "https://fiscusjewelers.com/",
+			Handle: "fiscusjewelers", SourceClass: "jeweler",
+			CityID: "city_des_moines_ia", State: "IA", City: "Des Moines", Verified: "2026-08-03",
+		},
 	},
 }

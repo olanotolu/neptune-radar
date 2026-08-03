@@ -159,5 +159,25 @@ var idPack = StatePack{
 			CityID: "city_boise_id", State: "ID", City: "Boise", Verified: "2026-08-01",
 			TikTokHandle: "theaveryhotelboise",
 		},
+		{
+			Name: "Pastor Dave Wedding Officiant", OfficialURL: "https://weddingsbypastordave.com/",
+			Handle: "weddingpastordave", SourceClass: "officiant",
+			CityID: "city_boise_id", State: "ID", City: "Boise", Verified: "2026-08-03",
+		},
+		{
+			Name: "Ivoire Bridal Atelier", OfficialURL: "https://ivoirebridalboise.com/",
+			Handle: "ivoirebridalatelier", SourceClass: "bridal_shop",
+			CityID: "city_boise_id", State: "ID", City: "Boise", Verified: "2026-08-03",
+		},
+		{
+			Name: "Karli & David Photography", OfficialURL: "https://karlianddavid.com/",
+			Handle: "karlianddavid", SourceClass: "engagement_photographer",
+			CityID: "city_boise_id", State: "ID", City: "Boise", Verified: "2026-08-03",
+		},
+		{
+			Name: "Katy Kahla Photography", OfficialURL: "https://www.katykahlaphotography.com/",
+			Handle: "katykahlaphotography", SourceClass: "engagement_photographer",
+			CityID: "city_boise_id", State: "ID", City: "Boise", Verified: "2026-08-03",
+		},
 	},
 }

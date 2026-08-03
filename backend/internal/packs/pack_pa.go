@@ -138,5 +138,25 @@ var paPack = StatePack{
 		{Name: "Pittsburgh Wedding Officiant", OfficialURL: "https://www.pghweddingofficiant.com/",
 			Handle: "pghweddingofficiant", SourceClass: "officiant",
 			CityID: "city_pittsburgh_pa", State: "PA", City: "Pittsburgh", Verified: "2026-08-01"},
+		{
+			Name: "McShea Photography", OfficialURL: "https://www.mcsheaphotography.com/",
+			Handle: "mcsheaphotography", SourceClass: "engagement_photographer",
+			CityID: "city_philadelphia_pa", State: "PA", City: "Philadelphia", Verified: "2026-08-03",
+		},
+		{
+			Name: "Grace & Ardor Co", OfficialURL: "https://graceandardor.com/",
+			Handle: "graceandardor", SourceClass: "engagement_photographer",
+			CityID: "city_philadelphia_pa", State: "PA", City: "Philadelphia", Verified: "2026-08-03",
+		},
+		{
+			Name: "Phipps Conservatory and Botanical Gardens", OfficialURL: "https://www.phipps.conservatory.org/",
+			Handle: "phippsconservatory", SourceClass: "wedding_venue",
+			CityID: "city_pittsburgh_pa", State: "PA", City: "Pittsburgh", Verified: "2026-08-03",
+		},
+		{
+			Name: "Robertson's Flowers & Events", OfficialURL: "https://www.robertsonsweddings.com/",
+			Handle: "robertsonsflowers", SourceClass: "florist",
+			CityID: "city_philadelphia_pa", State: "PA", City: "Philadelphia", Verified: "2026-08-03",
+		},
 	},
 }

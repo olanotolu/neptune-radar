@@ -143,5 +143,30 @@ var dcPack = StatePack{
 			Handle: "tinyjewelboxdc", SourceClass: "jeweler",
 			CityID: "city_washington_dc", State: "DC", City: "Washington", Verified: "2026-08-01",
 		},
+		{
+			Name: "The Hay-Adams", OfficialURL: "https://hayadams.com/",
+			Handle: "hayadamshotel", SourceClass: "wedding_venue",
+			CityID: "city_washington_dc", State: "DC", City: "Washington", Verified: "2026-08-03",
+		},
+		{
+			Name: "O'Neil Events", OfficialURL: "https://oneilevents.com/",
+			Handle: "oneil.events", SourceClass: "wedding_planner",
+			CityID: "city_washington_dc", State: "DC", City: "Washington", Verified: "2026-08-03",
+		},
+		{
+			Name: "Rodney Bailey Photography", OfficialURL: "https://rodneybailey.com/",
+			Handle: "rodneybaileyphotojournalist_", SourceClass: "engagement_photographer",
+			CityID: "city_washington_dc", State: "DC", City: "Washington", Verified: "2026-08-03",
+		},
+		{
+			Name: "Nessa K Photography", OfficialURL: "https://nessakphotography.com/",
+			Handle: "nessakphotography", SourceClass: "engagement_photographer",
+			CityID: "city_washington_dc", State: "DC", City: "Washington", Verified: "2026-08-03",
+		},
+		{
+			Name: "Sweet Family Secrets Bakery", OfficialURL: "https://www.sweetfamilysecrets.com/",
+			Handle: "sweetfamilysecretsbakery", SourceClass: "wedding_cake",
+			CityID: "city_washington_dc", State: "DC", City: "Washington", Verified: "2026-08-03",
+		},
 	},
 }

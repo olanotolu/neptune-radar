@@ -6,6 +6,16 @@ package packs
 
 var nyCities = []CityDef{
 	{
+		ID: "city_buffalo_ny", State: "NY", County: "36029", Name: "Buffalo",
+		Lat: 42.8864, Lng: -78.8784,
+		Markets: []string{"buffalo", "erie", "niagara"},
+	},
+	{
+		ID: "city_rochester_ny", State: "NY", County: "36055", Name: "Rochester",
+		Lat: 43.1566, Lng: -77.6088,
+		Markets: []string{"rochester", "monroe"},
+	},
+	{
 		ID: "city_new_york_ny", State: "NY", County: "36061", Name: "New York",
 		Lat: 40.7128, Lng: -74.0060,
 		Markets: []string{"nyc", "manhattan", "newyork", "centralpark", "brooklynbridge"},
@@ -178,6 +188,36 @@ var nyVendors = []VendorDef{
 		Name: "Pure Timeless Unions", OfficialURL: "https://www.puretimelessunions.com/",
 		Handle: "puretimelessunions", SourceClass: "officiant",
 		CityID: "city_new_york_ny", State: "NY", City: "New York", Verified: "2026-08-01",
+	},
+	{
+		Name: "Knight Studio", OfficialURL: "https://knightstudio.com/",
+		Handle: "knightphotostudio", SourceClass: "engagement_photographer",
+		CityID: "city_buffalo_ny", State: "NY", City: "Buffalo", Verified: "2026-08-03",
+	},
+	{
+		Name: "BGF Photography", OfficialURL: "https://www.bgf.photography/",
+		Handle: "bgf.photography", SourceClass: "engagement_photographer",
+		CityID: "city_buffalo_ny", State: "NY", City: "Buffalo", Verified: "2026-08-03",
+	},
+	{
+		Name: "Woodcliff Hotel & Spa", OfficialURL: "https://woodcliffhotelspa.com/",
+		Handle: "woodcliffhotelspa", SourceClass: "wedding_venue",
+		CityID: "city_rochester_ny", State: "NY", City: "Rochester", Verified: "2026-08-03",
+	},
+	{
+		Name: "Arbor Midtown", OfficialURL: "https://arborvenues.com/arbor-midtown",
+		Handle: "arbormidtown", SourceClass: "wedding_venue",
+		CityID: "city_rochester_ny", State: "NY", City: "Rochester", Verified: "2026-08-03",
+	},
+	{
+		Name: "Heirloom Soul Florals", OfficialURL: "https://www.heirloomsoul.com/",
+		Handle: "heirloomsoulflorals", SourceClass: "florist",
+		CityID: "city_buffalo_ny", State: "NY", City: "Buffalo", Verified: "2026-08-03",
+	},
+	{
+		Name: "Rooted Blooms Designs", OfficialURL: "https://www.floralbuffalo.com/",
+		Handle: "rootedbydesignflowers", SourceClass: "florist",
+		CityID: "city_buffalo_ny", State: "NY", City: "Buffalo", Verified: "2026-08-03",
 	},
 }
 

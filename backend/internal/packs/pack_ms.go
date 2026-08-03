@@ -198,5 +198,10 @@ var msPack = StatePack{
 			Handle: "albritonsjewelry", SourceClass: "jeweler",
 			CityID: "city_jackson_ms", State: "MS", City: "Jackson", Verified: "2026-08-01",
 		},
+		{
+			Name: "Jessica Greene Photography", OfficialURL: "https://jessicagreenephoto.com/",
+			Handle: "jessicagreenephoto", SourceClass: "engagement_photographer",
+			CityID: "city_jackson_ms", State: "MS", City: "Jackson", Verified: "2026-08-03",
+		},
 	},
 }

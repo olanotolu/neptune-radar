@@ -121,5 +121,15 @@ var njPack = StatePack{
 			TikTokHandle: "congresshall",
 			// ponytail: KnotURL placeholder — verify on theknot.com before production use
 			KnotURL: "https://www.theknot.com/marketplace/wedding-venues/congress-hall-cape-may-4356247"},
+		{
+			Name: "Viburnum Designs", OfficialURL: "https://www.viburnumdesigns.com/",
+			Handle: "viburnumdesigns", SourceClass: "florist",
+			CityID: "city_princeton_nj", State: "NJ", City: "Princeton", Verified: "2026-08-03",
+		},
+		{
+			Name: "Twisted Willow Flowers", OfficialURL: "https://twistedwillowflowers.com/",
+			Handle: "twistedwillowflowers", SourceClass: "florist",
+			CityID: "city_princeton_nj", State: "NJ", City: "Princeton", Verified: "2026-08-03",
+		},
 	},
 }

@@ -308,5 +308,20 @@ var miPack = StatePack{
 			Handle: "detroitcultivated", SourceClass: "wedding_planner",
 			CityID: "city_detroit_mi", State: "MI", City: "Detroit", Verified: "2026-08-01",
 		},
+		{
+			Name: "Alice Heart Photography", OfficialURL: "https://www.aliceheartphotography.com/",
+			Handle: "aliceheartphotography", SourceClass: "engagement_photographer",
+			CityID: "city_detroit_mi", State: "MI", City: "Detroit", Verified: "2026-08-03",
+		},
+		{
+			Name: "Waterview Loft", OfficialURL: "https://www.waterviewloft.com/",
+			Handle: "waterviewloft", SourceClass: "wedding_venue",
+			CityID: "city_detroit_mi", State: "MI", City: "Detroit", Verified: "2026-08-03",
+		},
+		{
+			Name: "Lauren Perrin Photography", OfficialURL: "https://www.laurenperrinphoto.com/",
+			Handle: "laurenperrinphoto", SourceClass: "engagement_photographer",
+			CityID: "city_grand_rapids_mi", State: "MI", City: "Grand Rapids", Verified: "2026-08-03",
+		},
 	},
 }

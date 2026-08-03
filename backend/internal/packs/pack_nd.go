@@ -173,5 +173,25 @@ var ndPack = StatePack{
 			Handle: "zorellsjewelry", SourceClass: "jeweler",
 			CityID: "city_bismarck_nd", State: "ND", City: "Bismarck", Verified: "2026-08-01",
 		},
+		{
+			Name: "Abby Anderson", OfficialURL: "https://abbyanderson.com/",
+			Handle: "abbyandersonphoto", SourceClass: "engagement_photographer",
+			CityID: "city_fargo_nd", State: "ND", City: "Fargo", Verified: "2026-08-03",
+		},
+		{
+			Name: "Officiant Amber", OfficialURL: "https://www.officiantamber.com/",
+			Handle: "officiantamber", SourceClass: "officiant",
+			CityID: "city_fargo_nd", State: "ND", City: "Fargo", Verified: "2026-08-03",
+		},
+		{
+			Name: "Your Day by Nicole", OfficialURL: "https://shopydbn.com/",
+			Handle: "yourdaybynicole", SourceClass: "bridal_shop",
+			CityID: "city_fargo_nd", State: "ND", City: "Fargo", Verified: "2026-08-03",
+		},
+		{
+			Name: "Klaudia & Co.", OfficialURL: "https://klaudiaandco.com/",
+			Handle: "klaudiaandcobridal", SourceClass: "bridal_shop",
+			CityID: "city_fargo_nd", State: "ND", City: "Fargo", Verified: "2026-08-03",
+		},
 	},
 }

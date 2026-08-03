@@ -200,5 +200,20 @@ var arPack = StatePack{
 			Handle: "jonesandson", SourceClass: "jeweler",
 			CityID: "city_little_rock_ar", State: "AR", City: "Little Rock", Verified: "2026-08-01",
 		},
+		{
+			Name: "Tyler Rosenthal Photography", OfficialURL: "https://www.tylerrosenthalphotography.com/",
+			Handle: "tylerrosenthalphotography", SourceClass: "engagement_photographer",
+			CityID: "city_little_rock_ar", State: "AR", City: "Little Rock", Verified: "2026-08-03",
+		},
+		{
+			Name: "Grandeur House", OfficialURL: "https://grandeurhouse.com/",
+			Handle: "grandeurhouse", SourceClass: "wedding_venue",
+			CityID: "city_little_rock_ar", State: "AR", City: "Little Rock", Verified: "2026-08-03",
+		},
+		{
+			Name: "Alda's Magnolia Hill", OfficialURL: "https://aldasmagnoliahill.com/",
+			Handle: "aldasmagnoliahill", SourceClass: "wedding_venue",
+			CityID: "city_little_rock_ar", State: "AR", City: "Little Rock", Verified: "2026-08-03",
+		},
 	},
 }

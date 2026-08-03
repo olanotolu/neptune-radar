@@ -199,5 +199,30 @@ var mtPack = StatePack{
 			Handle: "whiteravenvenue", SourceClass: "wedding_venue",
 			CityID: "city_missoula_mt", State: "MT", City: "Missoula", Verified: "2026-08-02",
 		},
+		{
+			Name: "Kristin Jean Photography", OfficialURL: "https://kristinjeanphotographer.com/",
+			Handle: "kristinjeanphoto", SourceClass: "engagement_photographer",
+			CityID: "city_billings_mt", State: "MT", City: "Billings", Verified: "2026-08-03",
+		},
+		{
+			Name: "Samuel Roland Films", OfficialURL: "https://samuelrolandfilms.com/",
+			Handle: "samuelrolandfilms", SourceClass: "videographer",
+			CityID: "city_billings_mt", State: "MT", City: "Billings", Verified: "2026-08-03",
+		},
+		{
+			Name: "Rogers & Co. Fine Jewelry", OfficialURL: "https://www.rogerscojewelry.com/",
+			Handle: "rogersandco.finejewelry", SourceClass: "jeweler",
+			CityID: "city_missoula_mt", State: "MT", City: "Missoula", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Barn on Mullan", OfficialURL: "https://www.barnonmullanmt.com/",
+			Handle: "thebarnonmullan", SourceClass: "wedding_venue",
+			CityID: "city_missoula_mt", State: "MT", City: "Missoula", Verified: "2026-08-03",
+		},
+		{
+			Name: "A & A Weddings", OfficialURL: "https://aandaweddings.com/",
+			Handle: "aandaweddings", SourceClass: "videographer",
+			CityID: "city_billings_mt", State: "MT", City: "Billings", Verified: "2026-08-03",
+		},
 	},
 }

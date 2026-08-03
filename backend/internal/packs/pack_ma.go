@@ -221,5 +221,15 @@ var maPack = StatePack{
 			Handle: "bostondiamondcompany", SourceClass: "jeweler",
 			CityID: "city_boston_ma", State: "MA", City: "Boston", Verified: "2026-08-02",
 		},
+		{
+			Name: "Spagnolo Photography", OfficialURL: "https://www.spagnolo-photography.com/",
+			Handle: "spagnolo.photography", SourceClass: "engagement_photographer",
+			CityID: "city_boston_ma", State: "MA", City: "Boston", Verified: "2026-08-03",
+		},
+		{
+			Name: "E.B. Horn Jewelers", OfficialURL: "https://www.ebhorn.com/",
+			Handle: "ebhornjewelers", SourceClass: "jeweler",
+			CityID: "city_boston_ma", State: "MA", City: "Boston", Verified: "2026-08-03",
+		},
 	},
 }

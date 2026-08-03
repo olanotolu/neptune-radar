@@ -204,5 +204,40 @@ var laPack = StatePack{
 			Handle: "friendandcompany", SourceClass: "jeweler",
 			CityID: "city_new_orleans_la", State: "LA", City: "New Orleans", Verified: "2026-08-01",
 		},
+		{
+			Name: "Marc Pagani Photography", OfficialURL: "https://www.paganiphoto.com/",
+			Handle: "marcpagani", SourceClass: "engagement_photographer",
+			CityID: "city_new_orleans_la", State: "LA", City: "New Orleans", Verified: "2026-08-03",
+		},
+		{
+			Name: "Sarah Mattix Photography", OfficialURL: "https://www.neworleansweddingphotography.com/",
+			Handle: "sarahmattixphotography", SourceClass: "engagement_photographer",
+			CityID: "city_new_orleans_la", State: "LA", City: "New Orleans", Verified: "2026-08-03",
+		},
+		{
+			Name: "Cheryl Cole Photography", OfficialURL: "https://cherylcolephotography.com/",
+			Handle: "cherylcolephotography", SourceClass: "engagement_photographer",
+			CityID: "city_new_orleans_la", State: "LA", City: "New Orleans", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Crawfords Photography", OfficialURL: "https://wearethecrawfords.com/",
+			Handle: "wearethecrawfords", SourceClass: "engagement_photographer",
+			CityID: "city_new_orleans_la", State: "LA", City: "New Orleans", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Cannery", OfficialURL: "https://cannerynola.com/",
+			Handle: "cannerynola", SourceClass: "wedding_venue",
+			CityID: "city_new_orleans_la", State: "LA", City: "New Orleans", Verified: "2026-08-03",
+		},
+		{
+			Name: "NOPSI Hotel", OfficialURL: "https://www.nopsihotel.com/weddings",
+			Handle: "nopsihotel", SourceClass: "wedding_venue",
+			CityID: "city_new_orleans_la", State: "LA", City: "New Orleans", Verified: "2026-08-03",
+		},
+		{
+			Name: "Baroness", OfficialURL: "https://www.baronessfq.com/",
+			Handle: "baronessfq", SourceClass: "wedding_venue",
+			CityID: "city_new_orleans_la", State: "LA", City: "New Orleans", Verified: "2026-08-03",
+		},
 	},
 }

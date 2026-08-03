@@ -208,5 +208,15 @@ var utPack = StatePack{
 			Handle: "forgejewelryworks", SourceClass: "jeweler",
 			CityID: "city_salt_lake_city_ut", State: "UT", City: "Salt Lake City", Verified: "2026-08-01",
 		},
+		{
+			Name: "Terra Ong Photography", OfficialURL: "https://terraongphotography.com/",
+			Handle: "terraong", SourceClass: "engagement_photographer",
+			CityID: "city_salt_lake_city_ut", State: "UT", City: "Salt Lake City", Verified: "2026-08-03",
+		},
+		{
+			Name: "Jessie and Dallin Photography", OfficialURL: "https://jessieanddallin.com/",
+			Handle: "jessieanddallin", SourceClass: "engagement_photographer",
+			CityID: "city_salt_lake_city_ut", State: "UT", City: "Salt Lake City", Verified: "2026-08-03",
+		},
 	},
 }

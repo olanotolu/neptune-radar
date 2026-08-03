@@ -209,5 +209,30 @@ var azPack = StatePack{
 			Handle: "christopherfinediamonds", SourceClass: "jeweler",
 			CityID: "city_phoenix_az", State: "AZ", City: "Phoenix", Verified: "2026-08-01",
 		},
+		{
+			Name: "Snapdragon Bloom Bar", OfficialURL: "https://snapdragonbloombar.com/",
+			Handle: "arizonaweddingflorist", SourceClass: "florist",
+			CityID: "city_phoenix_az", State: "AZ", City: "Phoenix", Verified: "2026-08-03",
+		},
+		{
+			Name: "Bloom and Blueprint", OfficialURL: "https://bloomandblueprint.com/",
+			Handle: "bloomandblueprint", SourceClass: "wedding_planner",
+			CityID: "city_phoenix_az", State: "AZ", City: "Phoenix", Verified: "2026-08-03",
+		},
+		{
+			Name: "C West Entertainment", OfficialURL: "https://www.djcwest.com/",
+			Handle: "cwestent", SourceClass: "videographer",
+			CityID: "city_phoenix_az", State: "AZ", City: "Phoenix", Verified: "2026-08-03",
+		},
+		{
+			Name: "Perfectly Planned Celebrations", OfficialURL: "https://www.perfectlyplannedbycandida.com/",
+			Handle: "perfectlyplannedcelebrations", SourceClass: "wedding_planner",
+			CityID: "city_tucson_az", State: "AZ", City: "Tucson", Verified: "2026-08-03",
+		},
+		{
+			Name: "Shua Photography", OfficialURL: "https://www.yourtucsonwedding.com/",
+			Handle: "shuaphoto520", SourceClass: "engagement_photographer",
+			CityID: "city_tucson_az", State: "AZ", City: "Tucson", Verified: "2026-08-03",
+		},
 	},
 }

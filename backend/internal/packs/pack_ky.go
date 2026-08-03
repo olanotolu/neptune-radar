@@ -204,5 +204,35 @@ var kyPack = StatePack{
 			CityID: "city_lexington_ky", State: "KY", City: "Lexington", Verified: "2026-08-02",
 			TikTokHandle: "thecampbellhouselex",
 		},
+		{
+			Name: "Green Apple Photography", OfficialURL: "https://www.greenappleweddings.co/",
+			Handle: "greenappleweddings", SourceClass: "engagement_photographer",
+			CityID: "city_louisville_ky", State: "KY", City: "Louisville", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Olmsted", OfficialURL: "https://www.theolmsted.com/",
+			Handle: "theolmsted", SourceClass: "wedding_venue",
+			CityID: "city_louisville_ky", State: "KY", City: "Louisville", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Kentucky Rose", OfficialURL: "https://kentuckyroseweddings.com/",
+			Handle: "thekentuckyrose", SourceClass: "wedding_venue",
+			CityID: "city_louisville_ky", State: "KY", City: "Louisville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Sarah Rae Designs", OfficialURL: "https://sarahraedesigns.com/",
+			Handle: "sarahraedesigns", SourceClass: "florist",
+			CityID: "city_louisville_ky", State: "KY", City: "Louisville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Emily Faith Photography", OfficialURL: "https://emilyfaithphotography.com/",
+			Handle: "emilyfaithphoto", SourceClass: "engagement_photographer",
+			CityID: "city_lexington_ky", State: "KY", City: "Lexington", Verified: "2026-08-03",
+		},
+		{
+			Name: "Spindletop Hall", OfficialURL: "https://www.spindletophall.org/",
+			Handle: "spindletophall", SourceClass: "wedding_venue",
+			CityID: "city_lexington_ky", State: "KY", City: "Lexington", Verified: "2026-08-03",
+		},
 	},
 }

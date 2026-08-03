@@ -24,6 +24,11 @@ var ilPack = StatePack{
 
 	// --- Cities ----------------------------------------------------------
 	Cities: []CityDef{
+	{
+		ID: "city_springfield_il", State: "IL", County: "17167", Name: "Springfield",
+		Lat: 39.7817, Lng: -89.6501,
+		Markets: []string{"springfield", "sangamon"},
+	},
 		{
 			ID: "city_chicago_il", State: "IL", County: "17031", Name: "Chicago",
 			Lat: 41.8781, Lng: -87.6298,
@@ -363,6 +368,11 @@ var ilPack = StatePack{
 			Name: "Reverend Dan's Wedding Service", OfficialURL: "https://www.revdans.com/",
 			Handle: "revdans", SourceClass: "officiant",
 			CityID: "city_chicago_il", State: "IL", City: "Chicago", Verified: "2026-08-01",
+		},
+		{
+			Name: "Springfield Country Club", OfficialURL: "https://springfieldcc.net/",
+			Handle: "springfieldcountryclub", SourceClass: "wedding_venue",
+			CityID: "city_springfield_il", State: "IL", City: "Springfield", Verified: "2026-08-03",
 		},
 	},
 }

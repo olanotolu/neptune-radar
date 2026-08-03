@@ -209,5 +209,30 @@ var coPack = StatePack{
 			Handle: "abbysparksjewelry", SourceClass: "jeweler",
 			CityID: "city_denver_co", State: "CO", City: "Denver", Verified: "2026-08-01",
 		},
+		{
+			Name: "From the Hip Photo", OfficialURL: "https://fromthehipphoto.com/",
+			Handle: "fromthehipphoto", SourceClass: "engagement_photographer",
+			CityID: "city_denver_co", State: "CO", City: "Denver", Verified: "2026-08-03",
+		},
+		{
+			Name: "Veiled Rose Films", OfficialURL: "https://www.veiledrosefilms.com/",
+			Handle: "veiledrosefilms", SourceClass: "videographer",
+			CityID: "city_denver_co", State: "CO", City: "Denver", Verified: "2026-08-03",
+		},
+		{
+			Name: "Birch and Blush Films", OfficialURL: "https://birchandblush.com/",
+			Handle: "birchandblushfillms", SourceClass: "videographer",
+			CityID: "city_denver_co", State: "CO", City: "Denver", Verified: "2026-08-03",
+		},
+		{
+			Name: "Envy Event Planning", OfficialURL: "https://www.envyep.com/",
+			Handle: "envy.event.planning", SourceClass: "wedding_planner",
+			CityID: "city_denver_co", State: "CO", City: "Denver", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Pinery at the Hill", OfficialURL: "https://thepinery.com/",
+			Handle: "thepinery", SourceClass: "wedding_venue",
+			CityID: "city_colorado_springs_co", State: "CO", City: "Colorado Springs", Verified: "2026-08-03",
+		},
 	},
 }

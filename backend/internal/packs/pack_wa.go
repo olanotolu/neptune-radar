@@ -210,5 +210,20 @@ var waPack = StatePack{
 			Handle: "storicastudio", SourceClass: "jeweler",
 			CityID: "city_seattle_wa", State: "WA", City: "Seattle", Verified: "2026-08-01",
 		},
+		{
+			Name: "Henry Tieu Photography", OfficialURL: "https://www.henry-tieu.com/",
+			Handle: "henrysdiary", SourceClass: "engagement_photographer",
+			CityID: "city_seattle_wa", State: "WA", City: "Seattle", Verified: "2026-08-03",
+		},
+		{
+			Name: "Beacon Hill Events", OfficialURL: "https://beaconhillevents.com/",
+			Handle: "beaconhillevents", SourceClass: "wedding_venue",
+			CityID: "city_spokane_wa", State: "WA", City: "Spokane", Verified: "2026-08-03",
+		},
+		{
+			Name: "Joseph Jewelry", OfficialURL: "https://www.josephjewelry.com/seattle",
+			Handle: "josephjewelry", SourceClass: "jeweler",
+			CityID: "city_seattle_wa", State: "WA", City: "Seattle", Verified: "2026-08-03",
+		},
 	},
 }

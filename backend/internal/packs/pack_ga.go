@@ -90,5 +90,40 @@ var gaPack = StatePack{
 		{Name: "Kesha Nettles Events", OfficialURL: "https://keshanettlesevents.com/",
 			Handle: "keshanettlesevents", SourceClass: "wedding_planner",
 			CityID: "city_atlanta_ga", State: "GA", City: "Atlanta", Verified: "2026-08-01"},
+		{
+			Name: "Denis Reggie Photographers", OfficialURL: "https://www.denisreggie.com/",
+			Handle: "denisreggie", SourceClass: "engagement_photographer",
+			CityID: "city_atlanta_ga", State: "GA", City: "Atlanta", Verified: "2026-08-03",
+		},
+		{
+			Name: "Emily Nicole Photography", OfficialURL: "https://emilynicolephotography.com/",
+			Handle: "emilynicole_photos", SourceClass: "engagement_photographer",
+			CityID: "city_atlanta_ga", State: "GA", City: "Atlanta", Verified: "2026-08-03",
+		},
+		{
+			Name: "Unique Floral Expressions", OfficialURL: "https://uniquefloralexpressions.com/",
+			Handle: "ufebuckhead", SourceClass: "florist",
+			CityID: "city_atlanta_ga", State: "GA", City: "Atlanta", Verified: "2026-08-03",
+		},
+		{
+			Name: "Flux Floral Design", OfficialURL: "https://www.fluxfloral.com/",
+			Handle: "fluxfloral", SourceClass: "florist",
+			CityID: "city_atlanta_ga", State: "GA", City: "Atlanta", Verified: "2026-08-03",
+		},
+		{
+			Name: "Flowers by Yona", OfficialURL: "https://flowersbyyona.com/",
+			Handle: "flowersbyyona", SourceClass: "florist",
+			CityID: "city_atlanta_ga", State: "GA", City: "Atlanta", Verified: "2026-08-03",
+		},
+		{
+			Name: "Esther Griffin Photography", OfficialURL: "https://esthergriffinphotography.com/",
+			Handle: "esthergriffinphoto", SourceClass: "engagement_photographer",
+			CityID: "city_savannah_ga", State: "GA", City: "Savannah", Verified: "2026-08-03",
+		},
+		{
+			Name: "Plant Riverside District", OfficialURL: "https://www.plantriverside.com/",
+			Handle: "plantriversidedistrict", SourceClass: "wedding_venue",
+			CityID: "city_savannah_ga", State: "GA", City: "Savannah", Verified: "2026-08-03",
+		},
 	},
 }

@@ -22,6 +22,11 @@ var dePack = StatePack{
 
 	// --- Cities ----------------------------------------------------------
 	Cities: []CityDef{
+	{
+		ID: "city_dover_de", State: "DE", County: "10001", Name: "Dover",
+		Lat: 39.1582, Lng: -75.5244,
+		Markets: []string{"dover", "kentcounty"},
+	},
 		{ID: "city_wilmington_de", State: "DE", County: "10003", Name: "Wilmington",
 			Lat: 39.7391, Lng: -75.5398, Markets: []string{"wilmington", "de", "delaware", "newcastle"}},
 	},
@@ -162,6 +167,21 @@ var dePack = StatePack{
 			Name: "Stephen's Jewelers", OfficialURL: "https://stephensjewelers.com/",
 			Handle: "stephensjewelers", SourceClass: "jeweler",
 			CityID: "city_wilmington_de", State: "DE", City: "Wilmington", Verified: "2026-08-01",
+		},
+		{
+			Name: "Stone Weddings", OfficialURL: "https://www.stoneweddings.com/",
+			Handle: "stoneweddings", SourceClass: "engagement_photographer",
+			CityID: "city_wilmington_de", State: "DE", City: "Wilmington", Verified: "2026-08-03",
+		},
+		{
+			Name: "King Cole Farm", OfficialURL: "https://www.kingcolefarm.com/",
+			Handle: "kingcolefarm", SourceClass: "wedding_venue",
+			CityID: "city_dover_de", State: "DE", City: "Dover", Verified: "2026-08-03",
+		},
+		{
+			Name: "Belak Flowers", OfficialURL: "https://www.belak-flowers.com/",
+			Handle: "belakflowers.wilmington", SourceClass: "florist",
+			CityID: "city_wilmington_de", State: "DE", City: "Wilmington", Verified: "2026-08-03",
 		},
 	},
 }

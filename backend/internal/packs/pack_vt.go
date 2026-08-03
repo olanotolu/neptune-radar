@@ -108,5 +108,15 @@ var vtPack = StatePack{
 			// ponytail: KnotURL placeholder — verify on theknot.com before production use
 			KnotURL: "https://www.theknot.com/marketplace/wedding-venues/shelburne-farms-5260807",
 		},
+		{
+			Name: "Clayton Floral", OfficialURL: "https://claytonandcovt.com/",
+			Handle: "claytonfloral", SourceClass: "florist",
+			CityID: "city_burlington_vt", State: "VT", City: "Burlington", Verified: "2026-08-03",
+		},
+		{
+			Name: "Hotel Champlain", OfficialURL: "https://www.hotelchamplainvermont.com/gather/weddings-celebrations/",
+			Handle: "hotelchamplainvt", SourceClass: "wedding_venue",
+			CityID: "city_burlington_vt", State: "VT", City: "Burlington", Verified: "2026-08-03",
+		},
 	},
 }

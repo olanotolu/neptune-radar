@@ -245,5 +245,35 @@ var wiPack = StatePack{
 			Handle: "brdiamondsuite", SourceClass: "jeweler",
 			CityID: "city_madison_wi", State: "WI", City: "Madison", Verified: "2026-08-01",
 		},
+		{
+			Name: "McKenna Marie Photography", OfficialURL: "https://www.mckennamariephoto.com/",
+			Handle: "mckennamariephoto", SourceClass: "engagement_photographer",
+			CityID: "city_milwaukee_wi", State: "WI", City: "Milwaukee", Verified: "2026-08-03",
+		},
+		{
+			Name: "St James 1868", OfficialURL: "https://stjames1868.com/",
+			Handle: "stjames1868", SourceClass: "wedding_venue",
+			CityID: "city_milwaukee_wi", State: "WI", City: "Milwaukee", Verified: "2026-08-03",
+		},
+		{
+			Name: "Tim Fitch Photography", OfficialURL: "https://www.timfitchweddings.com/",
+			Handle: "timfitchphotography", SourceClass: "engagement_photographer",
+			CityID: "city_madison_wi", State: "WI", City: "Madison", Verified: "2026-08-03",
+		},
+		{
+			Name: "James Stokes & Co.", OfficialURL: "https://www.james-stokes.com/",
+			Handle: "jamesstokesphoto", SourceClass: "engagement_photographer",
+			CityID: "city_madison_wi", State: "WI", City: "Madison", Verified: "2026-08-03",
+		},
+		{
+			Name: "Monona Terrace", OfficialURL: "https://www.mononaterrace.com/weddings/",
+			Handle: "mononaterrace", SourceClass: "wedding_venue",
+			CityID: "city_madison_wi", State: "WI", City: "Madison", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Tinsmith", OfficialURL: "https://www.thetinsmith.com/",
+			Handle: "tinsmithevents", SourceClass: "wedding_venue",
+			CityID: "city_madison_wi", State: "WI", City: "Madison", Verified: "2026-08-03",
+		},
 	},
 }

@@ -205,5 +205,20 @@ var nePack = StatePack{
 			Handle: "sartorhamann", SourceClass: "jeweler",
 			CityID: "city_lincoln_ne", State: "NE", City: "Lincoln", Verified: "2026-08-01",
 		},
+		{
+			Name: "Scott Conference Center", OfficialURL: "https://scottcenter.com/",
+			Handle: "scottconferencecenter", SourceClass: "wedding_venue",
+			CityID: "city_omaha_ne", State: "NE", City: "Omaha", Verified: "2026-08-03",
+		},
+		{
+			Name: "Bouquet", OfficialURL: "https://www.bouquetomaha.com/",
+			Handle: "bouquetomaha", SourceClass: "florist",
+			CityID: "city_omaha_ne", State: "NE", City: "Omaha", Verified: "2026-08-03",
+		},
+		{
+			Name: "Fancy Plants Flowers and Design", OfficialURL: "https://www.fancyplantsomaha.com/",
+			Handle: "fancyplantsflowers", SourceClass: "florist",
+			CityID: "city_omaha_ne", State: "NE", City: "Omaha", Verified: "2026-08-03",
+		},
 	},
 }

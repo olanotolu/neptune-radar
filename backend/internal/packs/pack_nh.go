@@ -114,5 +114,15 @@ var nhPack = StatePack{
 			Handle: "bellmanjewelers", SourceClass: "jeweler",
 			CityID: "city_manchester_nh", State: "NH", City: "Manchester", Verified: "2026-08-01",
 		},
+		{
+			Name: "Studio Elizabeth", OfficialURL: "https://www.studioelizabeth.net/",
+			Handle: "studioelizabethnh", SourceClass: "engagement_photographer",
+			CityID: "city_manchester_nh", State: "NH", City: "Manchester", Verified: "2026-08-03",
+		},
+		{
+			Name: "Flowers By Jennifer", OfficialURL: "https://www.flowersbyjennifer.com/",
+			Handle: "flowersbyjennifernh", SourceClass: "florist",
+			CityID: "city_manchester_nh", State: "NH", City: "Manchester", Verified: "2026-08-03",
+		},
 	},
 }

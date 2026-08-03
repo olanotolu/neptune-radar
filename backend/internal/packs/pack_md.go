@@ -217,5 +217,45 @@ var mdPack = StatePack{
 			Handle: "gabeandrubensjewelry", SourceClass: "jeweler",
 			CityID: "city_baltimore_md", State: "MD", City: "Baltimore", Verified: "2026-08-01",
 		},
+		{
+			Name: "Arpasi Photography", OfficialURL: "https://arpasiphotography.com/",
+			Handle: "arpasiphotography", SourceClass: "engagement_photographer",
+			CityID: "city_baltimore_md", State: "MD", City: "Baltimore", Verified: "2026-08-03",
+		},
+		{
+			Name: "Jen Harvey Photography", OfficialURL: "https://jenharveyphotography.com/",
+			Handle: "jenharveyphotography", SourceClass: "engagement_photographer",
+			CityID: "city_baltimore_md", State: "MD", City: "Baltimore", Verified: "2026-08-03",
+		},
+		{
+			Name: "Jenna Davis Photography", OfficialURL: "https://jennadavisphoto.com/",
+			Handle: "jennaphotography_1", SourceClass: "engagement_photographer",
+			CityID: "city_baltimore_md", State: "MD", City: "Baltimore", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Grand Baltimore", OfficialURL: "https://thegrandbaltimore.com/",
+			Handle: "thegrandbaltimore", SourceClass: "wedding_venue",
+			CityID: "city_baltimore_md", State: "MD", City: "Baltimore", Verified: "2026-08-03",
+		},
+		{
+			Name: "Kimpton Hotel Monaco Baltimore", OfficialURL: "https://monaco-baltimore.com/",
+			Handle: "KimptonMonacoBaltimore", SourceClass: "wedding_venue",
+			CityID: "city_baltimore_md", State: "MD", City: "Baltimore", Verified: "2026-08-03",
+		},
+		{
+			Name: "Blossoms of Bethesda", OfficialURL: "https://bethesdablossom.com/",
+			Handle: "blossomsofbethesda", SourceClass: "florist",
+			CityID: "city_bethesda_md", State: "MD", City: "Bethesda", Verified: "2026-08-03",
+		},
+		{
+			Name: "Nelson Coleman Jewelers", OfficialURL: "https://nelsoncoleman.com/",
+			Handle: "nelsoncolemantowson", SourceClass: "jeweler",
+			CityID: "city_baltimore_md", State: "MD", City: "Baltimore", Verified: "2026-08-03",
+		},
+		{
+			Name: "Smyth Jewelers", OfficialURL: "https://www.smythjewelers.com/",
+			Handle: "smythjewelers", SourceClass: "jeweler",
+			CityID: "city_baltimore_md", State: "MD", City: "Baltimore", Verified: "2026-08-03",
+		},
 	},
 }

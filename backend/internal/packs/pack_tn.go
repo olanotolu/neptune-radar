@@ -221,5 +221,95 @@ var tnPack = StatePack{
 			Handle: "genesisdiamonds", SourceClass: "jeweler",
 			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-01",
 		},
+		{
+			Name: "Stokes Del Rio Photography", OfficialURL: "https://stokesdelrio.com/",
+			Handle: "stokesdelrio", SourceClass: "engagement_photographer",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Brandon Allan Photography", OfficialURL: "https://brandonallanphotography.com/",
+			Handle: "brandonallanphotography", SourceClass: "engagement_photographer",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Harp and Olive Photography", OfficialURL: "https://harpandolive.com/",
+			Handle: "harpandolive", SourceClass: "engagement_photographer",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Cheekwood Estate & Gardens", OfficialURL: "https://cheekwood.org/weddings-facility-rentals/weddings/",
+			Handle: "cheekwood", SourceClass: "wedding_venue",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Parthenon Nashville", OfficialURL: "https://www.nashvilleparthenon.com/nashville-wedding-venue",
+			Handle: "nashvilleparthenon", SourceClass: "wedding_venue",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Rose Hill Flowers", OfficialURL: "https://www.rosehillflowers.com/",
+			Handle: "rosehillflowersnashville", SourceClass: "florist",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Frances and Jane Floral Design", OfficialURL: "https://francesandjane.com/",
+			Handle: "frances_and_jane", SourceClass: "florist",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Genesis Diamonds", OfficialURL: "https://genesisdiamonds.com/pages/nashville",
+			Handle: "genesisdiamonds", SourceClass: "jeweler",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "King Jewelers", OfficialURL: "https://kingjewelers.com/",
+			Handle: "kingjewelers", SourceClass: "jeweler",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Peerless Films", OfficialURL: "https://peerlessfilms.com/",
+			Handle: "peerlessfilms", SourceClass: "videographer",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "With This Ring Wedding Films", OfficialURL: "https://withthisringvideo.com/",
+			Handle: "wtrfilms", SourceClass: "videographer",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Baked in Nashville", OfficialURL: "http://www.bakedinnashville.com/",
+			Handle: "bakedinnashville", SourceClass: "wedding_cake",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Ivey Cake", OfficialURL: "https://www.iveycake.com/",
+			Handle: "iveycakestore", SourceClass: "wedding_cake",
+			CityID: "city_nashville_tn", State: "TN", City: "Nashville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Elizabeth Hoard Photography", OfficialURL: "https://www.elizabethhoardphotography.com/",
+			Handle: "elizabethhoardphotography", SourceClass: "engagement_photographer",
+			CityID: "city_memphis_tn", State: "TN", City: "Memphis", Verified: "2026-08-03",
+		},
+		{
+			Name: "Kevin Barre Photography", OfficialURL: "https://www.kevinbarrephoto.com/",
+			Handle: "kevinbarre", SourceClass: "engagement_photographer",
+			CityID: "city_memphis_tn", State: "TN", City: "Memphis", Verified: "2026-08-03",
+		},
+		{
+			Name: "Sam Sikes Photography", OfficialURL: "https://samsikesphotography.com/",
+			Handle: "samsikesphoto", SourceClass: "engagement_photographer",
+			CityID: "city_memphis_tn", State: "TN", City: "Memphis", Verified: "2026-08-03",
+		},
+		{
+			Name: "Memphis Botanic Garden", OfficialURL: "https://membg.org/rentals/",
+			Handle: "memphisbotanic", SourceClass: "wedding_venue",
+			CityID: "city_memphis_tn", State: "TN", City: "Memphis", Verified: "2026-08-03",
+		},
+		{
+			Name: "The Peabody Memphis", OfficialURL: "https://peabodymemphis.com/weddings/",
+			Handle: "peabodymemphis", SourceClass: "wedding_venue",
+			CityID: "city_memphis_tn", State: "TN", City: "Memphis", Verified: "2026-08-03",
+		},
 	},
 }

@@ -205,5 +205,55 @@ var scPack = StatePack{
 			Handle: "croghans", SourceClass: "jeweler",
 			CityID: "city_charleston_sc", State: "SC", City: "Charleston", Verified: "2026-08-02",
 		},
+		{
+			Name: "Taylor Jordan Photography", OfficialURL: "https://taylorjordanphotography.com/",
+			Handle: "taylorjordanphoto", SourceClass: "engagement_photographer",
+			CityID: "city_charleston_sc", State: "SC", City: "Charleston", Verified: "2026-08-03",
+		},
+		{
+			Name: "Georgia & Micah Photography", OfficialURL: "https://georgiaandmicah.com/",
+			Handle: "_gmphotoandfilm_", SourceClass: "engagement_photographer",
+			CityID: "city_charleston_sc", State: "SC", City: "Charleston", Verified: "2026-08-03",
+		},
+		{
+			Name: "Lowndes Grove", OfficialURL: "https://www.pphgcharleston.com/venues/lowndes-grove/",
+			Handle: "pphgcharleston", SourceClass: "wedding_venue",
+			CityID: "city_charleston_sc", State: "SC", City: "Charleston", Verified: "2026-08-03",
+		},
+		{
+			Name: "Festoon Charleston", OfficialURL: "https://festooncharleston.com/",
+			Handle: "festooncharleston", SourceClass: "florist",
+			CityID: "city_charleston_sc", State: "SC", City: "Charleston", Verified: "2026-08-03",
+		},
+		{
+			Name: "Firefly Weddings & Events", OfficialURL: "https://fireflywed.com/",
+			Handle: "fireflywed_charleston", SourceClass: "wedding_planner",
+			CityID: "city_charleston_sc", State: "SC", City: "Charleston", Verified: "2026-08-03",
+		},
+		{
+			Name: "Emma Ivey Events", OfficialURL: "https://emmaiveyevents.com/",
+			Handle: "emmaiveyevents", SourceClass: "wedding_planner",
+			CityID: "city_charleston_sc", State: "SC", City: "Charleston", Verified: "2026-08-03",
+		},
+		{
+			Name: "Vue 1919", OfficialURL: "https://vue1919.com/",
+			Handle: "vue1919gvl", SourceClass: "wedding_venue",
+			CityID: "city_greenville_sc", State: "SC", City: "Greenville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Statice Floral", OfficialURL: "https://www.staticeflowers.com/",
+			Handle: "staticefloral", SourceClass: "florist",
+			CityID: "city_greenville_sc", State: "SC", City: "Greenville", Verified: "2026-08-03",
+		},
+		{
+			Name: "Nikki Morgan Photography", OfficialURL: "https://www.nikkimorganphotography.com/",
+			Handle: "nikkimorganphotography", SourceClass: "engagement_photographer",
+			CityID: "city_columbia_sc", State: "SC", City: "Columbia", Verified: "2026-08-03",
+		},
+		{
+			Name: "Stone River Columbia", OfficialURL: "https://stonerivercolumbia.com/",
+			Handle: "stonerivercolumbia", SourceClass: "wedding_venue",
+			CityID: "city_columbia_sc", State: "SC", City: "Columbia", Verified: "2026-08-03",
+		},
 	},
 }
