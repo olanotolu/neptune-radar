@@ -36,20 +36,20 @@
   --radius-lg: 12px;
   --radius-xl: 16px;
 
-  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
-  --sans: "Inter", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: "Geist Mono", "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  --sans: "Geist", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 
   color-scheme: light;
   font-family: var(--sans);
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 16px;
+  line-height: 1.5;
   color: var(--ink);
   background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.011em;
-  font-feature-settings: "cv01", "cv02", "ss01";
+  letter-spacing: -0.02em;
+  font-feature-settings: "ss01", "ss02";
   font-variant-numeric: tabular-nums;
 }
 
@@ -66,11 +66,12 @@ h1, h2, h3, h4 {
   margin: 0;
   font-weight: 600;
   color: var(--ink);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
 h2, h3 {
-  letter-spacing: -0.015em;
+  letter-spacing: -0.025em;
 }
 
 p {
