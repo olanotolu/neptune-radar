@@ -141,7 +141,14 @@ func bootstrapGovernment(ctx context.Context, s *store.Store, hc connectors.Sour
 			ID: connID, SourceEndpointID: endpointID, ConnectorType: "http_health", Provider: "neptune-http-health-v1",
 		}))
 
-		runCheck(s, connID, g.SearchURL, hc.CheckHealth(ctx, g.SearchURL))
+		if g.SearchURL == "" {
+			// ponytail: some counties have no online marriage search (records
+			// only in-person or via town clerks). Skip the health check rather
+			// than logging a spurious "unsupported protocol scheme" failure.
+			runCheck(s, connID, g.SearchURL, connectors.CheckResult{Status: "skipped", ErrorMessage: "no online search URL"})
+		} else {
+			runCheck(s, connID, g.SearchURL, hc.CheckHealth(ctx, g.SearchURL))
+		}
 		n++
 	}
 	return n
@@ -340,6 +347,8 @@ func runCheck(s *store.Store, connectorID, endpointURL string, result connectors
 	}
 	if result.Status == "success" {
 		log.Printf("[bootstrap-state]   OK   %s", endpointURL)
+	} else if result.Status == "skipped" {
+		log.Printf("[bootstrap-state]   SKIP %s (%s)", endpointURL, result.ErrorMessage)
 	} else {
 		log.Printf("[bootstrap-state]   FAIL %s: %s", endpointURL, result.ErrorMessage)
 	}
