@@ -90,6 +90,10 @@ var waPack = StatePack{
 			SearchURL:  "https://kcwaimg.kitsap.gov/recorder/eagleweb/customSearch.jsp?pageId=Marriages",
 			Note:       "EagleWeb marriage-specific search page; enumeration candidate.",
 		},
+		{CountyFIPS: "53077", CourtName: "Walla Walla County Auditor",
+			CourtURL:  "https://www.wwcowa.gov/",
+			SearchURL: "https://digitalarchives.wa.gov/Collections/TitleInfo/46",
+			Note:      "Washington State Digital Archives marriage records search (1865-2026); search marriage returns, applications, certificates, licenses."},
 	},
 
 	// --- Church (Catholic dioceses + parishes) ---------------------------

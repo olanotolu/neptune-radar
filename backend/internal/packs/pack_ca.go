@@ -199,6 +199,69 @@ var caGovSources = []GovSource{
 		SearchURL:  "https://www.sdarcc.gov/content/arcc/home/divisions/recorder-clerk/birth-death-marriage-certificate/marriage-certificate.html",
 		Note:       "Marriage certificate requests via Assessor/Recorder/County Clerk; in-person and mail request.",
 	},
+	{
+		CountyFIPS: "06059", // Orange County
+		CourtName:  "Orange County Clerk-Recorder",
+		CourtURL:   "https://www.ocrecorder.com/",
+		SearchURL:  "https://cr.occlerkrecorder.gov/RecorderWorksInternet/",
+		Note:       "Online grantor/grantee index for official records since 1982; index only, no images online. Marriage records via separate vital records ordering.",
+	},
+	{
+		CountyFIPS: "06065", // Riverside County
+		CourtName:  "Riverside County Assessor-County Clerk-Recorder",
+		CourtURL:   "https://www.rivcoacr.org/",
+		SearchURL:  "https://webselfservice.riversideacr.com/Web/search/DOCSEARCH2805S3",
+		Note:       "Online document search portal; searchable by name, document number, or date range. Marriage certificates orderable via vitalsonline.asrclkrec.com.",
+	},
+	{
+		CountyFIPS: "06071", // San Bernardino County
+		CourtName:  "San Bernardino County Recorder-Clerk",
+		CourtURL:   "https://arc.sbcounty.gov/",
+		SearchURL:  "https://arcselfservice.sbcounty.gov/web/",
+		Note:       "Online self-service portal for official records from 1925 to present; index only (no images per GC 6254.21).",
+	},
+	{
+		CountyFIPS: "06067", // Sacramento County
+		CourtName:  "Sacramento County Clerk/Recorder",
+		CourtURL:   "https://ccr.saccounty.gov/",
+		SearchURL:  "https://ccr.saccounty.gov/us/en/document-recording/index.html",
+		Note:       "Online index of recorded documents since 1849; search by grantor/grantee name, document type, or date range. Index only.",
+	},
+	{
+		CountyFIPS: "06001", // Alameda County
+		CourtName:  "Alameda County Auditor-Controller/Clerk-Recorder",
+		CourtURL:   "https://auditor.alamedacountyca.gov/clerk-recorder/",
+		SearchURL:  "https://alamedacountyca.gov/bdmecomm_app/DisplayOrdServlet?proc=vord",
+		Note:       "Online ordering for birth, death, and marriage certificates. In-person index search for marriage records from 1971 to present.",
+	},
+	{
+		CountyFIPS: "06019", // Fresno County
+		CourtName:  "Fresno County Recorder",
+		CourtURL:   "https://www.fresnocountyca.gov/Departments/Recorder",
+		SearchURL:  "https://fresnocountyca-web.tylerhost.net",
+		Note:       "Online official records search via Tyler Technologies; index for documents recorded since 1981.",
+	},
+	{
+		CountyFIPS: "06013", // Contra Costa County
+		CourtName:  "Contra Costa County Clerk-Recorder",
+		CourtURL:   "https://www.contracostavote.gov/",
+		SearchURL:  "https://crsecurepayment.com/RW/?ln=en",
+		Note:       "RecorderWorks online portal for official records index from 1986 to present; searchable by name, document number, or book/page.",
+	},
+	{
+		CountyFIPS: "06111", // Ventura County
+		CourtName:  "Ventura County Clerk-Recorder & Registrar of Voters",
+		CourtURL:   "https://clerkrecorder.venturacounty.gov/",
+		SearchURL:  "https://clerkrecorderselfservice.ventura.org/web/user/disclaimer",
+		Note:       "Self-service official records search; searchable by name or document number. Index only, no images remotely.",
+	},
+	{
+		CountyFIPS: "06081", // San Mateo County
+		CourtName:  "San Mateo County Assessor-County Clerk-Recorder & Elections",
+		CourtURL:   "https://smcacre.gov/",
+		SearchURL:  "https://apps.smcacre.org/recorderworks/",
+		Note:       "RecorderWorks online grantor/grantee index for documents recorded since 1985; searchable by name, document number, date range, or parcel.",
+	},
 }
 
 var caDioceses = []DioceseDef{

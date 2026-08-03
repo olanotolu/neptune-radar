@@ -115,6 +115,18 @@ var ilPack = StatePack{
 			SearchURL:  "https://www.co.st-clair.il.us/departments/county-clerk/vital-records",
 			Note:       "Marriage records from 1763; no online search portal; VitalChek or in-person/mail request.",
 		},
+		{CountyFIPS: "17019", CourtName: "Champaign County Clerk",
+			CourtURL:  "https://www.champaigncountyclerk.com/",
+			SearchURL: "https://apps.ilsos.gov/isavital/marriagesrch.jsp",
+			Note:      "Illinois Statewide Marriage Index (1763-1900) for historical records; recent records via County Clerk."},
+		{CountyFIPS: "17143", CourtName: "Peoria County Clerk",
+			CourtURL:  "https://www.peoriacounty.gov/",
+			SearchURL: "https://apps.ilsos.gov/isavital/marriagesrch.jsp",
+			Note:      "Illinois Statewide Marriage Index (1763-1900) for historical records; recent records via genealogy request."},
+		{CountyFIPS: "17151", CourtName: "Sangamon County Clerk",
+			CourtURL:  "https://sangamonil.gov/",
+			SearchURL: "https://records.co.sangamon.il.us/records/",
+			Note:      "Online vital records search portal; search birth, marriage/civil union, and death records by name and date range."},
 	},
 
 	// --- Church (Catholic dioceses + parishes) ---------------------------

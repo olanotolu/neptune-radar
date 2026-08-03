@@ -206,6 +206,69 @@ var nyGovSources = []GovSource{
 		SearchURL:  "https://recordcenter.westchestergov.com/MarriageSearchResultAll.aspx",
 		Note:       "Online marriage records index with 200K+ records; public search available.",
 	},
+	{
+		CountyFIPS: "36081", // Queens County
+		CourtName:  "NYC City Clerk — Marriage Bureau (Queens)",
+		CourtURL:   "https://www.cityclerk.nyc.gov/",
+		SearchURL:  "https://cityclerkforms.nyc.gov/cityclerkformsonline/recordRequest.htm",
+		Note:       "NYC City Clerk marriage record request form; records 1930-present. Pre-1950 at NYC Municipal Archives.",
+	},
+	{
+		CountyFIPS: "36005", // Bronx County
+		CourtName:  "NYC City Clerk — Marriage Bureau (Bronx)",
+		CourtURL:   "https://www.cityclerk.nyc.gov/",
+		SearchURL:  "https://cityclerkforms.nyc.gov/cityclerkformsonline/recordRequest.htm",
+		Note:       "NYC City Clerk marriage record request form; records 1930-present. Pre-1950 at NYC Municipal Archives.",
+	},
+	{
+		CountyFIPS: "36085", // Richmond County (Staten Island)
+		CourtName:  "NYC City Clerk — Marriage Bureau (Staten Island)",
+		CourtURL:   "https://www.cityclerk.nyc.gov/",
+		SearchURL:  "https://cityclerkforms.nyc.gov/cityclerkformsonline/recordRequest.htm",
+		Note:       "NYC City Clerk marriage record request form; records 1930-present. Pre-1950 at NYC Municipal Archives.",
+	},
+	{
+		CountyFIPS: "36059", // Nassau County
+		CourtName:  "Nassau County Clerk",
+		CourtURL:   "https://www.nassaucountyny.gov/458/County-Clerk",
+		SearchURL:  "https://files.nassauclerk.com/default.cfm?site=OR",
+		Note:       "Historic document search for marriage licenses 1840-1934. Modern records at town clerks.",
+	},
+	{
+		CountyFIPS: "36103", // Suffolk County
+		CourtName:  "Suffolk County Clerk",
+		CourtURL:   "https://suffolkcountyny.gov/Clerk",
+		SearchURL:  "",
+		Note:       "County Clerk does NOT maintain marriage records; issued by town/city clerks. Historical index 1904-1939 via German Genealogy Group.",
+	},
+	{
+		CountyFIPS: "36029", // Erie County (Buffalo)
+		CourtName:  "Erie County Clerk",
+		CourtURL:   "https://www4.erie.gov/clerk/",
+		SearchURL:  "https://ecclerk.erie.gov/recordsng_web/",
+		Note:       "Online records search available; marriage records (1878-1935) not online — must visit Record Room. Buffalo City records at City Hall.",
+	},
+	{
+		CountyFIPS: "36055", // Monroe County (Rochester)
+		CourtName:  "Monroe County Clerk",
+		CourtURL:   "https://www4.monroecounty.gov/clerk-index",
+		SearchURL:  "",
+		Note:       "County Clerk does NOT issue or keep marriage licenses; issued by city/town clerks. Online system for land/court records only.",
+	},
+	{
+		CountyFIPS: "36091", // Onondaga County (Syracuse)
+		CourtName:  "Onondaga County Clerk",
+		CourtURL:   "https://onondaga.gov/clerk/",
+		SearchURL:  "",
+		Note:       "Marriage records for City of Syracuse only (1908-1938); no online search. Contact local municipality for other areas.",
+	},
+	{
+		CountyFIPS: "36027", // Albany County
+		CourtName:  "Albany County Clerk",
+		CourtURL:   "https://www.albanycountyny.gov/government/departments/county-clerk",
+		SearchURL:  "",
+		Note:       "Marriage records for City of Albany only (1870-1946) at Hall of Records; no online search. Contact town/city clerk for other areas.",
+	},
 }
 
 var nyDioceses = []DioceseDef{

@@ -107,6 +107,18 @@ var ohPack = StatePack{
 			SearchURL:  "https://www.co.lucas.oh.us/169/Probate-Court",
 			Note:       "Official custodian page; online enumeration not yet confirmed.",
 		},
+		{CountyFIPS: "39051", CourtName: "Delaware County Probate Court",
+			CourtURL:  "https://probate.co.delaware.oh.us/",
+			SearchURL: "https://probate.co.delaware.oh.us/recordsearch/",
+			Note:      "Online probate court record search; marriage records from 1996 to present."},
+		{CountyFIPS: "39069", CourtName: "Lake County Probate Court",
+			CourtURL:  "https://www.lakecountyohio.gov/probate-court/",
+			SearchURL: "https://phoenix.lakecountyohio.gov/jwprobate",
+			Note:      "Online probate case search; includes marriage department cases with document images."},
+		{CountyFIPS: "39151", CourtName: "Stark County Probate Court",
+			CourtURL:  "https://starkcountyohio.gov/",
+			SearchURL: "http://www.probate.co.stark.oh.us/search/search_main.html",
+			Note:      "Online probate case search; marriage indices from April 23, 1986 to present."},
 	},
 
 	// --- Church (Catholic dioceses + parishes) ---------------------------

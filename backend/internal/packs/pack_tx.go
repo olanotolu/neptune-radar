@@ -105,6 +105,76 @@ var txPack = StatePack{
 			SearchURL:  "https://apps.epcountytx.gov/publicrecords/Marriages",
 			Note:       "Dedicated marriage records search application; enumeration candidate.",
 		},
+		{
+			CountyFIPS: "48157", // Fort Bend County
+			CourtName:  "Fort Bend County Clerk",
+			CourtURL:   "https://www.fortbendcountytx.gov/government/departments/county-clerk",
+			SearchURL:  "https://ccweb.co.fort-bend.tx.us/Marriage/SearchEntry.aspx",
+			Note:       "Online marriage license index search; requires applicant name or date of marriage; unofficial copies printable online.",
+		},
+		{
+			CountyFIPS: "48339", // Montgomery County
+			CourtName:  "Montgomery County Clerk",
+			CourtURL:   "https://www.mctx.org/countyclerk",
+			SearchURL:  "https://montgomery.tx.publicsearch.us/",
+			Note:       "Public records portal via publicsearch.us; search by document number or party name with date range.",
+		},
+		{
+			CountyFIPS: "48121", // Denton County
+			CourtName:  "Denton County Clerk",
+			CourtURL:   "https://www.dentoncounty.gov/173/County-Clerk",
+			SearchURL:  "https://dentontx.search.kofile.com/48121/Home/Index/1",
+			Note:       "Online marriage license index search at no cost; images not viewable online, must visit office.",
+		},
+		{
+			CountyFIPS: "48491", // Williamson County
+			CourtName:  "Williamson County Clerk",
+			CourtURL:   "https://www.wilcotx.gov/countyclerk",
+			SearchURL:  "https://williamsoncountytx-web.tylerhost.net/williamsonweb/user/disclaimer",
+			Note:       "Official public records search via Tyler Technologies; marriage, birth, and death records searchable.",
+		},
+		{
+			CountyFIPS: "48167", // Galveston County
+			CourtName:  "Galveston County Clerk",
+			CourtURL:   "https://www.galvestoncountytx.gov/our-county/county-clerk/county-clerk-86",
+			SearchURL:  "https://txgalveston.fidlar.com/TXGalveston/Apex.WebPortal/search",
+			Note:       "Marriage license and assumed name record search via Fidlar Technologies portal.",
+		},
+		{
+			CountyFIPS: "48309", // McLennan County (Waco)
+			CourtName:  "McLennan County Clerk",
+			CourtURL:   "https://www.mclennan.gov/166/County-Clerk",
+			SearchURL:  "https://mclennancountytx-web.tylerhost.net/web/user/disclaimer",
+			Note:       "Online marriage records search from April 1878 to present; plain copies $1, certified copies $6.",
+		},
+		{
+			CountyFIPS: "48039", // Brazoria County
+			CourtName:  "Brazoria County Clerk",
+			CourtURL:   "https://www.brazoriacountyclerktx.gov/",
+			SearchURL:  "https://www.brazoriacountyclerktx.gov/search-records",
+			Note:       "Requires registration and $5 fee per name for marriage record search; vital records require payment before search.",
+		},
+		{
+			CountyFIPS: "48027", // Bell County (Killeen/Temple)
+			CourtName:  "Bell County Clerk",
+			CourtURL:   "https://bellcountytx.com/county_government/county_clerk/",
+			SearchURL:  "https://bell.tx.publicsearch.us/",
+			Note:       "Public records portal via publicsearch.us; certified copies ordered through Permitium.",
+		},
+		{
+			CountyFIPS: "48245", // Jefferson County (Beaumont)
+			CourtName:  "Jefferson County Clerk",
+			CourtURL:   "https://jeffersoncountytx.gov/cclerk",
+			SearchURL:  "https://jefferson.tx.publicsearch.us/",
+			Note:       "Official records search via publicsearch.us; over 2.8 million records available free of charge.",
+		},
+		{
+			CountyFIPS: "48355", // Nueces County (Corpus Christi)
+			CourtName:  "Nueces County Clerk",
+			CourtURL:   "https://www.co.nueces.tx.us/countyclerk/",
+			SearchURL:  "https://nueces.tx.publicsearch.us/",
+			Note:       "Official records search via publicsearch.us; search by department (Marriage) and party names.",
+		},
 	},
 
 	// --- Church (Catholic dioceses + parishes) ---------------------------

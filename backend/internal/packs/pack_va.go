@@ -104,6 +104,18 @@ var vaPack = StatePack{
 			SearchURL:  "https://www.arlingtonva.us/Government/Departments/Courts/Circuit-Court",
 			Note:       "Marriage license by appointment; certified copies via clerk or Vital Records; request-oriented.",
 		},
+		{CountyFIPS: "51036", CourtName: "Chesapeake Circuit Court Clerk",
+			CourtURL:  "https://cityofchesapeake.net/",
+			SearchURL: "https://chesapeakemarriage.org/",
+			Note:      "Online marriage license application portal; complete application online and schedule appointment."},
+		{CountyFIPS: "51095", CourtName: "Norfolk Circuit Court Clerk",
+			CourtURL:  "https://www.norfolkcircuitcourt.us/",
+			SearchURL: "",
+			Note:      "No online marriage record search; request certified copies in person or via document request form."},
+		{CountyFIPS: "51730", CourtName: "Portsmouth Circuit Court Clerk",
+			CourtURL:  "https://www.portsmouthva.gov/",
+			SearchURL: "",
+			Note:      "No online marriage record search; Secure Remote Access for land records but marriage records require in-person."},
 	},
 
 	// --- Church (Catholic dioceses + parishes) ---------------------------

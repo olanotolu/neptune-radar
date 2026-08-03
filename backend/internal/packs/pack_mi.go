@@ -111,6 +111,10 @@ var miPack = StatePack{
 			SearchURL:  "https://miottawa.fidlar.com/MIOttawa/Apex.WebPortal/search",
 			Note:       "fidlar Apex WebPortal for marriage record search; enumeration candidate.",
 		},
+		{CountyFIPS: "26115", CourtName: "Monroe County Clerk",
+			CourtURL:  "https://co.monroe.mi.us/",
+			SearchURL: "https://fidlar.monroemi.org/MIMonroeVS/Apex.WebPortal/applications",
+			Note:      "Online marriage license application portal; apply online then visit Clerk's office to complete."},
 	},
 
 	// --- Church (Catholic dioceses + parishes) ---------------------------

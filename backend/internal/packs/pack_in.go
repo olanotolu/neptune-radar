@@ -89,6 +89,10 @@ var inPack = StatePack{
 			SearchURL:  "https://public.courts.in.gov/mlpl/Search/",
 			Note:       "Statewide lookup; Tippecanoe County clerk in Lafayette courthouse; record requests via SBS Portals.",
 		},
+		{CountyFIPS: "18095", CourtName: "Lake County Clerk of Courts",
+			CourtURL:  "https://lakecountyin.gov/",
+			SearchURL: "https://public.courts.in.gov/mlpl/Search/",
+			Note:      "Indiana statewide Marriage License Public Lookup; search marriage licenses from 1993 to present by name and county."},
 	},
 
 	// --- Church (Catholic dioceses + parishes) ---------------------------
