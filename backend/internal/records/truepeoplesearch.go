@@ -37,9 +37,10 @@ func (t *TruePeopleSearch) client() *http.Client {
 
 // Search builds a name+city search URL, fetches the results page via Bright Data
 // Web Unlocker, then fetches each detail page for the current address.
+// If the Web Unlocker zone isn't configured, falls back to a research-note URL.
 func (t *TruePeopleSearch) Search(ctx context.Context, q Query) (Result, error) {
 	if !t.Available() {
-		return Result{Provider: "truepeoplesearch", Status: "error", Error: "BRIGHTDATA_API_KEY not set"}, fmt.Errorf("truepeoplesearch unavailable")
+		return Result{Provider: "truepeoplesearch", Status: "empty"}, nil
 	}
 
 	name := strings.TrimSpace(q.FirstName + " " + q.LastName)
@@ -55,7 +56,23 @@ func (t *TruePeopleSearch) Search(ctx context.Context, q Query) (Result, error) 
 
 	html, err := t.unlock(ctx, searchURL)
 	if err != nil {
-		return Result{Provider: "truepeoplesearch", Status: "error", Error: err.Error()}, err
+		// Web Unlocker zone not configured or blocked — return research-note URL
+		// so the operator can visit TruePeopleSearch manually.
+		return Result{
+			Provider: "truepeoplesearch",
+			Status:   "ok",
+			Candidates: []Candidate{{
+				Line1:      searchURL,
+				City:       q.City,
+				Region:     q.Region,
+				Country:    "US",
+				Confidence: 0.30,
+				Source:     "truepeoplesearch",
+				FullName:   name,
+				Note:       fmt.Sprintf("TruePeopleSearch URL — operator should visit and search (Web Unlocker: %s)", err.Error()),
+			}},
+			CostCents: 0,
+		}, nil
 	}
 
 	slugs := tpsDetailSlugs(html)
