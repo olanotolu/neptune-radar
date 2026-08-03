@@ -5028,10 +5028,11 @@
 
 .kit-postcard-frame {
   width: 100%;
-  min-height: 420px;
+  min-height: 440px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   background: var(--bg-alt);
+  box-shadow: var(--shadow);
 }
 
 .kit-message {

@@ -565,7 +565,7 @@ func RenderPostcardHTML(k store.CongratulateKit) string {
 	}
 	img := html.EscapeString(proxyMediaURL(rawImg))
 
-	frontPhoto := `<div class="pc-front__photo pc-front__photo--empty">♥</div>`
+	frontPhoto := `<div class="pc-front__photo pc-front__photo--empty"></div>`
 	if img != "" {
 		frontPhoto = fmt.Sprintf(`<div class="pc-front__photo" style="background-image:url('%s')"></div>`, img)
 	}
@@ -574,27 +574,39 @@ func RenderPostcardHTML(k store.CongratulateKit) string {
 <html><head><meta charset="utf-8"/><title>Postcard — %s & %s</title>
 <style>
   @page { size: 6in 4in; margin: 0; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; background: #f4f1ea; color: #1c1917; }
-  .pc-sheet { display: flex; flex-wrap: wrap; gap: 16px; padding: 16px; justify-content: center; }
-  .pc-card { width: 6in; height: 4in; border-radius: 4px; overflow: hidden; box-shadow: 0 8px 28px rgba(28,25,23,.12); background: #fff; position: relative; }
-  .pc-front { display: grid; grid-template-rows: 1fr auto; height: 100%%; background: linear-gradient(160deg, #1a3a3c 0%%, #0f2628 100%%); color: #faf7f2; }
-  .pc-front__photo { background-size: cover; background-position: center; min-height: 0; }
-  .pc-front__photo--empty { display:flex; align-items:center; justify-content:center; font-size: 64px; opacity: .5; background: #244a4c; }
-  .pc-front__banner { padding: 14px 20px 18px; text-align: center; }
-  .pc-front__headline { font-size: 28px; letter-spacing: .04em; font-weight: 500; margin: 0 0 4px; }
-  .pc-front__pair { font-size: 15px; opacity: .9; margin: 0; font-style: italic; }
-  .pc-front__loc { font-size: 11px; opacity: .65; margin: 6px 0 0; font-family: ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; }
-  .pc-back { display: grid; grid-template-columns: 1.15fr 0.85fr; height: 100%%; background: #fdfbf7; }
-  .pc-back__message { padding: 22px 20px; font-size: 13px; line-height: 1.55; border-right: 1px dashed #d6d0c4; }
-  .pc-back__message p { margin: 0 0 10px; white-space: normal; }
-  .pc-back__from { margin-top: 16px; font-size: 12px; color: #57534e; }
-  .pc-back__addr { padding: 22px 18px; display: flex; flex-direction: column; justify-content: space-between; }
-  .pc-back__stamp { width: 48px; height: 56px; border: 1.5px dashed #a8a29e; align-self: flex-end; border-radius: 2px; opacity: .5; }
-  .pc-back__to { font-size: 13px; line-height: 1.45; margin-top: 24px; }
-  .pc-back__to strong { display: block; margin-bottom: 4px; }
-  .pc-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #78716c; font-family: ui-monospace, monospace; margin-bottom: 8px; }
-  @media print { body { background: #fff; } .pc-sheet { padding: 0; gap: 0; } .pc-card { box-shadow: none; page-break-after: always; } }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { margin: 0; background: #f7f7f8; color: #0a0a0a; -webkit-font-smoothing: antialiased; }
+  .pc-sheet { display: flex; flex-wrap: wrap; gap: 20px; padding: 24px; justify-content: center; }
+  .pc-card { width: 6in; height: 4in; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.08), 0 12px 32px rgba(0,0,0,.06); position: relative; }
+
+  /* ---- front: black canvas, photo, minimal type ---- */
+  .pc-front { display: grid; grid-template-rows: 1fr auto; height: 100%%; background: #0a0a0a; color: #fafafa; }
+  .pc-front__photo { background-size: cover; background-position: center; min-height: 0; filter: grayscale(100%%) contrast(1.05); opacity: .55; }
+  .pc-front__photo--empty { background: #18181b; opacity: 1; }
+  .pc-front__banner { padding: 20px 24px 24px; text-align: center; position: relative; z-index: 1; }
+  .pc-front__headline { font-family: "Geist", "Inter", -apple-system, sans-serif; font-size: 26px; font-weight: 600; letter-spacing: -0.03em; margin: 0 0 6px; line-height: 1.1; }
+  .pc-front__pair { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-size: 15px; font-style: italic; opacity: .8; margin: 0; }
+  .pc-front__loc { font-family: "Geist Mono", "IBM Plex Mono", ui-monospace, monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; opacity: .5; margin: 8px 0 0; }
+  .pc-front__rule { width: 32px; height: 1px; background: #fafafa; opacity: .3; margin: 10px auto 0; }
+
+  /* ---- back: white, serif message, mono labels ---- */
+  .pc-back { display: grid; grid-template-columns: 1.2fr 0.8fr; height: 100%%; background: #ffffff; }
+  .pc-back__message { padding: 24px 22px; border-right: 1px solid #e8e8ea; display: flex; flex-direction: column; }
+  .pc-back__message p { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-size: 13px; line-height: 1.6; color: #1a1a1a; white-space: normal; }
+  .pc-back__from { margin-top: auto; padding-top: 16px; font-family: "Geist Mono", "IBM Plex Mono", ui-monospace, monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: #71717a; }
+  .pc-back__addr { padding: 24px 20px; display: flex; flex-direction: column; justify-content: space-between; }
+  .pc-back__stamp { width: 44px; height: 52px; border: 1px solid #d1d1d4; align-self: flex-end; border-radius: 2px; display: flex; align-items: center; justify-content: center; }
+  .pc-back__stamp::after { content: "✦"; font-size: 14px; color: #d1d1d4; }
+  .pc-back__to { font-size: 12px; line-height: 1.5; margin-top: 28px; color: #1a1a1a; }
+  .pc-back__to strong { display: block; font-weight: 600; margin-bottom: 4px; font-family: "Geist", "Inter", sans-serif; font-size: 13px; }
+  .pc-label { font-family: "Geist Mono", "IBM Plex Mono", ui-monospace, monospace; font-size: 8px; text-transform: uppercase; letter-spacing: .14em; color: #a1a1aa; margin-bottom: 8px; }
+  .pc-back__addr-pending { color: #a1a1aa; font-style: italic; font-size: 11px; }
+
+  @media print {
+    body { background: #fff; }
+    .pc-sheet { padding: 0; gap: 0; }
+    .pc-card { box-shadow: none; page-break-after: always; }
+  }
 </style></head><body>
 <div class="pc-sheet">
   <div class="pc-card pc-front">
@@ -602,6 +614,7 @@ func RenderPostcardHTML(k store.CongratulateKit) string {
     <div class="pc-front__banner">
       <h1 class="pc-front__headline">%s</h1>
       <p class="pc-front__pair">%s &amp; %s</p>
+      <div class="pc-front__rule"></div>
       %s
     </div>
   </div>
@@ -614,7 +627,7 @@ func RenderPostcardHTML(k store.CongratulateKit) string {
     <div class="pc-back__addr">
       <div class="pc-back__stamp" title="Stamp area"></div>
       <div class="pc-back__to">
-        <div class="pc-label">To</div>
+        <div class="pc-label">Deliver to</div>
         <strong>%s &amp; %s</strong>
         %s
       </div>
@@ -637,7 +650,7 @@ func RenderPostcardHTML(k store.CongratulateKit) string {
 
 func formatAddressHTML(k store.CongratulateKit) string {
 	if k.AddressLine1 == "" && k.AddressCity == "" {
-		return `<span style="color:#a8a29e;font-style:italic">Address pending human verification</span>`
+		return `<span class="pc-back__addr-pending">Address pending human verification</span>`
 	}
 	var parts []string
 	if k.AddressLine1 != "" {
