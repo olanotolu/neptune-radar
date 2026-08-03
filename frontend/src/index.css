@@ -1,52 +1,55 @@
 :root {
-  /* Surfaces — linen, white, hairlines */
-  --bg: #f1f2ec;
-  --bg-alt: #ececeb;
+  /* Surfaces — pure white, near-white, hairlines */
+  --bg: #ffffff;
+  --bg-alt: #f7f7f8;
   --surface: #ffffff;
-  --surface-hover: #fafafa;
-  --chip: #f2f2f2;
-  --border: #ececeb;
-  --border-strong: #d7d6d4;
+  --surface-hover: #f4f4f5;
+  --chip: #f4f4f5;
+  --border: #e8e8ea;
+  --border-strong: #d1d1d4;
 
   /* Ink */
-  --ink: #161514;
-  --ink-soft: #71706f;
-  --ink-dim: #888980;
-  --ink-faint: #c8c7c4;
+  --ink: #0a0a0a;
+  --ink-soft: #52525b;
+  --ink-dim: #71717a;
+  --ink-faint: #d4d4d8;
 
-  /* Brand accents (Natural palette) */
-  --mesa: #f3813f;
-  --mesa-deep: #be5915;
-  --mesa-soft: #ffe9df;
-  --cove: #d7f4f5;
-  --cove-deep: #008285;
-  --cove-ink: #0070a9;
+  /* Brand accents — mapped to B&W scale.
+     mesa and cove were warm/teal; now both are black/gray.
+     Black IS the accent in a B&W design. */
+  --mesa: #0a0a0a;
+  --mesa-deep: #000000;
+  --mesa-soft: #f4f4f5;
+  --cove: #f4f4f5;
+  --cove-deep: #0a0a0a;
+  --cove-ink: #18181b;
 
-  /* Status */
-  --red: #e24848;
-  --green: #008285;
+  /* Status — desaturated, functional only */
+  --red: #dc2626;
+  --green: #16a34a;
+  --amber: #d97706;
 
   /* Accent + radii */
-  --accent: #4f8cff;
+  --accent: #0a0a0a;
   --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
-  --sans: "Space Grotesk", "Inter", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --sans: "Inter", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 
   color-scheme: light;
   font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.55;
   color: var(--ink);
   background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  letter-spacing: 0;
-  font-feature-settings: "ss01", "cv01", "cv02";
+  letter-spacing: -0.011em;
+  font-feature-settings: "cv01", "cv02", "ss01";
   font-variant-numeric: tabular-nums;
 }
 
@@ -61,13 +64,13 @@ body {
 
 h1, h2, h3, h4 {
   margin: 0;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 h2, h3 {
-  letter-spacing: -0.005em;
+  letter-spacing: -0.015em;
 }
 
 p {
@@ -79,41 +82,42 @@ button {
 }
 
 ::selection {
-  background: var(--mesa-soft);
-  color: var(--mesa-deep);
+  background: #0a0a0a;
+  color: #ffffff;
 }
 
 /* ---------- dark mode ---------- */
 
 [data-theme="dark"] {
-  /* Surfaces — GitHub-dark-ish, three-tier for depth */
-  --bg: #0d1117;
-  --bg-alt: #161b22;
-  --surface: #1c2230;
-  --surface-hover: #252b38;
-  --chip: #21262d;
-  --border: #3d444d;
-  --border-strong: #484f58;
+  /* Surfaces — true dark, three-tier for depth */
+  --bg: #0a0a0a;
+  --bg-alt: #141414;
+  --surface: #18181b;
+  --surface-hover: #232326;
+  --chip: #1f1f23;
+  --border: #2a2a2e;
+  --border-strong: #3f3f46;
 
   /* Ink */
-  --ink: #e6edf3;
-  --ink-soft: #9da7b3;
-  --ink-dim: #8b949e;
-  --ink-faint: #484f58;
+  --ink: #fafafa;
+  --ink-soft: #a1a1aa;
+  --ink-dim: #71717a;
+  --ink-faint: #3f3f46;
 
-  /* Brand accents stay the same — they read well on dark. */
-  --mesa: #f3813f;
-  --mesa-deep: #ff9d5c;
-  --mesa-soft: #3a2418;
-  --cove: #0d3a3c;
-  --cove-deep: #2dd4d8;
-  --cove-ink: #5cc6e6;
+  /* Brand accents — inverted B&W */
+  --mesa: #fafafa;
+  --mesa-deep: #ffffff;
+  --mesa-soft: #232326;
+  --cove: #232326;
+  --cove-deep: #fafafa;
+  --cove-ink: #e4e4e7;
 
   --red: #f87171;
-  --green: #2dd4d8;
+  --green: #4ade80;
+  --amber: #fbbf24;
 
-  --accent: #6ca8ff;
-  --shadow-color: rgba(0, 0, 0, 0.4);
+  --accent: #fafafa;
+  --shadow-color: rgba(0, 0, 0, 0.5);
 
   color-scheme: dark;
   color: var(--ink);
