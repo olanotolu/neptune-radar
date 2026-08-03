@@ -58,9 +58,9 @@ func (p *PDL) Search(ctx context.Context, q Query) (Result, error) {
 		body["region"] = q.Region
 	}
 	if q.Handle != "" {
-		body["profile"] = "linkedin.com/in/placeholder" // unused if not real
-		// Prefer Instagram-style if PDL supports social — use name primarily.
-		_ = q.Handle
+		h := strings.TrimSpace(q.Handle)
+		h = strings.TrimPrefix(h, "@")
+		body["profile"] = "instagram.com/" + h
 	}
 
 	payload, _ := json.Marshal(body)

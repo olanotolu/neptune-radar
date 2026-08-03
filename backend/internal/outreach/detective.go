@@ -87,16 +87,57 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 	if lastA == "" && lastB == "" {
 		k.ResearchNotes = strings.TrimSpace(k.ResearchNotes + "\n\n⚠ Detective: no last names — street hits unlikely. Fill Last name A/B and re-run.")
 	}
-	res, err := prov.Search(ctx, q)
-	// Also try partner as primary if first search empty and partner named
-	if (err != nil || len(res.Candidates) == 0) && firstB != "" {
-		q2 := q
-		q2.FirstName, q2.LastName = firstB, lastB
-		q2.PartnerFirst, q2.PartnerLast = firstA, lastA
-		q2.Handle = k.HandleB
-		if res2, err2 := prov.Search(ctx, q2); err2 == nil && len(res2.Candidates) > 0 {
-			res = res2
-			err = nil
+	// Married-name cascade: search up to 4 name variants, stopping at street-level hits.
+	// After marriage one partner often takes the other's last name, so try those variants too.
+	type variant struct {
+		first, last, handle, note string
+	}
+	variants := []variant{
+		{firstA, lastA, k.HandleA, ""},
+	}
+	if lastB != "" && lastB != lastA {
+		variants = append(variants, variant{firstA, lastB, k.HandleA,
+			fmt.Sprintf("Married-name variant: searched as %s %s", firstA, lastB)})
+	}
+	if firstB != "" {
+		variants = append(variants, variant{firstB, lastB, k.HandleB, ""})
+		if lastA != "" && lastA != lastB {
+			variants = append(variants, variant{firstB, lastA, k.HandleB,
+				fmt.Sprintf("Married-name variant: searched as %s %s", firstB, lastA)})
+		}
+	}
+
+	var res records.Result
+	err = nil
+	for vi, v := range variants {
+		qv := q
+		qv.FirstName, qv.LastName = v.first, v.last
+		qv.Handle = v.handle
+		// partner fields reflect the other person for context
+		if v.first == firstA {
+			qv.PartnerFirst, qv.PartnerLast = firstB, lastB
+		} else {
+			qv.PartnerFirst, qv.PartnerLast = firstA, lastA
+		}
+		rv, e := prov.Search(ctx, qv)
+		if vi == 0 {
+			res, err = rv, e
+		} else if e == nil && hasStreetCandidates(rv.Candidates) {
+			res, err = rv, nil
+		} else {
+			continue // keep prior result if this variant found nothing street-level
+		}
+		if v.note != "" {
+			for i := range res.Candidates {
+				if res.Candidates[i].Note == "" {
+					res.Candidates[i].Note = v.note
+				} else {
+					res.Candidates[i].Note = v.note + " · " + res.Candidates[i].Note
+				}
+			}
+		}
+		if hasStreetCandidates(res.Candidates) {
+			break // street-level hit — stop cascade
 		}
 	}
 
@@ -409,6 +450,16 @@ func (a *Agent) SendPostcard(ctx context.Context, kitID string) (store.Congratul
 	_, _ = a.Store.DB.Exec(`UPDATE congratulate_kits SET mail_external_id = $2, mail_provider = 'lob', updated_at = now() WHERE id = $1`,
 		k.ID, res.ExternalID)
 	return a.Store.UpsertCongratulateKit(k)
+}
+
+// hasStreetCandidates reports whether any candidate has a street address (Line1).
+func hasStreetCandidates(cs []records.Candidate) bool {
+	for _, c := range cs {
+		if c.Line1 != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func splitName(full string) (first, last string) {

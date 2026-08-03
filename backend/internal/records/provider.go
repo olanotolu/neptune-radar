@@ -86,16 +86,18 @@ func NewProvider() Provider {
 	return &Heuristic{}
 }
 
-// Multi tries primary → secondary → heuristic so UI always gets something useful.
+// Multi tries primary → free public records → heuristic so UI always gets something useful.
+// Cascade: paid API (PDL/Trestle) → TruePeopleSearch → county property → voter registration → heuristic.
 type Multi struct {
 	Primary   Provider
+	Secondary Provider // optional second paid provider
+	Free      []Provider // free public-records providers, tried in order
 	Fallback  Provider
-	Secondary Provider // optional second-tier provider before heuristic
 }
 
 func NewMulti() *Multi {
 	p := NewProvider()
-	// Second tier: pick the next best provider that isn't the primary
+	// Second tier: pick the next best paid provider that isn't the primary
 	var second Provider
 	switch p.(type) {
 	case *Trestle:
@@ -122,7 +124,14 @@ func NewMulti() *Multi {
 			}
 		}
 	}
-	return &Multi{Primary: p, Secondary: second, Fallback: &Heuristic{}}
+	// Free public-records providers — always tried after paid, before heuristic.
+	var free []Provider
+	if tps := tpsFromEnv(); tps.Available() {
+		free = append(free, tps)
+	}
+	free = append(free, &PropertyRecords{})
+	free = append(free, &VoterRegistration{})
+	return &Multi{Primary: p, Secondary: second, Free: free, Fallback: &Heuristic{}}
 }
 
 func (m *Multi) Name() string {
@@ -132,51 +141,73 @@ func (m *Multi) Name() string {
 	if m.Secondary != nil && m.Secondary.Available() {
 		return m.Secondary.Name()
 	}
+	if len(m.Free) > 0 && m.Free[0].Available() {
+		return m.Free[0].Name()
+	}
 	return "heuristic"
 }
 
 func (m *Multi) Available() bool { return true }
 
 func (m *Multi) Search(ctx context.Context, q Query) (Result, error) {
-	// Tier 1: primary provider
+	var primaryErr error
+	var primaryRes Result
+	// Tier 1: primary paid provider
 	if m.Primary != nil && m.Primary.Available() {
 		res, err := m.Primary.Search(ctx, q)
-		if err == nil && len(res.Candidates) > 0 {
+		primaryRes, primaryErr = res, err
+		if err == nil && hasStreetCandidates(res.Candidates) {
 			return res, nil
 		}
-		// Tier 2: secondary provider (if primary empty/errored)
+		// Tier 2: secondary paid provider (if primary empty/errored)
 		if m.Secondary != nil && m.Secondary.Available() {
 			res2, err2 := m.Secondary.Search(ctx, q)
-			if err2 == nil && len(res2.Candidates) > 0 {
-				if res.Error != "" {
-					res2.Candidates[0].Note = strings.TrimSpace(res2.Candidates[0].Note + " | primary(" + m.Primary.Name() + "): " + res.Error)
-				}
-				res2.Status = "ok"
+			if err2 == nil && hasStreetCandidates(res2.Candidates) {
 				return res2, nil
 			}
 		}
-		// Tier 3: heuristic fallback
-		fb, fbErr := m.Fallback.Search(ctx, q)
-		if fbErr == nil && len(fb.Candidates) > 0 {
-			if res.Error != "" && len(fb.Candidates) > 0 {
-				fb.Candidates[0].Note = strings.TrimSpace(fb.Candidates[0].Note + " | primary(" + m.Primary.Name() + "): " + res.Error)
-			} else if err != nil && len(fb.Candidates) > 0 {
-				fb.Candidates[0].Note = strings.TrimSpace(fb.Candidates[0].Note + " | primary(" + m.Primary.Name() + "): " + err.Error())
-			}
-			fb.Status = "ok"
-			return fb, nil
-		}
-		if err != nil {
-			return res, err
-		}
-		return res, nil
 	}
-	// No primary — try secondary directly
-	if m.Secondary != nil && m.Secondary.Available() {
-		res, err := m.Secondary.Search(ctx, q)
-		if err == nil && len(res.Candidates) > 0 {
+	// Tier 3: free public-records providers (TruePeopleSearch, property, voter)
+	for _, fp := range m.Free {
+		if !fp.Available() {
+			continue
+		}
+		res, err := fp.Search(ctx, q)
+		if err == nil && hasStreetCandidates(res.Candidates) {
 			return res, nil
 		}
+		// Keep non-street candidates (research-note URLs) from free providers
+		// if we have nothing better yet.
+		if err == nil && len(res.Candidates) > 0 && len(primaryRes.Candidates) == 0 {
+			primaryRes = res
+			primaryErr = nil
+		}
 	}
-	return m.Fallback.Search(ctx, q)
+	// If any provider returned candidates (even non-street), return them
+	if len(primaryRes.Candidates) > 0 {
+		return primaryRes, primaryErr
+	}
+	// Tier 4: heuristic fallback
+	fb, fbErr := m.Fallback.Search(ctx, q)
+	if fbErr == nil && len(fb.Candidates) > 0 {
+		if primaryErr != nil && len(fb.Candidates) > 0 {
+			fb.Candidates[0].Note = strings.TrimSpace(fb.Candidates[0].Note + " | " + primaryErr.Error())
+		}
+		fb.Status = "ok"
+		return fb, nil
+	}
+	if primaryErr != nil {
+		return primaryRes, primaryErr
+	}
+	return primaryRes, nil
+}
+
+// hasStreetCandidates returns true if any candidate has a street address.
+func hasStreetCandidates(cands []Candidate) bool {
+	for _, c := range cands {
+		if c.Line1 != "" {
+			return true
+		}
+	}
+	return false
 }
