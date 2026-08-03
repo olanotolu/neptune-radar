@@ -35,7 +35,7 @@ var arPack = StatePack{
 			CountyFIPS: "05119",
 			CourtName:  "Pulaski Circuit/County Clerk",
 			CourtURL:   "https://www.pulaskiclerk.com",
-			SearchURL:  "http://realestatesearch.pulaskiclerk.com/vitals/search.php?page=marriage",
+			SearchURL:  "https://pulaskideeds.com/vitals/search.php?page=marriage",
 			Note:       "Dedicated marriage-license search portal; enumeration candidate.",
 		},
 		{

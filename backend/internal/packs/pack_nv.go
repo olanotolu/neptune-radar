@@ -61,7 +61,7 @@ var nvPack = StatePack{
 			CountyFIPS: "32005",
 			CourtName:  "Douglas County Recorder",
 			CourtURL:   "https://www.douglascountynv.gov/GOVERNMENT/departments/recorder",
-			SearchURL:  "https://recorder-search.douglasnv.us/Recording/MarriageSearch",
+			SearchURL:  "https://recorder-search.douglasnv.us/Recording",
 			Note:       "Dedicated marriage search page; index only 1949-present; enumeration candidate.",
 		},
 		{

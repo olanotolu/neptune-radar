@@ -34,7 +34,7 @@ var dcPack = StatePack{
 			CountyFIPS: "11001",
 			CourtName:  "DC Superior Court Marriage Bureau",
 			CourtURL:   "https://www.dccourts.gov",
-			SearchURL:  "https://www.dccourts.gov/superior-court/superior-court-divisions/family-court-operations-division/marriage/order-certified-copy-marriage-record",
+			SearchURL:  "https://www.dccourts.gov/webform/marriage_certified_copy/",
 			Note:       "Marriage records 1811–present; certified-copy request page; request-oriented, no online enumeration.",
 		},
 	},

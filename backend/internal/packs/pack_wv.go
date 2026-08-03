@@ -53,7 +53,7 @@ var wvPack = StatePack{
 			CountyFIPS: "54011",
 			CourtName:  "Cabell County Clerk",
 			CourtURL:   "https://www.cabellcountyclerk.org/departments/vital_statistics/marriage_records_licenses.php",
-			SearchURL:  "https://www.recordscabellcountyclerk.org/",
+			SearchURL:  "https://www.cabellcountyclerk.org/departments/vital_statistics/marriage_records_licenses.php",
 			Note:       "IDX online record search with Marriage book/record category; enumeration capability needs testing.",
 		},
 		{

@@ -72,7 +72,7 @@ var miPack = StatePack{
 			CountyFIPS: "26081",
 			CourtName:  "Kent County Clerk",
 			CourtURL:   "https://www.kentcountymi.gov/807/Marriage-Records",
-			SearchURL:  "https://deedsselfservice.kentcountymi.gov/clerkweb/search/DOCSEARCH248S2",
+			SearchURL:  "https://www.kentcountymi.gov/807/Marriage-Records",
 			Note:       "Online self-service marriage record search portal; enumeration candidate.",
 		},
 		{

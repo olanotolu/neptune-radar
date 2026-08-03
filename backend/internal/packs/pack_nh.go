@@ -39,7 +39,7 @@ var nhPack = StatePack{
 			CountyFIPS: "33015",
 			CourtName:  "NH Division of Vital Records Administration",
 			CourtURL:   "https://www.sos.nh.gov/vital-records-0",
-			SearchURL:  "https://nhvrinweb.sos.nh.gov/nhivs_marriage_query.aspx",
+			SearchURL:  "https://nhvrinweb.sos.nh.gov/",
 			Note:       "Statewide NHVRIN marriage query; town clerks also hold records; access restricted to direct interest.",
 		},
 		{
@@ -47,7 +47,7 @@ var nhPack = StatePack{
 			CountyFIPS: "33013",
 			CourtName:  "NH Division of Vital Records Administration",
 			CourtURL:   "https://www.sos.nh.gov/vital-records-0",
-			SearchURL:  "https://nhvrinweb.sos.nh.gov/nhivs_marriage_query.aspx",
+			SearchURL:  "https://nhvrinweb.sos.nh.gov/",
 			Note:       "Statewide NHVRIN marriage query; Concord City Clerk also holds local records.",
 		},
 		{
@@ -55,7 +55,7 @@ var nhPack = StatePack{
 			CountyFIPS: "33017",
 			CourtName:  "NH Division of Vital Records Administration",
 			CourtURL:   "https://www.sos.nh.gov/vital-records-0",
-			SearchURL:  "https://nhvrinweb.sos.nh.gov/nhivs_marriage_query.aspx",
+			SearchURL:  "https://nhvrinweb.sos.nh.gov/",
 			Note:       "Statewide NHVRIN marriage query; Dover City Clerk also holds local records.",
 		},
 	},

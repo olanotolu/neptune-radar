@@ -41,7 +41,7 @@ var nmPack = StatePack{
 			CountyFIPS: "35001",
 			CourtName:  "Bernalillo County Clerk",
 			CourtURL:   "https://www.berncoclerk.gov",
-			SearchURL:  "https://www.berncoclerk.gov/recording-and-filing/public-records-search/",
+			SearchURL:  "https://eagleweb.bernco.gov/recorder/web/",
 			Note:       "Public records search with marriage category filter; Tylerhost web search backend; enumeration candidate.",
 		},
 		{

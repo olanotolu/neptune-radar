@@ -45,7 +45,7 @@ var alPack = StatePack{
 			CountyFIPS: "01089",
 			CourtName:  "Madison County Probate Court",
 			CourtURL:   "https://www.madisoncountyal.gov/departments/probate-judge",
-			SearchURL:  "https://www.madisoncountyal.gov/departments/probate-judge/recorded-documents",
+			SearchURL:  "https://madisonprobate.countygovservices.com",
 			Note:       "Online record portal (account required); marriage filtering needs testing.",
 		},
 		{
@@ -63,7 +63,7 @@ var alPack = StatePack{
 			CountyFIPS: "01101",
 			CourtName:  "Montgomery County Probate Court",
 			CourtURL:   "https://www.montgomeryprobatecourtal.gov",
-			SearchURL:  "https://www.montgomeryprobatecourtal.gov/divisions/records-recording/probate-records-search",
+			SearchURL:  "https://www.ingprobate.com/Montgomery_Probate/RecordingLogin.aspx?action=marriage",
 			Note:       "Probate records search; marriage indexes ~1975+; enumeration capability needs testing.",
 		},
 		{

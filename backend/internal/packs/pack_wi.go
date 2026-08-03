@@ -86,7 +86,7 @@ var wiPack = StatePack{
 			CountyFIPS: "55101",
 			CourtName:  "Racine County Register of Deeds",
 			CourtURL:   "https://www.racinecounty.gov/our-county/visiting/birth-marriage-death-divorce-certificates",
-			SearchURL:  "https://www.racinecounty.gov/departments/register-of-deeds/records-certificates/online-records-search-landshark",
+			SearchURL:  "https://www.racinecounty.gov/our-county/visiting/birth-marriage-death-divorce-certificates",
 			Note:       "LandShark online records search includes vital records; enumeration capability needs testing. Marriage certificates from Oct 1907.",
 		},
 		{

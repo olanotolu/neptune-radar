@@ -118,7 +118,7 @@ var ohPack = StatePack{
 			Note:      "Online probate court record search; marriage records from 1996 to present."},
 		{CountyFIPS: "39069", CourtName: "Lake County Probate Court",
 			CourtURL:  "https://www.lakecountyohio.gov/probate-court/",
-			SearchURL: "https://phoenix.lakecountyohio.gov/jwprobate",
+			SearchURL: "https://www.lakecountyohio.gov/probate-court/marriage-department/",
 			Note:      "Online probate case search; includes marriage department cases with document images."},
 		{CountyFIPS: "39151", CourtName: "Stark County Probate Court",
 			CourtURL:  "https://starkcountyohio.gov/",

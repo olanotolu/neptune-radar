@@ -151,7 +151,7 @@ var txPack = StatePack{
 			CountyFIPS: "48039", // Brazoria County
 			CourtName:  "Brazoria County Clerk",
 			CourtURL:   "https://www.brazoriacountyclerktx.gov/",
-			SearchURL:  "https://www.brazoriacountyclerktx.gov/search-records",
+			SearchURL:  "http://brazoriacountyclerk.net/recorder/web/login.jsp?submit=Enter",
 			Note:       "Requires registration and $5 fee per name for marriage record search; vital records require payment before search.",
 		},
 		{

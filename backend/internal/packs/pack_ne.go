@@ -33,7 +33,7 @@ var nePack = StatePack{
 			CountyFIPS: "31055",
 			CourtName:  "Douglas County Clerk",
 			CourtURL:   "https://clerk.douglascounty-ne.gov",
-			SearchURL:  "https://clerk.douglascounty-ne.gov/find-a-marriage-license/",
+			SearchURL:  "https://www.douglascountyclerk.org/marriage-licenses/marriagelicensesearch",
 			Note:       "Online marriage license search portal; records from 1856 to present; enumeration candidate.",
 		},
 		{

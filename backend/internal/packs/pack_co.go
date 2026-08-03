@@ -79,7 +79,7 @@ var coPack = StatePack{
 			CountyFIPS: "08013",
 			CourtName:  "Boulder County Clerk & Recorder",
 			CourtURL:   "https://bouldercounty.gov/records/licenses/marriages-and-civil-unions/",
-			SearchURL:  "https://boulder.co.ds.kofile.systems/",
+			SearchURL:  "https://boulder.co.publicsearch.us/",
 			Note:       "Kofile public records search; marriage licenses searchable; enumeration capability needs testing.",
 		},
 		{
@@ -97,7 +97,7 @@ var coPack = StatePack{
 			CountyFIPS: "08069",
 			CourtName:  "Larimer County Clerk & Recorder",
 			CourtURL:   "https://www.larimer.gov/clerk/recording/marriage",
-			SearchURL:  "https://www.larimer.gov/clerk/recording/easy-access",
+			SearchURL:  "https://records.larimer.org/landmarkweb",
 			Note:       "Easy Access recorded documents search; marriage licenses included; enumeration capability needs testing.",
 		},
 	},

@@ -63,7 +63,7 @@ var scPack = StatePack{
 			CountyFIPS: "45079",
 			CourtName:  "Richland County Probate Court",
 			CourtURL:   "https://www.richlandcountysc.gov/Courts-Safety/Probate-Court/Marriage",
-			SearchURL:  "https://www6.richlandcountysc.gov/MarriageLicenseCertifiedCopy/default.aspx",
+			SearchURL:  "https://www.richlandcountysc.gov/Online-Services/Marriage-License-Inquiry",
 			Note:       "Online marriage license search by party name; enumeration candidate.",
 		},
 		{
@@ -90,7 +90,7 @@ var scPack = StatePack{
 			CountyFIPS: "45063",
 			CourtName:  "Lexington County Probate Court",
 			CourtURL:   "https://www.lex-co.sc.gov/departments/probate-court",
-			SearchURL:  "https://www.lex-co.com/marriagelicense/search.aspx",
+			SearchURL:  "https://www.lex-co.sc.gov/departments/probate-court",
 			Note:       "Online marriage license search (1986–present); enumeration candidate.",
 		},
 		{

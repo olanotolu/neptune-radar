@@ -51,7 +51,7 @@ var moPack = StatePack{
 			CountyFIPS: "29189",
 			CourtName:  "St. Louis County Recorder of Deeds",
 			CourtURL:   "https://stlouiscountymo.gov/st-louis-county-departments/revenue/recorder-of-deeds/",
-			SearchURL:  "https://stlouiscountymo.gov/st-louis-county-departments/revenue/recorder-of-deeds/deed-search/",
+			SearchURL:  "https://stlouiscountymo.gov/st-louis-county-departments/revenue/recorder-of-deeds/marriage-copy-order-form/",
 			Note:       "Web-based app with marriage license index (1877–present); marriage filtering needs testing.",
 		},
 		{

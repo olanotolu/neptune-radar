@@ -216,7 +216,7 @@ var caGovSources = []GovSource{
 		CountyFIPS: "06073", // San Diego County
 		CourtName:  "San Diego County Recorder/County Clerk",
 		CourtURL:   "https://www.sdarcc.gov",
-		SearchURL:  "https://www.sdarcc.gov/content/arcc/home/divisions/recorder-clerk/birth-death-marriage-certificate/marriage-certificate.html",
+		SearchURL:  "https://arcc-acclaim.sdcounty.ca.gov/search",
 		Note:       "Marriage certificate requests via Assessor/Recorder/County Clerk; in-person and mail request.",
 	},
 	{
@@ -230,7 +230,7 @@ var caGovSources = []GovSource{
 		CountyFIPS: "06065", // Riverside County
 		CourtName:  "Riverside County Assessor-County Clerk-Recorder",
 		CourtURL:   "https://www.rivcoacr.org/",
-		SearchURL:  "https://webselfservice.riversideacr.com/Web/search/DOCSEARCH2805S3",
+		SearchURL:  "https://vitalsonline.asrclkrec.com/",
 		Note:       "Online document search portal; searchable by name, document number, or date range. Marriage certificates orderable via vitalsonline.asrclkrec.com.",
 	},
 	{
@@ -258,7 +258,7 @@ var caGovSources = []GovSource{
 		CountyFIPS: "06019", // Fresno County
 		CourtName:  "Fresno County Recorder",
 		CourtURL:   "https://www.fresnocountyca.gov/Departments/Recorder",
-		SearchURL:  "https://fresnocountyca-web.tylerhost.net",
+		SearchURL:  "https://www.fresnocountyca.gov/Departments/Recorder/Marriage-Certificate",
 		Note:       "Online official records search via Tyler Technologies; index for documents recorded since 1981.",
 	},
 	{

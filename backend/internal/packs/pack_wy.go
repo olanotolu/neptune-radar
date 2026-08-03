@@ -43,7 +43,7 @@ var wyPack = StatePack{
 			CountyFIPS: "56025",
 			CourtName:  "Natrona County Clerk",
 			CourtURL:   "https://www.natronacounty-wy.gov/18/Clerk",
-			SearchURL:  "https://natrona.net/141/Marriage-Licenses",
+			SearchURL:  "https://www.natronacounty-wy.gov/141/Marriage-Licenses",
 			Note:       "Marriage licenses issued by clerk; online records search excludes marriage licenses, request-oriented.",
 		},
 		{

@@ -39,7 +39,7 @@ var vtPack = StatePack{
 			CountyFIPS: "50021",
 			CourtName:  "Vermont Dept of Health — Vital Records",
 			CourtURL:   "https://healthvermont.org/stats/vital-records",
-			SearchURL:  "https://sos.vermont.gov/vsara/request/certified-vital-records",
+			SearchURL:  "https://secure.vermont.gov/VSARA/vitalrecords/applicant.php",
 			Note:       "Statewide vital records; town clerks also hold records; VSARA handles pre-2014 marriages.",
 		},
 		{
@@ -47,7 +47,7 @@ var vtPack = StatePack{
 			CountyFIPS: "50023",
 			CourtName:  "Vermont Dept of Health — Vital Records",
 			CourtURL:   "https://healthvermont.org/stats/vital-records",
-			SearchURL:  "https://sos.vermont.gov/vsara/request/certified-vital-records",
+			SearchURL:  "https://secure.vermont.gov/VSARA/vitalrecords/applicant.php",
 			Note:       "Statewide vital records; Montpelier City Clerk also holds local records.",
 		},
 		{
@@ -55,7 +55,7 @@ var vtPack = StatePack{
 			CountyFIPS: "50027",
 			CourtName:  "Vermont Dept of Health — Vital Records",
 			CourtURL:   "https://healthvermont.org/stats/vital-records",
-			SearchURL:  "https://sos.vermont.gov/vsara/request/certified-vital-records",
+			SearchURL:  "https://secure.vermont.gov/VSARA/vitalrecords/applicant.php",
 			Note:       "Statewide vital records; town clerks also hold records.",
 		},
 	},

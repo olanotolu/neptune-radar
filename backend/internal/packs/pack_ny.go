@@ -250,21 +250,21 @@ var nyGovSources = []GovSource{
 		CountyFIPS: "36081", // Queens County
 		CourtName:  "NYC City Clerk — Marriage Bureau (Queens)",
 		CourtURL:   "https://www.cityclerk.nyc.gov/",
-		SearchURL:  "https://cityclerkforms.nyc.gov/cityclerkformsonline/recordRequest.htm",
+		SearchURL:  "https://www.cityclerk.nyc.gov/content/marriage-records",
 		Note:       "NYC City Clerk marriage record request form; records 1930-present. Pre-1950 at NYC Municipal Archives.",
 	},
 	{
 		CountyFIPS: "36005", // Bronx County
 		CourtName:  "NYC City Clerk — Marriage Bureau (Bronx)",
 		CourtURL:   "https://www.cityclerk.nyc.gov/",
-		SearchURL:  "https://cityclerkforms.nyc.gov/cityclerkformsonline/recordRequest.htm",
+		SearchURL:  "https://www.cityclerk.nyc.gov/content/marriage-records",
 		Note:       "NYC City Clerk marriage record request form; records 1930-present. Pre-1950 at NYC Municipal Archives.",
 	},
 	{
 		CountyFIPS: "36085", // Richmond County (Staten Island)
 		CourtName:  "NYC City Clerk — Marriage Bureau (Staten Island)",
 		CourtURL:   "https://www.cityclerk.nyc.gov/",
-		SearchURL:  "https://cityclerkforms.nyc.gov/cityclerkformsonline/recordRequest.htm",
+		SearchURL:  "https://www.cityclerk.nyc.gov/content/marriage-records",
 		Note:       "NYC City Clerk marriage record request form; records 1930-present. Pre-1950 at NYC Municipal Archives.",
 	},
 	{

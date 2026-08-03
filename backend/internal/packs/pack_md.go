@@ -41,8 +41,8 @@ var mdPack = StatePack{
 			// marriage licenses (Room 627).
 			CountyFIPS: "24510",
 			CourtName:  "Baltimore City Circuit Court Clerk",
-			CourtURL:   "https://baltimorecitycourt.org/clerks-office/land-records-licenses-division/",
-			SearchURL:  "https://baltimorecitycourt.org/clerks-office/land-records-licenses-division/",
+			CourtURL:   "https://casesearch.mdcourts.gov/casesearch/",
+			SearchURL:  "https://casesearch.mdcourts.gov/casesearch/",
 			Note:       "Marriage licenses via Land Records & Licenses Division; no online index — request-oriented. Statewide case search at casesearch.mdcourts.gov includes some filings.",
 		},
 		{
@@ -68,8 +68,8 @@ var mdPack = StatePack{
 			// copy request info.
 			CountyFIPS: "24005",
 			CourtName:  "Baltimore County Circuit Court Clerk",
-			CourtURL:   "https://www.baltimorecountymd.gov/departments/circuit/clerk/marriage-divorce",
-			SearchURL:  "https://www.baltimorecountymd.gov/departments/circuit/clerk/marriage-divorce",
+			CourtURL:   "https://casesearch.mdcourts.gov/casesearch/",
+			SearchURL:  "https://casesearch.mdcourts.gov/casesearch/",
 			Note:       "Marriage/divorce records page with copy request info; no online index — request-oriented.",
 		},
 		{

@@ -83,7 +83,7 @@ var vaPack = StatePack{
 			CountyFIPS: "51041",
 			CourtName:  "Chesterfield County Circuit Court Clerk",
 			CourtURL:   "https://www.chesterfield.gov/1127/Circuit-Court",
-			SearchURL:  "https://www.ccclandrecords.org/Opening.asp",
+			SearchURL:  "https://www.ccclandrecords.org/",
 			Note:       "CCC Land Records public records database; marriage license application online; enumeration capability needs testing.",
 		},
 		{

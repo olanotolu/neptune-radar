@@ -41,7 +41,7 @@ var orPack = StatePack{
 			CountyFIPS: "41051",
 			CourtName:  "Multnomah County Clerk",
 			CourtURL:   "https://multco.us/services/marriage-licenses",
-			SearchURL:  "https://multcorecords.com/MarriageSearch",
+			SearchURL:  "https://multcorecords.com",
 			Note:       "Dedicated marriage search portal; records 1990–present, 1980–1989 index only; 50-yr access restriction.",
 		},
 		{
