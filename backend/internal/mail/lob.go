@@ -98,19 +98,20 @@ func (c *Client) VerifyAddress(ctx context.Context, a Address) (VerifyResult, er
 	}
 	var parsed map[string]any
 	_ = json.Unmarshal([]byte(raw), &parsed)
-	deliv := strings.EqualFold(str(parsed["deliverability"]), "deliverable") ||
-		strings.EqualFold(str(parsed["deliverability"]), "deliverable_unnecessary_unit") ||
-		strings.EqualFold(str(parsed["deliverability"]), "deliverable_incorrect_unit") ||
-		strings.EqualFold(str(parsed["deliverability"]), "deliverable_missing_unit")
-	// Also accept components when deliverability field present
-	if d, ok := parsed["deliverability"].(string); ok && d != "" {
-		deliv = strings.HasPrefix(strings.ToLower(d), "deliverable")
-	}
+	// Strict deliverability: only USPS-confirmed deliverable variants.
+	// Never OR with "line1 present" — that false-verified undeliverable addresses.
+	delivCode := strings.ToLower(strings.TrimSpace(str(parsed["deliverability"])))
+	deliv := delivCode == "deliverable" || delivCode == "deliverable_unnecessary_unit"
+	// Soft unit issues are mailable but need operator review of unit line
+	softUnit := delivCode == "deliverable_missing_unit" || delivCode == "deliverable_incorrect_unit"
 	comps, _ := parsed["components"].(map[string]any)
 	out := a
 	if comps != nil {
 		if s := str(comps["primary_line"]); s != "" {
 			out.AddressLine1 = s
+		}
+		if s := str(comps["secondary_line"]); s != "" {
+			out.AddressLine2 = s
 		}
 		if s := str(comps["city"]); s != "" {
 			out.AddressCity = s
@@ -126,6 +127,9 @@ func (c *Client) VerifyAddress(ctx context.Context, a Address) (VerifyResult, er
 	if s := str(parsed["primary_line"]); s != "" {
 		out.AddressLine1 = s
 	}
+	if s := str(parsed["secondary_line"]); s != "" {
+		out.AddressLine2 = s
+	}
 	if s := str(parsed["city"]); s != "" {
 		out.AddressCity = s
 	}
@@ -138,7 +142,9 @@ func (c *Client) VerifyAddress(ctx context.Context, a Address) (VerifyResult, er
 	if out.AddressCountry == "" {
 		out.AddressCountry = "US"
 	}
-	return VerifyResult{Deliverable: deliv || out.AddressLine1 != "", Address: out, RawJSON: raw}, nil
+	// Soft unit issues: treat as deliverable for mail path but flag in RawJSON for notes.
+	// Hard undeliverable / empty: Deliverable=false even if line1 rewritten.
+	return VerifyResult{Deliverable: deliv || softUnit, Address: out, RawJSON: raw}, nil
 }
 
 // SendPostcard creates a 4x6 postcard. front/back can be HTML URLs or raw HTML

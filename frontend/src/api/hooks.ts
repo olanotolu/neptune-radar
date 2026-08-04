@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, getToken } from "./client";
+import { api } from "./client";
 import type {
   AuditEvent,
   ConfidenceBreakdown,
@@ -547,6 +547,18 @@ export function useApplyCandidate() {
   });
 }
 
+export function useParseAddressText() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, text }: { id: string; text: string }) =>
+      api.post<CongratulateKit>(`/api/kits/${encodeURIComponent(id)}/parse-address`, { text }),
+    onSuccess: (kit) => {
+      qc.invalidateQueries({ queryKey: keys.kits });
+      qc.invalidateQueries({ queryKey: keys.coupleKit(kit.couple_id) });
+    },
+  });
+}
+
 export function useVerifyKitAddress() {
   const qc = useQueryClient();
   return useMutation({
@@ -834,8 +846,7 @@ export function useLiveEvents() {
 
     const connect = () => {
       if (stopped) return;
-      const token = getToken();
-      const url = `${BASE_URL}/api/events/stream${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+      const url = `${BASE_URL}/api/events/stream`;
       const es = new EventSource(url);
       esRef.current = es;
 

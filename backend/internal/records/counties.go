@@ -14,7 +14,7 @@ type OhioCounty struct {
 
 // ohioCounties maps city names to their county (most common county for multi-county cities).
 var ohioCounties = map[string]OhioCounty{
-	"columbus":        {"Franklin", "39049", "https://www FranklinCountyOhio.gov/recorder/marriage-search"},
+	"columbus":        {"Franklin", "39049", "https://www.franklincountyo.gov/recorder/marriage-search"},
 	"dublin":          {"Franklin", "39049", "https://www.franklincountyo.gov/recorder/marriage-search"},
 	"westerville":     {"Franklin", "39049", "https://www.franklincountyo.gov/recorder/marriage-search"},
 	"hilliard":        {"Franklin", "39049", "https://www.franklincountyo.gov/recorder/marriage-search"},

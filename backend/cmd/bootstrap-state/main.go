@@ -53,7 +53,12 @@ func main() {
 	defer s.Close()
 
 	ctx := context.Background()
-	apify := ingest.NewApifyClient(os.Getenv("APIFY_TOKEN"))
+	// Respect APIFY_ENABLED master pause (same as watch loop).
+	apifyTok := ""
+	if v := strings.ToLower(strings.TrimSpace(os.Getenv("APIFY_ENABLED"))); v == "1" || v == "true" || v == "yes" || v == "on" {
+		apifyTok = os.Getenv("APIFY_TOKEN")
+	}
+	apify := ingest.NewApifyClient(apifyTok)
 	httpHealth := connectors.NewHTTPHealthConnector()
 
 	totalGov := 0

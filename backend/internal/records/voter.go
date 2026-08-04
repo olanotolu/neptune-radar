@@ -54,26 +54,18 @@ func (v *VoterRegistration) Search(ctx context.Context, q Query) (Result, error)
 	}
 }
 
-// researchNote returns the state's voter-lookup URL as a low-confidence candidate
-// for an operator to visit and search manually.
+// researchNote returns the state's voter-lookup URL as a research_link candidate
+// for an operator to visit and search manually (URL never goes in Line1).
 func (v *VoterRegistration) researchNote(region string, q Query, first, last, fullName string) Result {
 	lookupURL := voterLookupURL(region, q, first, last)
-	note := fmt.Sprintf("Voter registration lookup URL (%s) — operator should visit and search", region)
-	c := Candidate{
-		Line1:      lookupURL,
-		City:       q.City,
-		Region:     region,
-		Country:    "US",
-		Confidence: 0.30,
-		Source:     "voter_registration",
-		FullName:   fullName,
-		Note:       note,
-	}
+	note := fmt.Sprintf("Voter registration (%s) — operator should visit and search", region)
 	return Result{
-		Provider:   "voter_registration",
-		Candidates: []Candidate{c},
-		Status:     "ok",
-		CostCents:  0,
+		Provider: "voter_registration",
+		Candidates: []Candidate{
+			ResearchLink(lookupURL, q.City, region, fullName, "voter_registration", note),
+		},
+		Status:    "ok",
+		CostCents: 0,
 	}
 }
 
@@ -135,17 +127,9 @@ func (v *VoterRegistration) searchNC(ctx context.Context, q Query, first, last, 
 
 	cands := parseNCVoters(raw, q, fullName)
 	if len(cands) == 0 {
-		// Fall back to a research note so the URL isn't lost.
-		c := Candidate{
-			Line1:      searchURL,
-			City:       q.City,
-			Region:     "NC",
-			Country:    "US",
-			Confidence: 0.30,
-			Source:     "voter_registration",
-			FullName:   fullName,
-			Note:       "Voter registration lookup URL (NC) — operator should visit and search",
-		}
+		// Fall back to a research link so the URL isn't lost (never Line1).
+		c := ResearchLink(searchURL, q.City, "NC", fullName, "voter_registration",
+			"Voter registration (NC) — operator should visit and search")
 		return Result{Provider: "voter_registration", Candidates: []Candidate{c}, Status: "ok",
 			RawJSON: truncate(raw, 4000), CostCents: 0}, nil
 	}

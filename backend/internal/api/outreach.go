@@ -280,6 +280,27 @@ func (s *Server) applyKitCandidate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, kit)
 }
 
+// parseKitAddressText extracts a street from operator-pasted research text.
+func (s *Server) parseKitAddressText(w http.ResponseWriter, r *http.Request) {
+	if s.Outreach == nil {
+		writeError(w, http.StatusServiceUnavailable, errorString("outreach agent not configured"))
+		return
+	}
+	var body struct {
+		Text string `json:"text"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	kit, err := s.Outreach.ParseAddressText(r.PathValue("id"), body.Text)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, kit)
+}
+
 // verifyKitAddress USPS-verifies (Lob) and marks address_verified.
 func (s *Server) verifyKitAddress(w http.ResponseWriter, r *http.Request) {
 	if s.Outreach == nil {

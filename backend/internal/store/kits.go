@@ -81,6 +81,10 @@ type AddressCandidate struct {
 	Confidence float64 `json:"confidence"`
 	Source     string  `json:"source"`
 	Note       string  `json:"note,omitempty"`
+	// Kind: street | locality | research_link
+	Kind string `json:"kind,omitempty"`
+	// URL for research_link candidates (never store http URLs in Line1).
+	URL string `json:"url,omitempty"`
 }
 
 func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error) {

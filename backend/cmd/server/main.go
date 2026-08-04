@@ -68,8 +68,11 @@ func main() {
 	case *llm.TemplateInterpreter:
 		log.Println("No LLM API key configured — running with the deterministic template interpreter")
 	case *llm.FallbackInterpreter:
+		if it.HasOpenAI() {
+			log.Println("OPENAI: primary interpreter (analyst, copy, home-market)")
+		}
 		if it.HasBaseten() {
-			log.Println("BASETEN: Relationship Analyst and Conversation Agent will call Baseten")
+			log.Println("BASETEN: available as secondary")
 		}
 		if it.HasClaude() {
 			log.Println("ANTHROPIC: Claude available as fallback")

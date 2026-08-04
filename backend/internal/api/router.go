@@ -119,6 +119,7 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("POST /api/kits/{id}/run-detective", srv.runDetective)
 	mux.HandleFunc("POST /api/kits/{id}/apply-candidate", srv.applyKitCandidate)
 	mux.HandleFunc("POST /api/kits/{id}/verify-address", srv.verifyKitAddress)
+	mux.HandleFunc("POST /api/kits/{id}/parse-address", srv.parseKitAddressText)
 	mux.HandleFunc("POST /api/kits/{id}/send-postcard", srv.sendKitPostcard)
 	mux.HandleFunc("GET /api/couples/{id}/dossier", srv.coupleDossier)
 	mux.HandleFunc("POST /api/couples/{id}/handoff", srv.createHandoff)

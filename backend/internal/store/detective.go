@@ -2,6 +2,7 @@ package store
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -131,6 +132,49 @@ func (s *Store) ExtractObservationFacts(limit int) (int, error) {
 		n++
 	}
 	return n, rows.Err()
+}
+
+// ListCouplePostLocations returns unique Instagram venue/location names from recent posts.
+func (s *Store) ListCouplePostLocations(handleA, handleB string, limit int) []string {
+	if limit <= 0 {
+		limit = 20
+	}
+	if handleA == "" && handleB == "" {
+		return nil
+	}
+	ha, hb := handleA, handleB
+	if ha == "" {
+		ha = hb
+	}
+	if hb == "" {
+		hb = ha
+	}
+	rows, err := s.DB.Query(`
+		SELECT DISTINCT COALESCE(location_name,'')
+		FROM social_observations
+		WHERE (raw_payload ILIKE '%' || $1 || '%' OR raw_payload ILIKE '%' || $2 || '%')
+		  AND COALESCE(location_name,'') <> ''
+		ORDER BY 1 DESC
+		LIMIT $3`, ha, hb, limit)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var out []string
+	seen := map[string]bool{}
+	for rows.Next() {
+		var loc string
+		if rows.Scan(&loc) != nil || loc == "" {
+			continue
+		}
+		key := strings.ToLower(loc)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, loc)
+	}
+	return out
 }
 
 // CoupleDossier is agent-ready evidence for one couple.

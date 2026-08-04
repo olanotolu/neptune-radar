@@ -38,16 +38,22 @@ func NewApifyClient(token string) *ApifyClient {
 	}
 }
 
-func (c *ApifyClient) Available() bool { return c != nil && c.token != "" }
-func (c *ApifyClient) Name() string    { return "apify" }
+func (c *ApifyClient) Available() bool {
+	// Master pause: token alone never enables spend.
+	return c != nil && c.token != "" && apifyIngestEnabled()
+}
+func (c *ApifyClient) Name() string { return "apify" }
 
 // runSync runs an actor with the given input and returns the raw dataset
 // items, waiting for completion (run-sync-get-dataset-items). Transient
 // failures (network errors, 429, 5xx) are retried with exponential backoff
 // — a single Apify hiccup no longer drops an entire tick's worth of events.
 func (c *ApifyClient) runSync(ctx context.Context, actorID string, input map[string]any) ([]json.RawMessage, error) {
-	if !c.Available() {
+	if c == nil || c.token == "" {
 		return nil, fmt.Errorf("APIFY_TOKEN not set")
+	}
+	if !apifyIngestEnabled() {
+		return nil, fmt.Errorf("APIFY_ENABLED=false — Apify paused, no API call")
 	}
 	body, err := json.Marshal(input)
 	if err != nil {

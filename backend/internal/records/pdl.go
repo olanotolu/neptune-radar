@@ -105,7 +105,20 @@ func (p *PDL) Search(ctx context.Context, q Query) (Result, error) {
 func extractPDLCandidates(data map[string]any, q Query) []Candidate {
 	var out []Candidate
 	fullName, _ := data["full_name"].(string)
-	// street_addresses array (PDL schema varies by plan)
+
+	// Top-level street (some plans)
+	if line := pdlString(data["location_street_address"]); line != "" && IsRealStreet(line) {
+		out = append(out, Candidate{
+			Line1: line,
+			City:  firstNonEmpty(pdlString(data["location_locality"]), q.City),
+			Region: regionAbbrev(firstNonEmpty(pdlString(data["location_region"]), q.Region)),
+			Postal: pdlString(data["location_postal_code"]),
+			Country: "US", Kind: KindStreet, Confidence: 0.70, Source: "pdl",
+			FullName: fullName, Note: "PDL location_street_address — verify before mail.",
+		})
+	}
+
+	// street_addresses array (PDL schema varies by plan; free/basic often returns false not array)
 	if arr, ok := data["street_addresses"].([]any); ok {
 		for _, item := range arr {
 			m, ok := item.(map[string]any)
@@ -113,17 +126,18 @@ func extractPDLCandidates(data map[string]any, q Query) []Candidate {
 				continue
 			}
 			c := Candidate{
-				Line1:      str(m["street_address"]),
+				Line1:      firstStr(m, "street_address", "address_line_1", "line1"),
 				City:       firstStr(m, "locality", "city"),
-				Region:     firstStr(m, "region", "region_code", "state"),
+				Region:     regionAbbrev(firstStr(m, "region", "region_code", "state")),
 				Postal:     firstStr(m, "postal_code", "postal"),
 				Country:    firstNonEmpty(str(m["country"]), "US"),
-				Confidence: 0.55,
+				Kind:       KindStreet,
+				Confidence: 0.72,
 				Source:     "pdl",
 				FullName:   fullName,
 				Note:       "People Data Labs street address — verify before mail.",
 			}
-			if c.Line1 == "" {
+			if !IsRealStreet(c.Line1) {
 				continue
 			}
 			if q.City != "" && c.City != "" && !strings.EqualFold(c.City, q.City) {
@@ -135,27 +149,92 @@ func extractPDLCandidates(data map[string]any, q Query) []Candidate {
 			}
 		}
 	}
-	// location_names fallback
+
+	// Locality fallbacks when plan does not include streets (boolean false on street fields)
 	if len(out) == 0 {
-		if loc, ok := data["location_name"].(string); ok && loc != "" {
-			// "Columbus, Ohio, United States"
+		city, region := "", ""
+		if loc := pdlString(data["location_name"]); loc != "" {
 			parts := strings.Split(loc, ",")
-			city, region := q.City, q.Region
 			if len(parts) >= 1 {
 				city = strings.TrimSpace(parts[0])
 			}
 			if len(parts) >= 2 {
-				region = strings.TrimSpace(parts[1])
+				region = regionAbbrev(strings.TrimSpace(parts[1]))
 			}
+		}
+		if city == "" {
+			city = pdlString(data["location_locality"])
+		}
+		if region == "" {
+			region = regionAbbrev(pdlString(data["location_region"]))
+		}
+		// Education school location (e.g. Texas A&M → College Station) — strong market signal
+		if city == "" {
+			if edu, ok := data["education"].([]any); ok && len(edu) > 0 {
+				if em, ok := edu[0].(map[string]any); ok {
+					if school, ok := em["school"].(map[string]any); ok {
+						if loc, ok := school["location"].(map[string]any); ok {
+							city = firstStr(loc, "locality", "name")
+							if strings.Contains(city, ",") {
+								parts := strings.Split(city, ",")
+								city = strings.TrimSpace(parts[0])
+								if len(parts) > 1 && region == "" {
+									region = regionAbbrev(strings.TrimSpace(parts[1]))
+								}
+							}
+							if region == "" {
+								region = regionAbbrev(firstStr(loc, "region"))
+							}
+						}
+					}
+				}
+			}
+		}
+		if city == "" {
+			city = q.City
+			region = q.Region
+		}
+		if city != "" {
+			note := "PDL locality only — street fields not on this PDL plan/match (street_addresses unavailable)."
 			out = append(out, Candidate{
 				City: city, Region: region, Country: "US",
-				Confidence: 0.35, Source: "pdl_location",
-				FullName: fullName,
-				Note:     "PDL locality only (no street on this plan/match).",
+				Kind: KindLocality, Confidence: 0.42, Source: "pdl_location",
+				FullName: fullName, Note: note,
 			})
 		}
 	}
 	return out
+}
+
+// pdlString coerces PDL fields; plan-limited fields often arrive as bool false.
+func pdlString(v any) string {
+	switch t := v.(type) {
+	case string:
+		return strings.TrimSpace(t)
+	case float64:
+		return strings.TrimSpace(fmt.Sprintf("%.0f", t))
+	default:
+		return ""
+	}
+}
+
+func regionAbbrev(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	if len(s) == 2 {
+		return strings.ToUpper(s)
+	}
+	m := map[string]string{
+		"texas": "TX", "ohio": "OH", "california": "CA", "new york": "NY",
+		"florida": "FL", "illinois": "IL", "georgia": "GA", "pennsylvania": "PA",
+		"north carolina": "NC", "michigan": "MI", "tennessee": "TN", "colorado": "CO",
+	}
+	if a, ok := m[strings.ToLower(s)]; ok {
+		return a
+	}
+	return s
 }
 
 func str(v any) string {

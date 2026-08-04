@@ -6,17 +6,17 @@ import {
   useKitMarkMailed,
   useKitReadyToMail,
   useKits,
+  useParseAddressText,
   usePatchKit,
   useRunDetective,
   useSendPostcard,
   useVerifyKitAddress,
 } from "../api/hooks";
 import { mediaURL } from "../api/media";
-import type { CongratulateKit, KitStatus } from "../api/types";
+import type { CongratulateKit, DetectivePrep, KitStatus } from "../api/types";
 import { EmptyState } from "../components/EmptyState";
 import { LoadingState } from "../components/LoadingState";
 import { useToast } from "../components/Toast";
-import { getToken } from "../api/client";
 
 const STATUS_LABEL: Record<KitStatus, string> = {
   draft: "Draft",
@@ -26,6 +26,12 @@ const STATUS_LABEL: Record<KitStatus, string> = {
   mailed: "Mailed",
   cancelled: "Cancelled",
 };
+
+function prepFromKit(kit: CongratulateKit): DetectivePrep | null {
+  const raw = kit.mail_payload?.detective_prep;
+  if (!raw || typeof raw !== "object") return null;
+  return raw as DetectivePrep;
+}
 
 function confPct(n: number): string {
   return `${Math.round((n || 0) * 100)}%`;
@@ -79,6 +85,8 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
   const ready = useKitReadyToMail();
   const mailed = useKitMarkMailed();
   const detective = useRunDetective();
+  const parsePaste = useParseAddressText();
+  const [pasteText, setPasteText] = useState("");
   const applyCand = useApplyCandidate();
   const verifyAddr = useVerifyKitAddress();
   const sendMail = useSendPostcard();
@@ -110,13 +118,11 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
     setLastB(kit.last_name_b || "");
   }, [kit.id, kit.updated_at]);
 
-  // Load postcard HTML with auth (iframe src can't send bearer).
+  // Load postcard HTML.
   useEffect(() => {
     let cancelled = false;
     const base = import.meta.env.VITE_API_URL ?? "";
-    fetch(`${base}/api/kits/${kit.id}/postcard`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-    })
+    fetch(`${base}/api/kits/${kit.id}/postcard`)
       .then((r) => r.text())
       .then((html) => {
         if (!cancelled) setPreviewHTML(html);
@@ -134,6 +140,7 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
     ready.isPending ||
     mailed.isPending ||
     detective.isPending ||
+    parsePaste.isPending ||
     applyCand.isPending ||
     verifyAddr.isPending ||
     sendMail.isPending;
@@ -180,23 +187,43 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
     );
   };
 
+  const prep = prepFromKit(kit);
+  const prepScore = prep?.score ?? 0;
+  const prepReady = prep?.ready === true;
+  const prepBlocked = prep != null && prepScore < 0.35;
+
   const runDetective = () => {
     if (!lastA.trim() && !lastB.trim()) {
-      toast.push("Tip: add at least one last name for better street results", "info");
+      toast.push("Add at least one last name — prep will block detective without it", "err");
+      return;
     }
     saveNamesThen(() => {
       detective.mutate(kit.id, {
         onSuccess: (k) => {
-          const n = k.address_candidates?.length ?? 0;
-          const streets = (k.address_candidates || []).filter((c) => c.line1).length;
+          const all = k.address_candidates || [];
+          const n = all.length;
+          const streets = all.filter(
+            (c) => c.line1 && !/^https?:\/\//i.test(c.line1) && c.kind !== "research_link",
+          ).length;
+          const links = all.filter((c) => c.kind === "research_link" || c.url).length;
+          const p = prepFromKit(k);
           toast.push(
             streets
               ? `Detective found ${streets} street candidate${streets === 1 ? "" : "s"}`
-              : n
-                ? `Detective: ${n} market-level hit(s) — add last names + PDL/Melissa key for streets`
-                : "Detective ran — no hits",
+              : links
+                ? `Detective: ${links} research link(s) — open them and paste street`
+                : n
+                  ? `Detective: ${n} city-level hit(s) — need people-data keys or better city`
+                  : p && !p.ready
+                    ? `Prep weak (${Math.round((p.score || 0) * 100)}%) — ${p.summary || "fix blockers"}`
+                    : "Detective ran — no hits",
             streets ? "ok" : "info",
           );
+          // Apply prep home city if form city empty
+          if (!city && p?.home_city) {
+            setCity(p.home_city);
+            setRegion(p.home_region || "");
+          }
           onUpdated();
         },
         onError: (e) => toast.push((e as Error).message, "err"),
@@ -363,55 +390,172 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
 
           <section className="kit-panel">
             <h3>Detective · mailing address</h3>
+            {prep && (
+              <div
+                className="kit-panel__hint"
+                style={{
+                  marginBottom: 12,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid",
+                  borderColor: prepReady ? "var(--ok, #2d6a4f)" : prepBlocked ? "var(--err, #9b2226)" : "var(--warn, #bc6c25)",
+                  background: prepReady ? "rgba(45,106,79,0.08)" : prepBlocked ? "rgba(155,34,38,0.08)" : "rgba(188,108,37,0.08)",
+                }}
+              >
+                <strong>
+                  Prep agent: {prepReady ? "READY" : prepBlocked ? "BLOCKED" : "WEAK"}{" "}
+                  ({Math.round(prepScore * 100)}%)
+                </strong>
+                {prep.home_city && (
+                  <div>
+                    Home market: {prep.home_city}
+                    {prep.home_region ? `, ${prep.home_region}` : ""}{" "}
+                    <span style={{ opacity: 0.75 }}>({prep.home_source || "?"})</span>
+                  </div>
+                )}
+                {prep.blockers && prep.blockers.length > 0 && (
+                  <div>Blockers: {prep.blockers.join(", ")}</div>
+                )}
+                {prep.warnings && prep.warnings.length > 0 && (
+                  <div>Warnings: {prep.warnings.join("; ")}</div>
+                )}
+                {!prepReady && (
+                  <div style={{ marginTop: 6 }}>
+                    Fix last names + real city (not vendor/venue), Save names, then Run detective.
+                    {prep.home_city && !city ? " Prep suggested a home city — it will fill on run." : ""}
+                  </div>
+                )}
+              </div>
+            )}
             <p className="kit-panel__hint">
-              <strong>Run detective</strong> queries people-data APIs (PDL / Melissa when keys are set)
-              using first + last + market. Pick a candidate, verify (Lob USPS), then send postcard.
+              <strong>First principles:</strong> Prep/AI aim a home city from bios &amp; evidence →
+              TruePeopleSearch hunts <strong>person A then person B</strong> (first + last) → streets
+              ranked (multi-source wins) → you verify Lob USPS. Research links mean Bright Data Web
+              Unlocker zone is missing — set <code>BRIGHTDATA_UNLOCKER_ZONE</code> after creating the
+              zone. Never invents streets.
             </p>
             <div className="kit-actions" style={{ marginBottom: 12 }}>
-              <button type="button" className="btn btn--primary" disabled={busy} onClick={runDetective}>
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={busy || prepBlocked}
+                title={prepBlocked ? "Prep blocked — fix last names / identity first" : undefined}
+                onClick={runDetective}
+              >
                 {detective.isPending ? "Running detective…" : "Run detective"}
               </button>
             </div>
-            {(kit.address_candidates?.length ?? 0) > 0 && (
-              <ul className="kit-candidates kit-candidates--pick">
-                {kit.address_candidates!.map((c, i) => (
-                  <li key={i}>
-                    <button
-                      type="button"
-                      className="kit-cand-btn"
-                      disabled={busy || !c.line1}
-                      onClick={() =>
-                        applyCand.mutate(
-                          { id: kit.id, index: i },
-                          {
-                            onSuccess: (k) => {
-                              setLine1(k.address_line1 ?? "");
-                              setLine2(k.address_line2 ?? "");
-                              setCity(k.address_city ?? "");
-                              setRegion(k.address_region ?? "");
-                              setPostal(k.address_postal ?? "");
-                              toast.push(c.line1 ? "Candidate applied" : "City-only candidate", "ok");
-                              onUpdated();
-                            },
-                            onError: (e) => toast.push((e as Error).message, "err"),
-                          },
-                        )
-                      }
-                    >
-                      <strong>
-                        {c.line1 || "(no street)"}
-                        {c.line2 ? `, ${c.line2}` : ""}
-                      </strong>
-                      <span>
-                        {[c.city, c.region, c.postal].filter(Boolean).join(", ")} ·{" "}
-                        {Math.round((c.confidence || 0) * 100)}% · {c.source}
-                      </span>
-                      {c.note && <em>{c.note}</em>}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {(() => {
+              const all = kit.address_candidates ?? [];
+              const isStreet = (c: (typeof all)[0]) =>
+                !!c.line1 &&
+                !/^https?:\/\//i.test(c.line1) &&
+                c.kind !== "research_link" &&
+                c.kind !== "locality";
+              const isLink = (c: (typeof all)[0]) =>
+                c.kind === "research_link" || (!!c.url && !isStreet(c));
+              const streets = all
+                .map((c, i) => ({ c, i }))
+                .filter(({ c }) => isStreet(c) || (!!c.line1 && !isLink(c)));
+              const localities = all
+                .map((c, i) => ({ c, i }))
+                .filter(({ c }) => c.kind === "locality" || (!c.line1 && !c.url && !!c.city));
+              const links = all.map((c, i) => ({ c, i })).filter(({ c }) => isLink(c));
+              if (all.length === 0) return null;
+              return (
+                <div className="kit-cand-groups">
+                  {streets.length > 0 && (
+                    <>
+                      <p className="kit-panel__hint" style={{ marginTop: 0 }}>
+                        Street candidates — click to apply
+                      </p>
+                      <ul className="kit-candidates kit-candidates--pick">
+                        {streets.map(({ c, i }, rank) => (
+                          <li key={`st-${i}`}>
+                            <button
+                              type="button"
+                              className="kit-cand-btn"
+                              disabled={busy || !c.line1}
+                              onClick={() =>
+                                applyCand.mutate(
+                                  { id: kit.id, index: i },
+                                  {
+                                    onSuccess: (k) => {
+                                      setLine1(k.address_line1 ?? "");
+                                      setLine2(k.address_line2 ?? "");
+                                      setCity(k.address_city ?? "");
+                                      setRegion(k.address_region ?? "");
+                                      setPostal(k.address_postal ?? "");
+                                      toast.push("Street candidate applied", "ok");
+                                      onUpdated();
+                                    },
+                                    onError: (e) => toast.push((e as Error).message, "err"),
+                                  },
+                                )
+                              }
+                            >
+                              <strong>
+                                {rank === 0 ? "★ " : ""}
+                                {c.line1}
+                                {c.line2 ? `, ${c.line2}` : ""}
+                              </strong>
+                              <span>
+                                {[c.city, c.region, c.postal].filter(Boolean).join(", ")} ·{" "}
+                                {Math.round((c.confidence || 0) * 100)}% · {c.source}
+                                {(c.source || "").includes("+") ? " · multi-source" : ""}
+                                {rank === 0 ? " · recommended" : ""}
+                              </span>
+                              {c.note && <em>{c.note}</em>}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {localities.length > 0 && streets.length === 0 && (
+                    <>
+                      <p className="kit-panel__hint">City / zip only — no street yet</p>
+                      <ul className="kit-candidates">
+                        {localities.map(({ c, i }) => (
+                          <li key={`loc-${i}`}>
+                            <span>
+                              {[c.city, c.region, c.postal].filter(Boolean).join(", ")} ·{" "}
+                              {Math.round((c.confidence || 0) * 100)}% · {c.source}
+                            </span>
+                            {c.note && <em>{c.note}</em>}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {links.length > 0 && (
+                    <>
+                      <p className="kit-panel__hint">
+                        Research links — open, find street, paste below
+                      </p>
+                      <ul className="kit-candidates kit-candidates--links">
+                        {links.map(({ c, i }) => {
+                          const href = c.url || (c.line1?.startsWith("http") ? c.line1 : undefined);
+                          return (
+                            <li key={`lk-${i}`}>
+                              {href ? (
+                                <a href={href} target="_blank" rel="noreferrer" className="kit-cand-link">
+                                  {c.source || "Open search"}
+                                  {c.city ? ` · ${c.city}${c.region ? `, ${c.region}` : ""}` : ""}
+                                </a>
+                              ) : (
+                                <span>{c.source}</span>
+                              )}
+                              {c.note && <em>{c.note}</em>}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
             <div className="kit-addr-form">
               <input
                 className="feed-filter"
@@ -447,16 +591,53 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
                 />
               </div>
             </div>
-            <div className="kit-actions">
+            <p className="kit-panel__hint" style={{ marginTop: 12 }}>
+              Paste address block from TruePeopleSearch / whitepages / county assessor — we parse street
+              fields (never auto-mails).
+            </p>
+            <textarea
+              className="feed-filter"
+              rows={3}
+              placeholder={"123 Main St Apt 2\nColumbus, OH 43215"}
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              style={{ width: "100%", marginBottom: 8 }}
+            />
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              disabled={busy || !pasteText.trim()}
+              onClick={() =>
+                parsePaste.mutate(
+                  { id: kit.id, text: pasteText },
+                  {
+                    onSuccess: (k) => {
+                      setLine1(k.address_line1 ?? "");
+                      setLine2(k.address_line2 ?? "");
+                      setCity(k.address_city ?? "");
+                      setRegion(k.address_region ?? "");
+                      setPostal(k.address_postal ?? "");
+                      setPasteText("");
+                      toast.push("Address parsed from paste — now Verify (Lob USPS)", "ok");
+                      onUpdated();
+                    },
+                    onError: (e) => toast.push((e as Error).message, "err"),
+                  },
+                )
+              }
+            >
+              {parsePaste.isPending ? "Parsing…" : "Parse paste → form"}
+            </button>
+            <div className="kit-actions" style={{ marginTop: 12 }}>
               <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => save(false)}>
                 Save draft
               </button>
               <button
                 type="button"
                 className="btn btn--primary"
-                disabled={busy}
+                disabled={busy || !line1.trim() || !city.trim()}
                 onClick={() => {
-                  // Save fields then USPS verify
+                  // Save fields then USPS verify — NEVER mark verified on error
                   patch.mutate(
                     {
                       id: kit.id,
@@ -472,13 +653,12 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
                       onSuccess: () =>
                         verifyAddr.mutate(kit.id, {
                           onSuccess: () => {
-                            toast.push("Address verified", "ok");
+                            toast.push("Address verified (USPS deliverable)", "ok");
                             onUpdated();
                           },
                           onError: (e) => {
-                            // fallback local verify if Lob missing
-                            save(true);
                             toast.push((e as Error).message, "err");
+                            onUpdated(); // refresh notes if Lob wrote undeliverable feedback
                           },
                         }),
                       onError: (e) => toast.push((e as Error).message, "err"),
@@ -486,7 +666,7 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
                   );
                 }}
               >
-                Verify address
+                Verify address (Lob USPS)
               </button>
               {(kit.status === "address_verified" || kit.status === "ready_to_mail") && (
                 <>
@@ -605,15 +785,29 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
           <pre className="kit-notes">{kit.research_notes || "—"}</pre>
           {(kit.address_candidates || []).length > 0 && (
             <>
-              <h4 className="kit-panel__sub">Address candidates</h4>
+              <h4 className="kit-panel__sub">Address candidates (summary)</h4>
               <ul className="kit-candidates">
                 {kit.address_candidates!.map((c, i) => (
                   <li key={i}>
                     <strong>
+                      {c.line1 && !/^https?:\/\//i.test(c.line1)
+                        ? `${c.line1}, `
+                        : c.kind === "research_link"
+                          ? "🔗 "
+                          : ""}
                       {c.city}
                       {c.region ? `, ${c.region}` : ""}
+                      {c.postal ? ` ${c.postal}` : ""}
                     </strong>{" "}
                     · {confPct(c.confidence)} · {c.source}
+                    {c.kind ? ` · ${c.kind}` : ""}
+                    {c.url && (
+                      <div>
+                        <a href={c.url} target="_blank" rel="noreferrer">
+                          Open research link
+                        </a>
+                      </div>
+                    )}
                     {c.note && <div className="kit-panel__hint">{c.note}</div>}
                   </li>
                 ))}

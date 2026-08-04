@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 )
 
 // SocialProvider is the Instagram data plane: hashtag posts, account posts,
@@ -19,16 +20,25 @@ type SocialProvider interface {
 }
 
 // NewSocialProvider picks Bright Data when BRIGHTDATA_API_KEY is set,
-// otherwise Apify. Empty provider idles the watch loop.
+// otherwise Apify only when APIFY_ENABLED=true (cost pause). Empty = idle watch loop.
 func NewSocialProvider() SocialProvider {
 	if key := os.Getenv("BRIGHTDATA_API_KEY"); key != "" {
 		return NewBrightDataClient(key)
 	}
+	// Master pause: never fall back to Apify Instagram actors while APIFY_ENABLED is false.
+	if !apifyIngestEnabled() {
+		return NewApifyClient("") // Available() == false → watch loop idles on Apify path
+	}
 	if tok := os.Getenv("APIFY_TOKEN"); tok != "" {
 		return NewApifyClient(tok)
 	}
-	// Empty Apify client — Available() == false
 	return NewApifyClient("")
+}
+
+// apifyIngestEnabled requires APIFY_ENABLED=true (same master switch as TPS).
+func apifyIngestEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("APIFY_ENABLED")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
 }
 
 // Ensure *ApifyClient and *BrightDataClient satisfy the interface.

@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dear neptune — a portfolio piece</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+
+  :root {
+    --black: #000;
+    --white: #fff;
+    --gray-90: #111;
+    --gray-80: #1a1a1a;
+    --gray-60: #666;
+    --gray-40: #999;
+    --gray-20: #ddd;
+    --gray-10: #f0f0f0;
+    --gray-05: #f8f8f8;
+    --sans: 'Geist', -apple-system, system-ui, sans-serif;
+    --mono: 'Geist Mono', 'SF Mono', Menlo, monospace;
+    --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { font-size: 16px; scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--white);
+    color: var(--black);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── slide system ── */
+  .slide {
+    width: 100%;
+    min-height: 100vh;
+    padding: 80px 64px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    border-bottom: 1px solid var(--gray-20);
+    page-break-after: always;
+  }
+
+  .slide:last-child { border-bottom: none; }
+
+  /* ── typography ── */
+  .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--gray-60);
+    margin-bottom: 24px;
+  }
+
+  .display {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+  }
+
+  .headline {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 32px;
+  }
+
+  .subhead {
+    font-family: var(--serif);
+    font-size: clamp(1.15rem, 2vw, 1.5rem);
+    line-height: 1.4;
+    color: var(--gray-80);
+    max-width: 640px;
+  }
+
+  .body {
+    font-family: var(--sans);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--gray-80);
+    max-width: 620px;
+  }
+
+  .mono { font-family: var(--mono); }
+  .serif { font-family: var(--serif); }
+
+  /* ── slide 1: cover ── */
+  #cover {
+    background: var(--black);
+    color: var(--white);
+    min-height: 100vh;
+  }
+
+  #cover .label { color: var(--gray-40); }
+  #cover .display { color: var(--white); margin-bottom: 40px; }
+  #cover .subhead { color: var(--gray-20); }
+
+  #cover .footer {
+    position: absolute;
+    bottom: 64px;
+    left: 64px;
+    right: 64px;
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--gray-40);
+  }
+
+  /* ── slide 2: respect ── */
+  #respect .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+    margin-top: 48px;
+  }
+
+  .stat {
+    border-top: 1px solid var(--black);
+    padding-top: 16px;
+  }
+
+  .stat .num {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 2rem;
+    letter-spacing: -0.02em;
+  }
+
+  .stat .desc {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--gray-60);
+    margin-top: 8px;
+  }
+
+  /* ── slide 3: the flex ── */
+  #flex {
+    background: var(--gray-05);
+  }
+
+  .flex-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin-top: 48px;
+    border-top: 1px solid var(--black);
+    border-bottom: 1px solid var(--black);
+  }
+
+  .flex-col {
+    padding: 32px;
+  }
+
+  .flex-col:first-child {
+    border-right: 1px solid var(--gray-20);
+  }
+
+  .flex-col h3 {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--gray-60);
+    margin-bottom: 20px;
+  }
+
+  .flex-col .big {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 1.5rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+  }
+
+  .flex-col p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--gray-80);
+  }
+
+  /* ── slide 4: cascade ── */
+  #cascade .providers {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--gray-20);
+    margin-top: 40px;
+    border: 1px solid var(--gray-20);
+  }
+
+  .provider {
+    background: var(--white);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 140px;
+  }
+
+  .provider .name {
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 0.85rem;
+  }
+
+  .provider .cost {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--gray-60);
+    margin-top: 6px;
+  }
+
+  .provider .conf {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--gray-40);
+    margin-top: auto;
+  }
+
+  .provider.free { background: var(--gray-05); }
+  .provider.free .cost { color: var(--black); font-weight: 500; }
+
+  /* ── slide 5: scale ── */
+  #scale .scale-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 48px;
+  }
+
+  .scale-card {
+    border: 1px solid var(--gray-20);
+    padding: 32px;
+  }
+
+  .scale-card .num {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 3.5rem;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  .scale-card .label-small {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--gray-60);
+    margin-top: 12px;
+  }
+
+  .scale-card .desc {
+    font-family: var(--serif);
+    font-size: 0.9rem;
+    color: var(--gray-80);
+    margin-top: 16px;
+    line-height: 1.4;
+  }
+
+  /* ── slide 6: postcard mockup ── */
+  #postcard {
+    background: var(--gray-05);
+  }
+
+  .postcard-wrap {
+    display: flex;
+    gap: 24px;
+    margin-top: 48px;
+    flex-wrap: wrap;
+  }
+
+  .postcard {
+    width: 300px;
+    height: 195px;
+    background: var(--white);
+    border: 1px solid var(--gray-20);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+  }
+
+  .postcard .pc-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--gray-60);
+  }
+
+  .postcard .pc-headline {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  .postcard .pc-names {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    color: var(--gray-80);
+  }
+
+  .postcard .pc-footer {
+    font-family: var(--mono);
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--gray-40);
+  }
+
+  .postcard .pc-msg {
+    font-family: var(--serif);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--gray-80);
+  }
+
+  .postcard .pc-stamp {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 42px;
+    border: 1px solid var(--gray-20);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--gray-40);
+  }
+
+  .postcard .pc-divider {
+    height: 1px;
+    background: var(--gray-20);
+    margin: 12px 0;
+  }
+
+  /* ── slide 7: the ask ── */
+  #ask {
+    background: var(--black);
+    color: var(--white);
+  }
+
+  #ask .label { color: var(--gray-40); }
+  #ask .headline { color: var(--white); }
+  #ask .body { color: var(--gray-20); }
+  #ask .subhead { color: var(--gray-20); }
+
+  #ask .contact {
+    margin-top: 48px;
+    border-top: 1px solid var(--gray-80);
+    padding-top: 32px;
+    display: flex;
+    gap: 48px;
+    flex-wrap: wrap;
+  }
+
+  #ask .contact-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  #ask .contact-item .ck {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--gray-40);
+  }
+
+  #ask .contact-item .cv {
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 1rem;
+    color: var(--white);
+  }
+
+  #ask .signoff {
+    position: absolute;
+    bottom: 64px;
+    left: 64px;
+    right: 64px;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--gray-40);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── flow diagram ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 32px;
+  }
+
+  .flow-step {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 8px 14px;
+    border: 1px solid var(--black);
+    white-space: nowrap;
+  }
+
+  .flow-arrow {
+    color: var(--gray-40);
+    font-size: 14px;
+  }
+
+  /* ── responsive ── */
+  @media (max-width: 768px) {
+    .slide { padding: 48px 24px; }
+    #cover .footer { left: 24px; right: 24px; bottom: 32px; }
+    .flex-grid { grid-template-columns: 1fr; }
+    .flex-col:first-child { border-right: none; border-bottom: 1px solid var(--gray-20); }
+    .providers { grid-template-columns: repeat(2, 1fr); }
+    .scale-grid { grid-template-columns: 1fr; }
+    #respect .stats { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ── print ── */
+  @media print {
+    .slide { page-break-after: always; min-height: 100vh; }
+    .slide:last-child { page-break-after: auto; }
+    body { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 1 — COVER
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="cover">
+  <div class="label">a portfolio piece · august 2026</div>
+  <h1 class="display">dear neptune,<br>i built something<br>in your market.</h1>
+  <p class="subhead">you help couples navigate prenups. i built a system that finds every married couple in america and mails them a postcard. same name, same market, completely different engineering. here's what i can do — and why i'd like to do it for you.</p>
+  <div class="footer">
+    <span>neptune radar · agentic crm</span>
+    <span>7 slides · scroll →</span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 2 — RESPECT
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="respect">
+  <div class="label">01 · respect</div>
+  <h2 class="headline">first: you built something good.</h2>
+  <p class="body">sol lee, ex-uber and mastercard, raised $2.5M from floodgate and alumni ventures. 5-9 people in NYC. an AI-guided chat that walks couples through the hardest conversation before marriage — money. flat-fee $5K prenups with dual attorney representation. 4.2/5 on trustpilot. "partnership comes with admin. neptune handles it."</p>
+  <p class="body" style="margin-top: 16px;">that's a real product solving a real problem. the design is clean, the positioning is smart, and "prenups are an act of love" is a genuinely great reframe. i'm not here to tear that down — i'm here to show you what else is possible in this market when you go deeper on engineering.</p>
+  <div class="stats">
+    <div class="stat">
+      <div class="num">$2.5M</div>
+      <div class="desc">pre-seed · floodgate</div>
+    </div>
+    <div class="stat">
+      <div class="num">$5K</div>
+      <div class="desc">flat-fee prenup</div>
+    </div>
+    <div class="stat">
+      <div class="num">4 states</div>
+      <div class="desc">CA · NY · MA · NJ</div>
+    </div>
+    <div class="stat">
+      <div class="num">4.2★</div>
+      <div class="desc">trustpilot · 24 reviews</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 3 — THE FLEX
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="flex">
+  <div class="label">02 · the flex</div>
+  <h2 class="headline">i built the other thing.</h2>
+  <p class="body">while you were building a chatbot for couples who already know they need a prenup, i was thinking about a different question: <strong>what if you could find every couple the moment they get married — before they're looking for anything?</strong></p>
+  <div class="flex-grid">
+    <div class="flex-col">
+      <h3>neptune (prenups)</h3>
+      <div class="big">user fills a form</div>
+      <p>couple discovers neptune → fills intake → AI chat → attorney match → legal document. the funnel starts when the couple self-identifies. 4 states. inbound only.</p>
+    </div>
+    <div class="flex-col">
+      <h3>neptune radar (mine)</h3>
+      <div class="big">system finds the couple</div>
+      <p>government marriage records across 50 states → instagram discovery via 4 concurrent monitors → 10-provider address detective cascade → lob USPS verification → physical postcard in mailbox. zero form fills. outbound. autonomous.</p>
+    </div>
+  </div>
+  <div class="flow">
+    <span class="flow-step">gov records</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">instagram</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">detective cascade</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">lob verify</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">mailbox</span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 4 — THE CASCADE
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="cascade">
+  <div class="label">03 · the detective</div>
+  <h2 class="headline">10 providers. married-name variants. budget caps.</h2>
+  <p class="body">to find a mailing address for a couple we've never met, the system runs a cascade. it tries free sources first (bios, captions, business profiles), then fans out across paid and free people-search providers with a configurable budget cap. it tries married-name variants — person A with partner B's last name. it stops early when it finds a high-confidence street. every candidate is verified through the USPS.</p>
+  <div class="providers">
+    <div class="provider">
+      <div>
+        <div class="name">trestle IQ</div>
+        <div class="cost">7¢ · paid</div>
+      </div>
+      <div class="conf">conf 0.70–0.80</div>
+    </div>
+    <div class="provider">
+      <div>
+        <div class="name">people data labs</div>
+        <div class="cost">5¢ · paid</div>
+      </div>
+      <div class="conf">conf 0.70–0.72</div>
+    </div>
+    <div class="provider">
+      <div>
+        <div class="name">melissa</div>
+        <div class="cost">3¢ · paid</div>
+      </div>
+      <div class="conf">conf 0.60</div>
+    </div>
+    <div class="provider">
+      <div>
+        <div class="name">cleanlist</div>
+        <div class="cost">1¢ · paid</div>
+      </div>
+      <div class="conf">conf 0.75–0.85</div>
+    </div>
+    <div class="provider free">
+      <div>
+        <div class="name">google CSE</div>
+        <div class="cost">free</div>
+      </div>
+      <div class="conf">conf 0.50</div>
+    </div>
+    <div class="provider free">
+      <div>
+        <div class="name">truepeoplesearch</div>
+        <div class="cost">free · bright data</div>
+      </div>
+      <div class="conf">conf 0.68–0.88</div>
+    </div>
+    <div class="provider free">
+      <div>
+        <div class="name">duckduckgo</div>
+        <div class="cost">free</div>
+      </div>
+      <div class="conf">conf 0.40–0.50</div>
+    </div>
+    <div class="provider free">
+      <div>
+        <div class="name">county property</div>
+        <div class="cost">free · OH/TX/FL</div>
+      </div>
+      <div class="conf">conf 0.65</div>
+    </div>
+    <div class="provider free">
+      <div>
+        <div class="name">voter registration</div>
+        <div class="cost">free · NC auto</div>
+      </div>
+      <div class="conf">conf 0.55</div>
+    </div>
+    <div class="provider free">
+      <div>
+        <div class="name">heuristic</div>
+        <div class="cost">free · fallback</div>
+      </div>
+      <div class="conf">conf 0.30–0.40</div>
+    </div>
+  </div>
+  <p class="body" style="margin-top: 24px; font-size: 0.85rem; color: var(--gray-60);">
+    + LLM home market inference (openAI → baseten → claude → template fallback) · circuit breakers · prep agent gate (score &lt; 0.35 = refuse) · lob USPS verification · append-only audit trail
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 5 — SCALE
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="scale">
+  <div class="label">04 · scale</div>
+  <h2 class="headline">this isn't a prototype.</h2>
+  <p class="body">the system is deployed, running, and monitoring real signals. here's what's bootstrapped:</p>
+  <div class="scale-grid">
+    <div class="scale-card">
+      <div class="num">50</div>
+      <div class="label-small">state packs + DC</div>
+      <div class="desc">every US state seeded with verified government marriage record sources, church directories, and social vendors.</div>
+    </div>
+    <div class="scale-card">
+      <div class="num">10</div>
+      <div class="label-small">records providers</div>
+      <div class="desc">4 paid (trestle, PDL, melissa, cleanlist) + 6 free (google, TPS, DDG, property, voter, heuristic) in a budget-aware cascade.</div>
+    </div>
+    <div class="scale-card">
+      <div class="num">4</div>
+      <div class="label-small">instagram monitors</div>
+      <div class="desc">hashtag, vendor, profile bio-change, and follow-state — with leader election, daily budget caps, and schema drift canaries.</div>
+    </div>
+    <div class="scale-card">
+      <div class="num">18</div>
+      <div class="label-small">dashboard views</div>
+      <div class="desc">today, work, congratulate, sources, map, feed, graph, case, funnel, budget, ops, runs, system, search, DLQ, jobs, settings, interview.</div>
+    </div>
+    <div class="scale-card">
+      <div class="num">4</div>
+      <div class="label-small">LLM providers</div>
+      <div class="desc">openAI → baseten → claude → deterministic template. circuit breaker: 5 failures → 60s cooldown. used for signal interpretation, copy, home market.</div>
+    </div>
+    <div class="scale-card">
+      <div class="num">1</div>
+      <div class="label-small">person + agents</div>
+      <div class="desc">solo build. go backend, react frontend, postgres 17, docker, caddy, supabase, vercel. build-enforced architecture boundaries.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 6 — POSTCARD
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="postcard">
+  <div class="label">05 · the output</div>
+  <h2 class="headline">a postcard. in their mailbox.</h2>
+  <p class="body">the end product is a 4×6 physical postcard. B&W editorial design. geist sans-serif headlines, iowan old style serif body, geist mono labels at 8px with 0.14em letter-spacing. printed and mailed via lob at ~90¢ per card. the front carries the couple's discovery photo. the back carries a handwritten-feel message. it arrives 3-5 days after the system first detected the marriage.</p>
+  <div class="postcard-wrap">
+    <div class="postcard">
+      <div>
+        <div class="pc-label">neptune · front</div>
+      </div>
+      <div>
+        <div class="pc-headline">congratulations</div>
+        <div class="pc-names">jane & john</div>
+      </div>
+      <div class="pc-footer">columbus, oh · aug 2026</div>
+      <div class="pc-stamp">✦</div>
+    </div>
+    <div class="postcard">
+      <div>
+        <div class="pc-label">neptune · back</div>
+      </div>
+      <div class="pc-msg">saw the news — so happy for you both. wishing you a lifetime of the good stuff.</div>
+      <div class="pc-divider"></div>
+      <div class="pc-footer">neptune · with care</div>
+      <div class="pc-stamp">✦</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 7 — THE ASK
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide" id="ask">
+  <div class="label">06 · the ask</div>
+  <h2 class="headline">hire me.</h2>
+  <p class="subhead">i just built, solo, a system that covers 50 states, runs 10 data providers, integrates 4 LLMs, sends physical mail, and has build-enforced architecture boundaries — in your market, with your name. imagine what i'd build with a team and a real budget.</p>
+  <p class="body" style="margin-top: 24px;">you're helping couples navigate the legal side of marriage. i built the infrastructure to find every couple at the moment they marry. those are complementary, not competitive. i'd love to talk about what we could build together — whether that's bringing this outbound discovery engine to neptune, building new agent systems for your prenup flow, or something i haven't thought of yet.</p>
+  <div class="contact">
+    <div class="contact-item">
+      <span class="ck">repo</span>
+      <span class="cv">neptune radar · github</span>
+    </div>
+    <div class="contact-item">
+      <span class="ck">live</span>
+      <span class="cv">54.196.158.87.sslip.io</span>
+    </div>
+    <div class="contact-item">
+      <span class="ck">dashboard</span>
+      <span class="cv">frontend-two-tan-70.vercel.app</span>
+    </div>
+    <div class="contact-item">
+      <span class="ck">availability</span>
+      <span class="cv">immediate · remote or NYC</span>
+    </div>
+  </div>
+  <div class="signoff">
+    <span>dear neptune · a portfolio piece</span>
+    <span>end · 7/7</span>
+  </div>
+</section>
+
+</body>
+</html>

@@ -260,6 +260,26 @@ export interface AddressCandidate {
   confidence: number;
   source: string;
   note?: string;
+  /** street | locality | research_link */
+  kind?: string;
+  /** Research-only link — never a mail street. */
+  url?: string;
+}
+
+/** Prep agent readiness — from kit.mail_payload.detective_prep */
+export interface DetectivePrep {
+  score: number;
+  ready: boolean;
+  blockers?: string[];
+  warnings?: string[];
+  home_city?: string;
+  home_region?: string;
+  home_source?: string;
+  vendor_confused?: boolean;
+  has_last_a?: boolean;
+  has_last_b?: boolean;
+  has_city?: boolean;
+  summary?: string;
 }
 
 export interface CongratulateKit {

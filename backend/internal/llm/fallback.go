@@ -55,49 +55,57 @@ func (c *CircuitBreaker) RecordFailure() {
 	c.mu.Unlock()
 }
 
-// FallbackInterpreter tries Baseten first, then Claude, then falls back to the
-// deterministic template on any error — so the system produces output even
-// when a particular model is unavailable. Circuit breakers prevent wasting
-// time on a provider that's consistently failing.
+// FallbackInterpreter tries OpenAI first, then Baseten, then Claude, then the
+// deterministic template — so the system produces output even when a particular
+// model is unavailable. Circuit breakers prevent wasting time on a dead provider.
 type FallbackInterpreter struct {
+	openai    *OpenAIInterpreter
 	baseten   *BasetenInterpreter
 	claude    *ClaudeInterpreter
 	fallback  *TemplateInterpreter
+	openaiCB  *CircuitBreaker
 	basetenCB *CircuitBreaker
 	claudeCB  *CircuitBreaker
 }
 
 func NewInterpreter() Interpreter {
+	openai := NewOpenAIInterpreter()
 	baseten := NewBasetenInterpreter()
 	claude := NewClaudeInterpreter()
 	tmpl := NewTemplateInterpreter()
 
+	f := &FallbackInterpreter{fallback: tmpl}
+	if openai.Available() {
+		f.openai = openai
+		f.openaiCB = NewCircuitBreaker(5, 60*time.Second)
+	}
 	if baseten.Available() {
-		if claude.Available() {
-			return &FallbackInterpreter{
-				baseten: baseten, claude: claude, fallback: tmpl,
-				basetenCB: NewCircuitBreaker(5, 60*time.Second),
-				claudeCB:  NewCircuitBreaker(5, 60*time.Second),
-			}
-		}
-		return &FallbackInterpreter{
-			baseten: baseten, fallback: tmpl,
-			basetenCB: NewCircuitBreaker(5, 60*time.Second),
-		}
+		f.baseten = baseten
+		f.basetenCB = NewCircuitBreaker(5, 60*time.Second)
 	}
 	if claude.Available() {
-		return &FallbackInterpreter{
-			claude: claude, fallback: tmpl,
-			claudeCB: NewCircuitBreaker(5, 60*time.Second),
-		}
+		f.claude = claude
+		f.claudeCB = NewCircuitBreaker(5, 60*time.Second)
 	}
-	return tmpl
+	if f.openai == nil && f.baseten == nil && f.claude == nil {
+		return tmpl
+	}
+	return f
 }
 
+func (f *FallbackInterpreter) HasOpenAI() bool  { return f.openai != nil }
 func (f *FallbackInterpreter) HasBaseten() bool { return f.baseten != nil }
 func (f *FallbackInterpreter) HasClaude() bool  { return f.claude != nil }
 
 func (f *FallbackInterpreter) InterpretSignal(ctx context.Context, req SignalRequest) (Interpretation, error) {
+	if f.openai != nil && f.openaiCB.Allow() {
+		if out, err := f.openai.InterpretSignal(ctx, req); err == nil {
+			f.openaiCB.RecordSuccess()
+			return out, nil
+		} else {
+			f.openaiCB.RecordFailure()
+		}
+	}
 	if f.baseten != nil && f.basetenCB.Allow() {
 		if out, err := f.baseten.InterpretSignal(ctx, req); err == nil {
 			f.basetenCB.RecordSuccess()
@@ -118,6 +126,14 @@ func (f *FallbackInterpreter) InterpretSignal(ctx context.Context, req SignalReq
 }
 
 func (f *FallbackInterpreter) DraftCopy(ctx context.Context, req CopyRequest) (Copy, error) {
+	if f.openai != nil && f.openaiCB.Allow() {
+		if out, err := f.openai.DraftCopy(ctx, req); err == nil {
+			f.openaiCB.RecordSuccess()
+			return out, nil
+		} else {
+			f.openaiCB.RecordFailure()
+		}
+	}
 	if f.baseten != nil && f.basetenCB.Allow() {
 		if out, err := f.baseten.DraftCopy(ctx, req); err == nil {
 			f.basetenCB.RecordSuccess()

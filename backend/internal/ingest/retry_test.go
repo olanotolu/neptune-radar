@@ -10,6 +10,8 @@ import (
 )
 
 func TestApifyRetryOn5xx(t *testing.T) {
+
+	t.Setenv("APIFY_ENABLED", "true")
 	calls := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
@@ -40,6 +42,8 @@ func TestApifyRetryOn5xx(t *testing.T) {
 }
 
 func TestApifyNoRetryOn4xx(t *testing.T) {
+
+	t.Setenv("APIFY_ENABLED", "true")
 	calls := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
@@ -65,6 +69,8 @@ func TestApifyNoRetryOn4xx(t *testing.T) {
 }
 
 func TestApifyRetryOn429(t *testing.T) {
+
+	t.Setenv("APIFY_ENABLED", "true")
 	calls := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
@@ -92,6 +98,8 @@ func TestApifyRetryOn429(t *testing.T) {
 }
 
 func TestApifyRetryOnNetworkError(t *testing.T) {
+
+	t.Setenv("APIFY_ENABLED", "true")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if hj, ok := w.(http.Hijacker); ok {
 			conn, _, _ := hj.Hijack()

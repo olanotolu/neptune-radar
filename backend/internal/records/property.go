@@ -154,6 +154,7 @@ func parsePropertyHTML(html string, q Query, searchURL string) []Candidate {
 			Region:     q.Region,
 			Postal:     zip,
 			Country:    "US",
+			Kind:       KindStreet,
 			Confidence: 0.65,
 			Source:     "county_property",
 			FullName:   strings.TrimSpace(q.FirstName + " " + q.LastName),
@@ -164,17 +165,14 @@ func parsePropertyHTML(html string, q Query, searchURL string) []Candidate {
 		}
 	}
 
-	// JS-rendered portal or no parseable rows: hand the operator a direct link.
+	// JS-rendered portal or no parseable rows: research link (URL not in Line1).
 	if len(cands) == 0 {
-		cands = append(cands, Candidate{
-			City:       q.City,
-			Region:     q.Region,
-			Country:    "US",
-			Confidence: 0.30,
-			Source:     "county_property",
-			FullName:   strings.TrimSpace(q.FirstName + " " + q.LastName),
-			Note:       fmt.Sprintf("County auditor property search URL — operator should visit and verify: %s", searchURL),
-		})
+		cands = append(cands, ResearchLink(
+			searchURL, q.City, q.Region,
+			strings.TrimSpace(q.FirstName+" "+q.LastName),
+			"county_property",
+			"County auditor property search — operator should visit and verify",
+		))
 	}
 	return cands
 }

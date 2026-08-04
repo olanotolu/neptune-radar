@@ -143,6 +143,18 @@ func (s *Store) UpdateAccountBusinessAddress(accountID, street, city, state, pos
 	return err
 }
 
+// GetAccountBusinessAddress returns IG business profile street if stored.
+func (s *Store) GetAccountBusinessAddress(accountID string) (street, city, state, postal string, ok bool) {
+	err := s.DB.QueryRow(
+		`SELECT COALESCE(business_street,''), COALESCE(business_city,''), COALESCE(business_state,''), COALESCE(business_postal,'')
+		 FROM social_accounts WHERE id = $1`, accountID,
+	).Scan(&street, &city, &state, &postal)
+	if err != nil || street == "" {
+		return "", "", "", "", false
+	}
+	return street, city, state, postal, true
+}
+
 func (s *Store) SetAccountPersonID(accountID, personID string) error {
 	_, err := s.DB.Exec(`UPDATE social_accounts SET person_id = $1 WHERE id = $2`, personID, accountID)
 	return err

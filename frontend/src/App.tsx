@@ -1,6 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
-import { getToken, setToken, setUnauthorizedHandler } from "./api/client";
 import { useIngestStatus, useLiveEvents, useOpsSummary, usePauseIngest, useResumeIngest } from "./api/hooks";
 import { KeyboardHelp } from "./components/KeyboardHelp";
 import { NotificationCenter } from "./components/NotificationCenter";
@@ -92,37 +91,6 @@ const NAV: { id: string; label: string; path: string }[] = [
   { id: "jobs", label: "Jobs", path: "/jobs" },
   { id: "settings", label: "Settings", path: "/settings" },
 ];
-
-function TokenGate({ onSave }: { onSave: () => void }) {
-  const [value, setValue] = useState("");
-  return (
-    <div className="token-gate" role="main">
-      <h2>Neptune Radar</h2>
-      <p>Internal operator console — enter the admin token (NEPTUNE_ADMIN_TOKEN).</p>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          setToken(value.trim());
-          onSave();
-        }}
-      >
-        <label htmlFor="token-input" className="sr-only">Admin token</label>
-        <input
-          id="token-input"
-          type="password"
-          placeholder="admin token"
-          aria-label="Admin token"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          autoFocus
-        />
-        <button className="btn btn--primary" type="submit">
-          Connect
-        </button>
-      </form>
-    </div>
-  );
-}
 
 function WatchTransport() {
   const { data: status, isLoading } = useIngestStatus();
@@ -412,17 +380,6 @@ function Shell() {
 }
 
 export default function App() {
-  const [authed, setAuthed] = useState(!!getToken());
-
-  useEffect(() => {
-    setUnauthorizedHandler(() => setAuthed(false));
-    return () => setUnauthorizedHandler(null);
-  }, []);
-
-  if (!authed) {
-    return <TokenGate onSave={() => setAuthed(true)} />;
-  }
-
   return (
     <ToastProvider>
       <Shell />

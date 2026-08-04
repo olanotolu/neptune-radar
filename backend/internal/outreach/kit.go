@@ -235,20 +235,26 @@ func (a *Agent) BuildKit(ctx context.Context, coupleID string) (store.Congratula
 		kit.FollowUpTemplate = "bright_casual" // different template for follow-up
 	}
 
+	// Prep agent: identity + home market readiness (never invents streets)
+	prep := RunPrep(kit)
+	ApplyPrepToKit(&kit, prep)
+	// Priority boost when detective-ready
+	if prep.Ready {
+		kit.PriorityScore = math.Min(1.0, kit.PriorityScore+0.08)
+	}
+
 	saved, err := a.Store.UpsertCongratulateKit(kit)
 	if err != nil {
 		return saved, err
 	}
 
-	// Auto-detective: run detective immediately if we have enough data (last names + city)
-	if saved.LastNameA != "" || saved.LastNameB != "" {
-		if saved.MarketCity != "" || saved.AddressCity != "" {
-			go func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-				defer cancel()
-				_, _ = a.RunDetective(ctx, saved.ID)
-			}()
-		}
+	// Auto-detective only when Prep says READY (score ≥ 0.70, no hard blockers)
+	if prep.Ready {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+			defer cancel()
+			_, _ = a.RunDetective(ctx, saved.ID)
+		}()
 	}
 
 	return saved, nil
@@ -697,10 +703,29 @@ func mailPayload(k store.CongratulateKit) map[string]any {
 }
 
 // UpdateKitAddress applies human-edited mailing fields and re-renders preview.
+// verified=true marks address_verified only when street/city/zip present.
+// Address mutations while already verified demote status back to ready_review.
 func (a *Agent) UpdateKitAddress(kitID string, patch store.CongratulateKit, verified bool, verifiedBy string) (store.CongratulateKit, error) {
 	k, err := a.Store.GetCongratulateKit(kitID)
 	if err != nil {
 		return k, err
+	}
+	prevFP := addressFingerprint(k.AddressLine1, k.AddressLine2, k.AddressCity, k.AddressRegion, k.AddressPostal)
+	// Preserve mail meta from patch when VerifyAndConfirm set them
+	meta := map[string]any{}
+	if k.MailPayload != nil {
+		for _, key := range []string{"lob_deliverable", "verified_fp", "operator_asserted"} {
+			if v, ok := k.MailPayload[key]; ok {
+				meta[key] = v
+			}
+		}
+	}
+	if patch.MailPayload != nil {
+		for _, key := range []string{"lob_deliverable", "verified_fp", "operator_asserted"} {
+			if v, ok := patch.MailPayload[key]; ok {
+				meta[key] = v
+			}
+		}
 	}
 	if patch.AddressLine1 != "" {
 		k.AddressLine1 = patch.AddressLine1
@@ -719,6 +744,15 @@ func (a *Agent) UpdateKitAddress(kitID string, patch store.CongratulateKit, veri
 	}
 	if patch.AddressCountry != "" {
 		k.AddressCountry = patch.AddressCountry
+	}
+	if patch.AddressSource != "" {
+		k.AddressSource = patch.AddressSource
+	}
+	if patch.AddressConfidence > 0 {
+		k.AddressConfidence = patch.AddressConfidence
+	}
+	if patch.ResearchNotes != "" && len(patch.ResearchNotes) > len(k.ResearchNotes) {
+		k.ResearchNotes = patch.ResearchNotes
 	}
 	if patch.Headline != "" {
 		k.Headline = patch.Headline
@@ -746,19 +780,60 @@ func (a *Agent) UpdateKitAddress(kitID string, patch store.CongratulateKit, veri
 	if patch.NameSourceB != "" {
 		k.NameSourceB = patch.NameSourceB
 	}
+
+	newFP := addressFingerprint(k.AddressLine1, k.AddressLine2, k.AddressCity, k.AddressRegion, k.AddressPostal)
+	if !verified && prevFP != "" && newFP != prevFP && (k.Status == "address_verified" || k.Status == "ready_to_mail") {
+		// Address edited after verify — invalidate
+		k.Status = "ready_review"
+		k.VerifiedAt = nil
+		k.VerifiedBy = ""
+		meta["lob_deliverable"] = false
+		meta["verified_fp"] = ""
+	}
+
+	// Re-run prep when names change so UI readiness updates
+	if patch.FirstNameA != "" || patch.LastNameA != "" || patch.FirstNameB != "" || patch.LastNameB != "" ||
+		patch.AddressCity != "" || patch.AddressRegion != "" {
+		prep := RunPrep(k)
+		ApplyPrepToKit(&k, prep)
+	}
+
 	if verified {
-		if k.AddressLine1 == "" || k.AddressCity == "" || k.AddressPostal == "" {
+		if !records.IsRealStreet(k.AddressLine1) || k.AddressCity == "" || k.AddressPostal == "" {
 			return k, fmt.Errorf("street, city, and postal code required to verify")
 		}
 		k.Status = "address_verified"
-		k.AddressSource = "human_verified"
-		k.AddressConfidence = 0.95
+		// Do not overwrite lob_usps source with human_verified when Lob already ran
+		if k.AddressSource == "" || k.AddressSource == "human_verified" {
+			k.AddressSource = firstNonEmpty(patch.AddressSource, "human_verified")
+		}
+		// Keep identity conf if higher; floor at 0.85 for verified
+		if k.AddressConfidence < 0.85 {
+			k.AddressConfidence = 0.85
+		}
 		now := time.Now().UTC()
 		k.VerifiedAt = &now
 		k.VerifiedBy = firstNonEmpty(verifiedBy, "operator")
+		if _, ok := meta["verified_fp"]; !ok || meta["verified_fp"] == "" {
+			meta["verified_fp"] = newFP
+		}
 	}
 	k.PostcardHTML = RenderPostcardHTML(k)
-	k.MailPayload = mailPayload(k)
+	mp := mailPayload(k)
+	for key, val := range meta {
+		mp[key] = val
+	}
+	// Preserve prep + verify meta that live outside the mail export shape
+	if k.MailPayload != nil {
+		for _, key := range []string{"detective_prep", "lob_deliverable", "verified_fp", "operator_asserted"} {
+			if v, ok := k.MailPayload[key]; ok {
+				if _, already := mp[key]; !already {
+					mp[key] = v
+				}
+			}
+		}
+	}
+	k.MailPayload = mp
 	return a.Store.UpsertCongratulateKit(k)
 }
 

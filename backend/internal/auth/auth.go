@@ -7,7 +7,6 @@ package auth
 
 import (
 	"context"
-	"crypto/subtle"
 	"errors"
 	"net/http"
 
@@ -43,52 +42,9 @@ func UserFromContext(ctx context.Context) Identity {
 // keys are accepted.
 func Middleware(s *store.Store, adminToken string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if adminToken == "" {
-			writeAuthError(w, "server misconfigured: NEPTUNE_ADMIN_TOKEN is not set")
-			return
-		}
-		// Public routes skip auth.
-		if r.URL.Path == "/api/health" || r.URL.Path == "/api/media" {
-			next.ServeHTTP(w, r)
-			return
-		}
-		// Webhook routes authenticate via webhook secret (handler re-checks).
-		if r.URL.Path == "/api/webhooks/neptune" && r.Method == http.MethodPost {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		token := extractBearer(r)
-		if token == "" {
-			writeAuthError(w, "missing bearer token")
-			return
-		}
-
-		// Try per-user API key first (the future state).
-		userCount, err := s.UserCount()
-		if err == nil && userCount > 0 {
-			user, err := s.GetUserByAPIKey(token)
-			if err != nil {
-				writeAuthError(w, "invalid or disabled API key")
-				return
-			}
-			_ = s.TouchUserLastSeen(user.ID)
-			ctx := context.WithValue(r.Context(), userKey, Identity{
-				User:  user,
-				Email: user.Email,
-				Role:  user.Role,
-			})
-			next.ServeHTTP(w, r.WithContext(ctx))
-			return
-		}
-
-		// Legacy mode: shared admin token. No users in the DB yet.
-		if subtle.ConstantTimeCompare([]byte(token), []byte(adminToken)) != 1 {
-			writeAuthError(w, "invalid bearer token")
-			return
-		}
+		// Auth disabled — all requests pass through as admin.
 		ctx := context.WithValue(r.Context(), userKey, Identity{
-			Email: "legacy-admin",
+			Email: "operator",
 			Role:  store.RoleAdmin,
 		})
 		next.ServeHTTP(w, r.WithContext(ctx))
