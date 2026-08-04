@@ -7,31 +7,43 @@ import { OnboardingTour, isOnboarded } from "./components/OnboardingTour";
 import { ToastProvider } from "./components/Toast";
 import { useDarkMode } from "./hooks/useDarkMode";
 import { useKeyboard } from "./hooks/useKeyboard";
-import { FeedView } from "./views/FeedView";
-import { CoupleGraphView } from "./views/CoupleGraphView";
-import { CaseDetailView } from "./views/CaseDetailView";
-import { AuditTrailView } from "./views/AuditTrailView";
-import { AgentRunsView } from "./views/AgentRunsView";
-import { SourcesView } from "./views/SourcesView";
-import { WorkView } from "./views/WorkView";
+// Only Today + shell stay eager. Everything else is route-lazy.
 import { TodayView } from "./views/TodayView";
-import { DossierView } from "./views/DossierView";
-import { SearchView } from "./views/SearchView";
-import { DLQView } from "./views/DLQView";
-import { JobsView } from "./views/JobsView";
-import { SettingsView } from "./views/SettingsView";
-import { FunnelView } from "./views/FunnelView";
-import { CostView } from "./views/CostView";
-import { OpsView } from "./views/OpsView";
-import { InterviewView } from "./views/InterviewView";
 
-// Map (d3 + both us-atlas topojson files) and Congratulate (postcard kit)
-// are the two heaviest views — lazy so the main bundle doesn't carry them.
-const MapView = lazy(() =>
-  import("./views/MapView").then((m) => ({ default: m.MapView })),
-);
+const WorkView = lazy(() => import("./views/WorkView").then((m) => ({ default: m.WorkView })));
+const SourcesView = lazy(() => import("./views/SourcesView").then((m) => ({ default: m.SourcesView })));
+const MapView = lazy(() => import("./views/MapView").then((m) => ({ default: m.MapView })));
 const CongratulateView = lazy(() =>
   import("./views/CongratulateView").then((m) => ({ default: m.CongratulateView })),
+);
+const FeedView = lazy(() => import("./views/FeedView").then((m) => ({ default: m.FeedView })));
+const CoupleGraphView = lazy(() =>
+  import("./views/CoupleGraphView").then((m) => ({ default: m.CoupleGraphView })),
+);
+const CaseDetailView = lazy(() =>
+  import("./views/CaseDetailView").then((m) => ({ default: m.CaseDetailView })),
+);
+const AuditTrailView = lazy(() =>
+  import("./views/AuditTrailView").then((m) => ({ default: m.AuditTrailView })),
+);
+const AgentRunsView = lazy(() =>
+  import("./views/AgentRunsView").then((m) => ({ default: m.AgentRunsView })),
+);
+const DossierView = lazy(() => import("./views/DossierView").then((m) => ({ default: m.DossierView })));
+const SearchView = lazy(() => import("./views/SearchView").then((m) => ({ default: m.SearchView })));
+const DLQView = lazy(() => import("./views/DLQView").then((m) => ({ default: m.DLQView })));
+const JobsView = lazy(() => import("./views/JobsView").then((m) => ({ default: m.JobsView })));
+const SettingsView = lazy(() =>
+  import("./views/SettingsView").then((m) => ({ default: m.SettingsView })),
+);
+const FunnelView = lazy(() => import("./views/FunnelView").then((m) => ({ default: m.FunnelView })));
+const CostView = lazy(() => import("./views/CostView").then((m) => ({ default: m.CostView })));
+const OpsView = lazy(() => import("./views/OpsView").then((m) => ({ default: m.OpsView })));
+const InterviewView = lazy(() =>
+  import("./views/InterviewView").then((m) => ({ default: m.InterviewView })),
+);
+const OrganismView = lazy(() =>
+  import("./views/OrganismView").then((m) => ({ default: m.OrganismView })),
 );
 
 type Route = {
@@ -71,26 +83,58 @@ function setHash(path: string) {
   }
 }
 
-const NAV: { id: string; label: string; path: string }[] = [
+type NavItem = { id: string; label: string; path: string };
+
+/** Daily operator destinations — keep this short. */
+const NAV_PRIMARY: NavItem[] = [
   { id: "today", label: "Today", path: "/today" },
   { id: "work", label: "Work", path: "/work?filter=action" },
   { id: "congratulate", label: "Congratulate", path: "/congratulate" },
-  { id: "interview", label: "Interview", path: "/interview" },
   { id: "sources", label: "Sources", path: "/sources" },
   { id: "map", label: "Map", path: "/map" },
-  { id: "feed", label: "Feed", path: "/feed" },
-  { id: "graph", label: "Graph", path: "/graph" },
-  { id: "case", label: "Cases", path: "/case" },
-  { id: "funnel", label: "Funnel", path: "/funnel" },
-  { id: "cost", label: "Budget", path: "/cost" },
-  { id: "ops", label: "Ops", path: "/ops" },
-  { id: "runs", label: "Runs", path: "/runs" },
-  { id: "audit", label: "System", path: "/audit" },
-  { id: "search", label: "Search", path: "/search" },
-  { id: "dlq", label: "DLQ", path: "/dlq" },
-  { id: "jobs", label: "Jobs", path: "/jobs" },
-  { id: "settings", label: "Settings", path: "/settings" },
 ];
+
+/** Everything else lives under More, grouped by job. */
+const NAV_MORE: { group: string; items: NavItem[] }[] = [
+  {
+    group: "Explore",
+    items: [
+      { id: "feed", label: "Feed", path: "/feed" },
+      { id: "graph", label: "Graph", path: "/graph" },
+      { id: "case", label: "Cases", path: "/case" },
+      { id: "interview", label: "Interview", path: "/interview" },
+      { id: "search", label: "Search", path: "/search" },
+    ],
+  },
+  {
+    group: "Insights",
+    items: [
+      { id: "organism", label: "Organism", path: "/organism" },
+      { id: "funnel", label: "Funnel", path: "/funnel" },
+      { id: "cost", label: "Budget", path: "/cost" },
+    ],
+  },
+  {
+    group: "System",
+    items: [
+      { id: "ops", label: "Ops", path: "/ops" },
+      { id: "runs", label: "Runs", path: "/runs" },
+      { id: "audit", label: "Audit", path: "/audit" },
+      { id: "dlq", label: "DLQ", path: "/dlq" },
+      { id: "jobs", label: "Jobs", path: "/jobs" },
+      { id: "settings", label: "Settings", path: "/settings" },
+    ],
+  },
+];
+
+const NAV_MORE_FLAT = NAV_MORE.flatMap((g) => g.items);
+const WORK_ALIASES = new Set(["work", "prospects", "queue"]);
+
+function isNavActive(tab: string, id: string): boolean {
+  if (id === "work") return WORK_ALIASES.has(tab);
+  if (id === "congratulate") return tab === "congratulate" || tab === "kits";
+  return tab === id;
+}
 
 function WatchTransport() {
   const { data: status, isLoading } = useIngestStatus();
@@ -105,6 +149,7 @@ function WatchTransport() {
   const used = status?.results_used_today ?? 0;
   const budget = status?.daily_budget ?? ops?.daily_budget ?? 0;
   const pct = budget > 0 ? Math.round((used / budget) * 100) : 0;
+  const pending = ops?.pending_actions ?? 0;
 
   let label = "…";
   let tone: "live" | "paused" | "idle" | "warn" = "idle";
@@ -127,19 +172,27 @@ function WatchTransport() {
     }
   }
 
+  const budgetTitle = budget
+    ? `${used}/${budget} results today (${pct}%)`
+    : `${used} results today`;
+
   return (
-    <div className="watch-transport" title="Global radar — pause stops Apify spend">
+    <div className="watch-transport" title={`Radar control — ${budgetTitle}`}>
       <span className={`watch-transport__pill watch-transport__pill--${tone}`}>
         <span className="watch-transport__dot" aria-hidden />
-        {label}
+        <span className="watch-transport__label">{label}</span>
+        <span className="watch-transport__meta" aria-label={budgetTitle}>
+          {pct}%
+        </span>
       </span>
-      <span className="watch-transport__meta">
-        {used}
-        {budget ? `/${budget}` : ""} · {pct}%
-      </span>
-      {ops && ops.pending_actions > 0 && (
-        <button type="button" className="watch-transport__queue" onClick={() => setHash("/work?filter=action")}>
-          {ops.pending_actions} queue
+      {pending > 0 && (
+        <button
+          type="button"
+          className="watch-transport__queue"
+          onClick={() => setHash("/work?filter=action")}
+          title={`${pending} pending approvals`}
+        >
+          {pending}
         </button>
       )}
       <button
@@ -150,15 +203,91 @@ function WatchTransport() {
         aria-label={paused ? "Resume watch loop" : "Pause watch loop"}
       >
         {paused ? (
-          <>
-            <span className="watch-transport__icon">▶</span> Play
-          </>
+          <span className="watch-transport__icon" aria-hidden>
+            <svg viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5v7l6.5-3.5L2 1.5z" /></svg>
+          </span>
         ) : (
-          <>
-            <span className="watch-transport__icon">⏸</span> Pause
-          </>
+          <span className="watch-transport__icon" aria-hidden>
+            <svg viewBox="0 0 10 10" fill="currentColor"><rect x="2" y="1.5" width="2.2" height="7" rx="0.4" /><rect x="5.8" y="1.5" width="2.2" height="7" rx="0.4" /></svg>
+          </span>
         )}
+        <span className="watch-transport__btn-text">{paused ? "Play" : "Pause"}</span>
       </button>
+    </div>
+  );
+}
+
+function MoreNav({
+  activeTab,
+  onNavigate,
+}: {
+  activeTab: string;
+  onNavigate: (path: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  const moreActive = NAV_MORE_FLAT.some((t) => isNavActive(activeTab, t.id));
+  const activeLabel = NAV_MORE_FLAT.find((t) => isNavActive(activeTab, t.id))?.label;
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className={`app-more ${open ? "app-more--open" : ""} ${moreActive ? "app-more--active" : ""}`} ref={ref}>
+      <button
+        type="button"
+        className={`app-nav__tab app-more__trigger ${moreActive ? "app-nav__tab--active" : ""}`}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        data-testid="nav-more"
+        onClick={() => setOpen((v) => !v)}
+      >
+        {moreActive && activeLabel ? activeLabel : "More"}
+        <svg className="app-more__chevron" viewBox="0 0 12 12" width="12" height="12" aria-hidden>
+          <path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className="app-more__menu" role="menu">
+          {NAV_MORE.map((group) => (
+            <div key={group.group} className="app-more__group">
+              <div className="app-more__group-label">{group.group}</div>
+              {group.items.map((item) => {
+                const active = isNavActive(activeTab, item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="menuitem"
+                    className={`app-more__item ${active ? "app-more__item--active" : ""}`}
+                    data-testid={`nav-${item.id}`}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => {
+                      setOpen(false);
+                      onNavigate(item.path);
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -296,6 +425,8 @@ function Shell() {
         return <CoupleGraphView />;
       case "case":
         return <CaseDetailView />;
+      case "organism":
+        return <OrganismView onNavigate={navigate} />;
       case "funnel":
         return <FunnelView />;
       case "cost":
@@ -326,16 +457,14 @@ function Shell() {
         <div className="app-header__top">
           <div className="app-header__brand">
             <span className="app-header__logo" aria-hidden="true">N</span>
-            <div>
-              <div className="app-header__title">Neptune Radar</div>
-              <div className="app-header__subtitle">Neptune Growth OS · celebrate first · human in the loop</div>
-            </div>
+            <div className="app-header__title">Neptune</div>
           </div>
           <div className="app-header__center">
-            <WatchTransport />
             <SearchBar inputRef={searchRef} />
           </div>
           <div className="app-header__right">
+            <WatchTransport />
+            <span className="app-header__divider" aria-hidden />
             <LiveIndicator connected={connected} />
             <NotificationCenter onNavigate={navigate} />
             <button
@@ -346,29 +475,54 @@ function Shell() {
               aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
               title={dark ? "Switch to light mode" : "Switch to dark mode"}
             >
-              {dark ? "☀" : "☾"}
+              {dark ? (
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+                  <circle cx="8" cy="8" r="3.2" />
+                  <path strokeLinecap="round" d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+                  <path d="M12.8 10.2A5.6 5.6 0 0 1 5.8 3.2 5.8 5.8 0 1 0 12.8 10.2Z" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
         <nav className="app-nav" aria-label="Main navigation" data-testid="app-nav">
-          {NAV.map((t) => {
-            const isActive = route.tab === t.id || (t.id === "work" && (route.tab === "prospects" || route.tab === "queue"));
-            return (
-              <button
-                key={t.id}
-                type="button"
-                className={`app-nav__tab ${isActive ? "app-nav__tab--active" : ""}`}
-                data-testid={`nav-${t.id}`}
-                aria-current={isActive ? "page" : undefined}
-                onClick={() => navigate(t.path)}
-              >
-                {t.label}
-              </button>
-            );
-          })}
+          <div className="app-nav__primary">
+            {NAV_PRIMARY.map((t) => {
+              const isActive = isNavActive(route.tab, t.id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`app-nav__tab ${isActive ? "app-nav__tab--active" : ""}`}
+                  data-testid={`nav-${t.id}`}
+                  aria-current={isActive ? "page" : undefined}
+                  onClick={() => navigate(t.path)}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+          <MoreNav activeTab={route.tab} onNavigate={navigate} />
         </nav>
       </header>
-      <main id="app-main" className={`app-main ${route.tab === "work" || route.tab === "sources" || route.tab === "map" ? "app-main--wide" : ""}`} role="main" data-testid="app-main">
+      <main
+        id="app-main"
+        className={`app-main ${
+          route.tab === "work" ||
+          route.tab === "sources" ||
+          route.tab === "map" ||
+          route.tab === "congratulate" ||
+          route.tab === "kits"
+            ? "app-main--wide"
+            : ""
+        }`}
+        role="main"
+        data-testid="app-main"
+      >
         <Suspense fallback={<div className="empty-state">Loading…</div>}>
           {body}
         </Suspense>

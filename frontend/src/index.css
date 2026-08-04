@@ -1,58 +1,70 @@
+/* Neptune Radar — pure B&W instrument system (Aug 2026 craft) */
+
 :root {
-  /* Surfaces — pure white, near-white, hairlines */
-  --bg: #ffffff;
-  --bg-alt: #f7f7f8;
+  /* Surfaces — flat, hairline structure */
+  --bg: #fafafa;
+  --bg-alt: #f4f4f5;
   --surface: #ffffff;
   --surface-hover: #f4f4f5;
   --chip: #f4f4f5;
-  --border: #e8e8ea;
-  --border-strong: #d1d1d4;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
 
   /* Ink */
-  --ink: #0a0a0a;
-  --ink-soft: #52525b;
+  --ink: #09090b;
+  --ink-soft: #3f3f46;
   --ink-dim: #71717a;
-  --ink-faint: #d4d4d8;
+  --ink-faint: #a1a1aa;
 
-  /* Brand accents — mapped to B&W scale.
-     mesa and cove were warm/teal; now both are black/gray.
-     Black IS the accent in a B&W design. */
-  --mesa: #0a0a0a;
+  /* Brand — black is the only accent */
+  --mesa: #09090b;
   --mesa-deep: #000000;
   --mesa-soft: #f4f4f5;
   --cove: #f4f4f5;
-  --cove-deep: #0a0a0a;
+  --cove-deep: #09090b;
   --cove-ink: #18181b;
 
-  /* Status — desaturated, functional only */
+  /* Status — functional dots only */
   --red: #dc2626;
   --green: #16a34a;
-  --amber: #d97706;
+  --amber: #ca8a04;
 
-  /* Accent + radii + shadows */
-  --accent: #0a0a0a;
-  --radius-sm: 6px;
-  --radius: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --accent: #09090b;
+
+  /* Radii — one scale */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* Elevation — rare; hairlines do the work */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.06);
 
-  --mono: "Geist Mono", "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  /* Type */
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Consolas, monospace;
   --sans: "Geist", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+
+  /* Layout rhythm */
+  --header-h: 52px;
+  --nav-h: 40px;
+  --content-max: 1120px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   color-scheme: light;
   font-family: var(--sans);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.5;
   color: var(--ink);
   background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.02em;
-  font-feature-settings: "ss01", "ss02";
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
+  font-feature-settings: "ss01", "ss02", "cv11";
   font-variant-numeric: tabular-nums;
 }
 
@@ -63,18 +75,28 @@
 body {
   margin: 0;
   min-height: 100vh;
+  background: var(--bg);
 }
 
 h1, h2, h3, h4 {
   margin: 0;
   font-weight: 600;
   color: var(--ink);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.025em;
   text-wrap: balance;
 }
 
-h2, h3 {
-  letter-spacing: -0.025em;
+h1 {
+  font-size: 1.75rem;
+  letter-spacing: -0.03em;
+}
+
+h2 {
+  font-size: 1.25rem;
+}
+
+h3 {
+  font-size: 0.9375rem;
 }
 
 p {
@@ -85,34 +107,44 @@ button {
   font-family: inherit;
 }
 
+input, select, textarea {
+  font-family: inherit;
+}
+
 ::selection {
-  background: #0a0a0a;
-  color: #ffffff;
+  background: var(--ink);
+  color: var(--surface);
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 /* ---------- dark mode ---------- */
 
 [data-theme="dark"] {
-  /* Surfaces — true dark, three-tier for depth */
-  --bg: #0a0a0a;
-  --bg-alt: #141414;
-  --surface: #18181b;
-  --surface-hover: #232326;
-  --chip: #1f1f23;
-  --border: #2a2a2e;
+  --bg: #09090b;
+  --bg-alt: #111113;
+  --surface: #111113;
+  --surface-hover: #18181b;
+  --chip: #18181b;
+  --border: #27272a;
   --border-strong: #3f3f46;
 
-  /* Ink */
   --ink: #fafafa;
-  --ink-soft: #a1a1aa;
-  --ink-dim: #71717a;
-  --ink-faint: #3f3f46;
+  --ink-soft: #d4d4d8;
+  --ink-dim: #a1a1aa;
+  --ink-faint: #71717a;
 
-  /* Brand accents — inverted B&W */
   --mesa: #fafafa;
   --mesa-deep: #ffffff;
-  --mesa-soft: #232326;
-  --cove: #232326;
+  --mesa-soft: #18181b;
+  --cove: #18181b;
   --cove-deep: #fafafa;
   --cove-ink: #e4e4e7;
 
@@ -121,8 +153,8 @@ button {
   --amber: #fbbf24;
 
   --accent: #fafafa;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);
 
   color-scheme: dark;
@@ -130,35 +162,42 @@ button {
   background: var(--bg);
 }
 
-/* Smooth theme switch — only animate the shell, not every descendant. */
+/* Theme switch — shell only */
 .app-shell,
 .app-header,
 .app-main,
 .app-nav,
 .map-stage {
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 html {
   scroll-behavior: smooth;
 }
 
-/* Subtle, theme-matching scrollbars. */
+/* Scrollbars — hairline, theme-matched */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
+
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
+
 *::-webkit-scrollbar-track {
   background: transparent;
 }
+
 *::-webkit-scrollbar-thumb {
   background: var(--border-strong);
   border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
+
 *::-webkit-scrollbar-thumb:hover {
   background: var(--ink-faint);
+  background-clip: padding-box;
 }

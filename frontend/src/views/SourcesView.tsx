@@ -63,6 +63,35 @@ function initials(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
+/** Avatar that falls back to initials when CDN / proxy fails (expired IG signed URLs). */
+function SourceAvatar({
+  url,
+  name,
+  className,
+  fallbackClassName,
+}: {
+  url?: string | null;
+  name: string;
+  className: string;
+  fallbackClassName: string;
+}) {
+  const [broken, setBroken] = useState(false);
+  const src = url && !broken ? mediaURL(url) : "";
+  if (!src) {
+    return <span className={`${className} ${fallbackClassName}`}>{initials(name)}</span>;
+  }
+  return (
+    <img
+      className={className}
+      src={src}
+      alt=""
+      referrerPolicy="no-referrer"
+      loading="lazy"
+      onError={() => setBroken(true)}
+    />
+  );
+}
+
 function locLabel(s: WatchedSource): string | null {
   if (s.city && s.state) return `${s.city}, ${s.state}`;
   if (s.city) return s.city;
@@ -105,11 +134,12 @@ function SourceCard({
       }}
     >
       <div className="kanban-card__top">
-        {source.profile_pic_url ? (
-          <img className="kanban-card__avatar" src={mediaURL(source.profile_pic_url)} alt="" referrerPolicy="no-referrer" />
-        ) : (
-          <span className="kanban-card__avatar kanban-card__avatar--fallback">{initials(displayName)}</span>
-        )}
+        <SourceAvatar
+          url={source.profile_pic_url}
+          name={displayName}
+          className="kanban-card__avatar"
+          fallbackClassName="kanban-card__avatar--fallback"
+        />
         <div className="kanban-card__identity">
           <span className="kanban-card__name" title={displayName}>
             {displayName}
@@ -139,7 +169,7 @@ function SourceCard({
         <div className="kanban-card__stats kanban-card__stats--pending">No profile check yet</div>
       )}
 
-      {loc && <div className="kanban-card__loc">📍 {loc}</div>}
+      {loc && <div className="kanban-card__loc">{loc}</div>}
       <div className="kanban-card__meta-row">
         <span>{source.posts_stored ?? 0} stored</span>
         {postAge && <span>post {postAge}</span>}
@@ -405,11 +435,12 @@ function SourceDetail({
     <aside className="source-detail">
       <div className="source-detail__header">
         <div className="source-detail__identity">
-          {source.profile_pic_url ? (
-            <img className="source-detail__avatar" src={mediaURL(source.profile_pic_url)} alt="" referrerPolicy="no-referrer" />
-          ) : (
-            <span className="source-detail__avatar source-detail__avatar--fallback">{initials(displayName)}</span>
-          )}
+          <SourceAvatar
+            url={source.profile_pic_url}
+            name={displayName}
+            className="source-detail__avatar"
+            fallbackClassName="source-detail__avatar--fallback"
+          />
           <div>
             <h3 className="source-detail__name">{displayName}</h3>
             <a href={`https://instagram.com/${source.handle}`} target="_blank" rel="noreferrer">
@@ -418,7 +449,7 @@ function SourceDetail({
             <div className="source-detail__stats">
               {source.follower_count != null && <span>{formatCount(source.follower_count)} followers</span>}
               {source.post_count != null && <span>{formatCount(source.post_count)} posts</span>}
-              {loc && <span>📍 {loc}</span>}
+              {loc && <span>{loc}</span>}
             </div>
             <div className="source-detail__stats">
               <span>{source.posts_stored ?? 0} stored</span>

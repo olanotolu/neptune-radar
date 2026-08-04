@@ -46,11 +46,10 @@ export function CoupleGraphView() {
       <div className="view view--couple-graph">
         <h2 className="view__title">Relationship Graph</h2>
         {error ? (
-          <EmptyState variant="warning" icon="⚠" title="Couples unavailable" message={(error as Error).message} />
+          <EmptyState variant="warning" title="Couples unavailable" message={(error as Error).message} />
         ) : (
           <EmptyState
             variant="empty"
-            icon="💑"
             title="No couples detected yet"
             message="The radar is watching. Couples will appear here as they're discovered."
           />
@@ -160,7 +159,7 @@ export function CoupleGraphView() {
         {relationship && (
           <div className="graph-stat graph-stat--badges">
             <VisibilityBadge scope={relationship.current.visibility_scope} />
-            {isPaused && <span className="paused-badge">⏸ paused</span>}
+            {isPaused && <span className="paused-badge">paused</span>}
           </div>
         )}
         <button

@@ -145,7 +145,7 @@ function Card({
         <div className="pcard__faces" aria-hidden>
           <Avatar url={card.profile_pic_a} label={card.person_a_label} handle={card.handle_a} />
           <Avatar url={card.profile_pic_b} label={card.person_b_label} handle={card.handle_b} />
-          <span className="pcard__heart">♥</span>
+          <span className="pcard__heart" aria-hidden>&</span>
         </div>
         <RankBadge score={score} />
       </header>
@@ -209,7 +209,7 @@ function Drawer({
     <div className="work-overlay" onClick={onClose}>
       <aside className={`work-drawer${fullDossier ? " work-drawer--dossier" : ""}`} onClick={(e) => e.stopPropagation()}>
         <button type="button" className="work-drawer__close" onClick={onClose} aria-label="Close">
-          ✕
+          Close
         </button>
 
         {fullDossier ? (

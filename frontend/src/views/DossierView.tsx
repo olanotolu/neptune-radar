@@ -75,13 +75,11 @@ function RankGauge({ rank }: { rank: number }) {
 /* ---------- Metric card ---------- */
 
 function MetricCard({
-  icon,
   label,
   value,
   sub,
   accent,
 }: {
-  icon: string;
   label: string;
   value: string;
   sub: string;
@@ -89,7 +87,6 @@ function MetricCard({
 }) {
   return (
     <div className={`dossier-mcard dossier-mcard--${accent}`}>
-      <span className="dossier-mcard__icon">{icon}</span>
       <span className="dossier-mcard__label">{label}</span>
       <strong className="dossier-mcard__value">{value}</strong>
       <span className="dossier-mcard__sub">{sub}</span>
@@ -176,7 +173,7 @@ function JourneyStepper({
                 onSet(s);
               }}
             >
-              <span className="dossier-stepper__node">{done ? "✓" : i + 1}</span>
+              <span className="dossier-stepper__node">{done ? "done" : i + 1}</span>
               <span className="dossier-stepper__label">{s.replace(/_/g, " ")}</span>
             </button>
           </li>
@@ -197,8 +194,6 @@ function BrandActionButton({
   busy: boolean;
   onRun: (id: string) => void;
 }) {
-  const icon =
-    action.tone === "celebrate" ? "🎉" : action.tone === "soft_invite" ? "✉" : action.tone === "risk" ? "⚠" : "•";
   return (
     <button
       type="button"
@@ -207,7 +202,6 @@ function BrandActionButton({
       title={action.block_reason || action.body}
       onClick={() => onRun(action.id)}
     >
-      <span className="dossier-action__icon">{icon}</span>
       <span className="dossier-action__text">
         <strong>{action.title}</strong>
         <span>{action.allowed ? action.body : action.block_reason || action.body}</span>
@@ -346,8 +340,8 @@ export function DossierView({
     );
 
   if (isLoading) return <LoadingState variant="spinner" message="Loading dossier…" />;
-  if (error) return <EmptyState variant="warning" icon="⚠" title="Dossier unavailable" message={(error as Error).message} />;
-  if (!data) return <EmptyState variant="empty" icon="📇" title="No dossier" message="No dossier data for this couple." />;
+  if (error) return <EmptyState variant="warning" title="Dossier unavailable" message={(error as Error).message} />;
+  if (!data) return <EmptyState variant="empty" title="No dossier" message="No dossier data for this couple." />;
 
   const nameA = data.person_a_name || data.handle_a || "A";
   const nameB = data.person_b_name || data.handle_b || "B";
@@ -385,7 +379,7 @@ export function DossierView({
               {(data.city || data.region) && (
                 <span className="dossier__loc">
                   {" · "}
-                  <span className="dossier__pin" aria-hidden>📍</span>
+                  <span className="dossier__pin" aria-hidden />
                   {data.city}
                   {data.region ? `, ${data.region}` : ""}
                 </span>
@@ -419,28 +413,24 @@ export function DossierView({
 
       <div className="dossier__metrics dossier__metrics--premium">
         <MetricCard
-          icon="♥"
           label="Engagement"
           value={pct(data.engagement_score)}
           sub="Did this happen?"
           accent="cove"
         />
         <MetricCard
-          icon="⚭"
           label="Partner Fit"
           value={pct(data.partner_score || 0)}
           sub="Right two people?"
           accent="mesa"
         />
         <MetricCard
-          icon="◎"
           label="ICP Match"
           value={pct(data.icp?.score || 0)}
           sub={`Market: ${data.icp?.market_label || "unknown"} (${pct(data.icp?.market_priority || 0)})`}
           accent="green"
         />
         <MetricCard
-          icon="⏳"
           label="Runway"
           value={data.runway_label || "Unknown"}
           sub={

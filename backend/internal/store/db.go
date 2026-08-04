@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -29,6 +30,10 @@ type Store struct {
 	// at the start of each tick anyway.
 	sourceClassCache map[string]string
 	mu               sync.RWMutex
+
+	// ponytail: 15s TTL — header + Today + Organism all hit GetOpsSummary.
+	opsSummaryAt time.Time
+	opsSummary   OpsSummary
 }
 
 // Open connects to Postgres (dsn e.g. "postgres://user:pass@host:5432/neptune")

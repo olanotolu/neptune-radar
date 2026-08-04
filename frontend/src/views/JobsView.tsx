@@ -27,10 +27,10 @@ export function JobsView() {
       </header>
 
       {isLoading && <LoadingState variant="skeleton" message="Loading jobs…" />}
-      {error && <EmptyState variant="warning" icon="⚠" title="Jobs unavailable" message={(error as Error).message} />}
+      {error && <EmptyState variant="warning" title="Jobs unavailable" message={(error as Error).message} />}
 
       {!isLoading && !error && jobs.length === 0 && (
-        <EmptyState variant="empty" icon="🛠️" title="No scan jobs yet" message="Background scans will appear here as the radar queues them." />
+        <EmptyState variant="empty" title="No scan jobs yet" message="Background scans will appear here as the radar queues them." />
       )}
 
       {!isLoading && !error && jobs.length > 0 && (

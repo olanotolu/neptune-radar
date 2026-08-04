@@ -71,7 +71,7 @@ func TestEndToEndVendorDiscovery(t *testing.T) {
 			t.Fatalf("process follow: %v", err)
 		}
 	}
-	pending, err := s.ListActions("pending")
+	pending, err := s.ListActions("pending", 0)
 	if err != nil {
 		t.Fatalf("list actions: %v", err)
 	}

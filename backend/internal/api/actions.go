@@ -13,7 +13,13 @@ import (
 )
 
 func (s *Server) listActions(w http.ResponseWriter, r *http.Request) {
-	actions, err := s.Store.ListActions(r.URL.Query().Get("status"))
+	limit := 0
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			limit = n
+		}
+	}
+	actions, err := s.Store.ListActions(r.URL.Query().Get("status"), limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return

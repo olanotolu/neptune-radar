@@ -43,7 +43,7 @@ function SystemInfo() {
       </div>
       {dlqCount > 0 && (
         <p className="ops-view__warn">
-          ⚠ {dlqCount} item{dlqCount === 1 ? "" : "s"} in the dead letter queue — review in the DLQ tab.
+          {dlqCount} item{dlqCount === 1 ? "" : "s"} in the dead letter queue — review in the DLQ tab.
         </p>
       )}
     </section>
@@ -93,9 +93,9 @@ export function SettingsView() {
       <section className="trust-panel">
         <h3 className="trust-panel__title">Users</h3>
         {isLoading && <LoadingState variant="skeleton" message="Loading users…" />}
-        {error && <EmptyState variant="warning" icon="⚠" title="Users unavailable" message={(error as Error).message} />}
+        {error && <EmptyState variant="warning" title="Users unavailable" message={(error as Error).message} />}
         {!isLoading && !error && list.length === 0 && (
-          <EmptyState variant="empty" icon="👥" title="No users found" message="Operator accounts will appear here once created." />
+          <EmptyState variant="empty" title="No users found" message="Operator accounts will appear here once created." />
         )}
         {!isLoading && !error && list.length > 0 && (
           <table className="dossier-ledger">

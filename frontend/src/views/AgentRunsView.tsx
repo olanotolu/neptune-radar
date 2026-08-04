@@ -56,10 +56,10 @@ export function AgentRunsView() {
       </header>
 
       {isLoading && <LoadingState variant="skeleton" message="Loading runs…" />}
-      {error && <EmptyState variant="warning" icon="⚠" title="Runs unavailable" message={(error as Error).message} />}
+      {error && <EmptyState variant="warning" title="Runs unavailable" message={(error as Error).message} />}
 
       {!isLoading && !error && runs.length === 0 && (
-        <EmptyState variant="info" icon="◎" title="No runs yet" message="Pipeline runs will appear here as signals are processed." />
+        <EmptyState variant="info" title="No runs yet" message="Pipeline runs will appear here as signals are processed." />
       )}
 
       {!isLoading && !error && runs.length > 0 && (
@@ -118,7 +118,7 @@ function RunDrawer({ id, onClose }: { id: string; onClose: () => void }) {
     <aside className="run-drawer">
       <header className="run-drawer__header">
         <h3 className="run-drawer__title">Run detail</h3>
-        <button className="run-drawer__close" onClick={onClose} aria-label="Close">✕</button>
+        <button className="run-drawer__close" onClick={onClose} aria-label="Close">Close</button>
       </header>
 
       {isLoading && <LoadingState variant="dots" message="Loading run…" />}

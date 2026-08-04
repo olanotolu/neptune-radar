@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"neptune-social-radar/backend/internal/ontology"
@@ -92,7 +93,9 @@ func (s *Store) CountPendingActions() (int, error) {
 	return n, err
 }
 
-func (s *Store) ListActions(status string) ([]ontology.RecommendedAction, error) {
+// ListActions returns recommended actions, newest/highest priority first.
+// limit <= 0 means no LIMIT (full list for Work/operator paths).
+func (s *Store) ListActions(status string, limit int) ([]ontology.RecommendedAction, error) {
 	q := `SELECT id, COALESCE(hypothesis_id,''), COALESCE(case_id,''), action_type, COALESCE(proposed_payload,''),
 	   status, created_at, decided_at, COALESCE(decided_by,''),
 	   priority, COALESCE(owner,''), snooze_until, COALESCE(reason,'')
@@ -103,6 +106,13 @@ func (s *Store) ListActions(status string) ([]ontology.RecommendedAction, error)
 		args = append(args, status)
 	}
 	q += ` ORDER BY priority DESC, created_at DESC, id DESC`
+	if limit > 0 {
+		if limit > 500 {
+			limit = 500
+		}
+		args = append(args, limit)
+		q += fmt.Sprintf(` LIMIT $%d`, len(args))
+	}
 	rows, err := s.DB.Query(q, args...)
 	if err != nil {
 		return nil, err

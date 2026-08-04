@@ -34,7 +34,7 @@ func TestRenderPostcardHTML(t *testing.T) {
 		{"mono for labels", `"Geist Mono"`},
 		{"grayscale filter", "grayscale(100%)"},
 		{"deliver to label", "Deliver to"},
-		{"stamp mark", "✦"},
+		{"stamp area", "pc-back__stamp"},
 		{"hairline rule", "pc-front__rule"},
 	}
 	for _, c := range checks {
@@ -62,5 +62,23 @@ func TestRenderPostcardHTML_EmptyAddress(t *testing.T) {
 	}
 	if !strings.Contains(html, "Address pending human verification") {
 		t.Error("empty address should show pending message")
+	}
+}
+
+func TestRenderPostcardHTML_CelebrateQR(t *testing.T) {
+	k := neptunestore.CongratulateKit{
+		PersonAName:  "Alice",
+		PersonBName:  "Bob",
+		CelebrateURL: "https://app.meetneptune.com/chat?utm_medium=postcard&ref=abc",
+	}
+	html := RenderPostcardHTML(k)
+	if !strings.Contains(html, "pc-back__qr") {
+		t.Error("celebrate URL should render QR block")
+	}
+	if !strings.Contains(html, "meetneptune.com") {
+		t.Error("celebrate QR should brand meetneptune.com")
+	}
+	if !strings.Contains(html, "utm_medium=postcard") {
+		t.Error("QR should preserve celebrate tracking URL")
 	}
 }

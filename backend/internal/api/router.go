@@ -144,6 +144,9 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("POST /api/trust/autopsy", srv.generateAutopsy)
 	mux.HandleFunc("GET /api/trust/autopsies/{id}", srv.getAutopsy)
 
+	// Agentic growth organism — swarm + guarantees + yield + risk sentinel
+	mux.HandleFunc("GET /api/organism", srv.organismStatus)
+
 	// User management (admin-only — handler checks role).
 	mux.HandleFunc("GET /api/users", srv.listUsers)
 	mux.HandleFunc("POST /api/users", srv.createUser)

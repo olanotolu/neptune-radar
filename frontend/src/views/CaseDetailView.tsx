@@ -40,11 +40,10 @@ export function CaseDetailView() {
         {isLoading ? (
           <LoadingState variant="spinner" message="Loading cases…" />
         ) : error ? (
-          <EmptyState variant="warning" icon="⚠" title="Cases unavailable" message={(error as Error).message} />
+          <EmptyState variant="warning" title="Cases unavailable" message={(error as Error).message} />
         ) : (
           <EmptyState
             variant="empty"
-            icon="📂"
             title="No case yet"
             message="Approve the engagement review action in the Approval Queue to open one."
           />

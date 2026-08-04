@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import type {
@@ -39,6 +39,7 @@ import type {
   InterviewSessionDetail,
   InterviewMessage,
   InterviewExtraction,
+  Organism,
 } from "./types";
 
 const keys = {
@@ -121,11 +122,13 @@ function useLiveRefetch(ms: number): number | false {
 // The live feed polls — the watch loop ingests continuously, so the console
 // refreshes on an interval instead of being stepped manually.
 export function useSignals(monitor?: string) {
-  const interval = useLiveRefetch(10_000);
+  // ponytail: 30s is plenty for feed freshness; 10s was thrashing mobile.
+  const interval = useLiveRefetch(30_000);
   return useQuery({
     queryKey: keys.signals(monitor),
     queryFn: () => api.get<Signal[]>(`/api/signals${monitor ? `?monitor=${encodeURIComponent(monitor)}` : ""}`),
     refetchInterval: interval,
+    staleTime: 20_000,
   });
 }
 
@@ -195,12 +198,17 @@ export function useLeads() {
   return useQuery({ queryKey: keys.leads, queryFn: () => api.get<CRMLead[]>("/api/leads") });
 }
 
-export function useActions(status?: string) {
-  const interval = useLiveRefetch(10_000);
+export function useActions(status?: string, limit?: number) {
+  const interval = useLiveRefetch(45_000);
+  const qs = new URLSearchParams();
+  if (status) qs.set("status", status);
+  if (limit && limit > 0) qs.set("limit", String(limit));
+  const q = qs.toString();
   return useQuery({
-    queryKey: keys.actions(status),
-    queryFn: () => api.get<RecommendedAction[]>(`/api/actions${status ? `?status=${status}` : ""}`),
+    queryKey: [...keys.actions(status), limit ?? 0] as const,
+    queryFn: () => api.get<RecommendedAction[]>(`/api/actions${q ? `?${q}` : ""}`),
     refetchInterval: interval,
+    staleTime: 30_000,
   });
 }
 
@@ -266,11 +274,13 @@ export function useSourcePosts(handle?: string) {
 }
 
 export function useProspectBoard() {
-  const interval = useLiveRefetch(15_000);
+  // ponytail: board is the heaviest API; 45s poll + 20s stale.
+  const interval = useLiveRefetch(45_000);
   return useQuery({
     queryKey: keys.prospectBoard,
     queryFn: () => api.get<ProspectBoard>("/api/prospects/board"),
     refetchInterval: interval,
+    staleTime: 20_000,
   });
 }
 
@@ -287,7 +297,9 @@ export function useOpsSummary() {
   return useQuery({
     queryKey: ["ops", "summary"],
     queryFn: () => api.get<OpsSummary>("/api/ops/summary"),
-    refetchInterval: 12_000,
+    // Server caches 15s; client can wait longer between background polls.
+    refetchInterval: 60_000,
+    staleTime: 45_000,
   });
 }
 
@@ -322,8 +334,9 @@ export function useIngestStatus() {
   return useQuery({
     queryKey: keys.ingestStatus,
     queryFn: () => api.get<IngestStatus>("/api/ingest/status"),
-    // Always poll status so Pause/Play stays accurate even while paused.
-    refetchInterval: 5_000,
+    // Pause/Play accuracy; 30s is enough for the header pill.
+    refetchInterval: 30_000,
+    staleTime: 15_000,
   });
 }
 
@@ -642,6 +655,16 @@ export function useFunnelStats() {
   });
 }
 
+export function useOrganism() {
+  return useQuery({
+    queryKey: ["organism"],
+    queryFn: () => api.get<Organism>("/api/organism"),
+    staleTime: 60_000,
+    // No auto-refetch — open Organism tab or remount Today when you care.
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useFunnelEvents(coupleId?: string) {
   return useQuery({
     queryKey: ["funnel", "events", coupleId ?? "all"],
@@ -831,60 +854,77 @@ export function useEnableUser() {
   });
 }
 
-// SSE live feed. EventSource can't set headers, so the bearer token rides as
-// a query param. Reconnects with exponential backoff (1s → 2s → 4s … capped 30s).
+// SSE live feed — module singleton so Shell + NotificationCenter share one socket.
+// EventSource can't set headers; bearer token rides as a query param if needed.
 const BASE_URL = import.meta.env.VITE_API_URL ?? "";
 
+type LiveSnap = { events: LiveEvent[]; connected: boolean };
+const liveSnap: LiveSnap = { events: [], connected: false };
+const liveListeners = new Set<() => void>();
+let liveES: EventSource | null = null;
+let liveBackoff = 1_000;
+let liveStopped = true;
+
+function emitLive() {
+  for (const l of liveListeners) l();
+}
+
+function startLiveStream() {
+  if (liveES || !liveStopped) return;
+  liveStopped = false;
+  const connect = () => {
+    if (liveStopped) return;
+    const es = new EventSource(`${BASE_URL}/api/events/stream`);
+    liveES = es;
+    es.onopen = () => {
+      liveSnap.connected = true;
+      liveBackoff = 1_000;
+      emitLive();
+    };
+    es.onmessage = (e) => {
+      try {
+        const evt = JSON.parse(e.data) as LiveEvent;
+        liveSnap.events = [...liveSnap.events.slice(-49), evt];
+        emitLive();
+      } catch {
+        /* drop */
+      }
+    };
+    es.onerror = () => {
+      liveSnap.connected = false;
+      es.close();
+      liveES = null;
+      emitLive();
+      const delay = Math.min(liveBackoff, 30_000);
+      liveBackoff = Math.min(liveBackoff * 2, 30_000);
+      window.setTimeout(connect, delay);
+    };
+  };
+  connect();
+}
+
+function stopLiveStreamIfIdle() {
+  if (liveListeners.size > 0) return;
+  liveStopped = true;
+  liveES?.close();
+  liveES = null;
+}
+
 export function useLiveEvents() {
-  const [events, setEvents] = useState<LiveEvent[]>([]);
-  const [connected, setConnected] = useState(false);
-  const esRef = useRef<EventSource | null>(null);
-  const backoff = useRef(1_000);
+  const [snap, setSnap] = useState<LiveSnap>(() => ({ ...liveSnap, events: liveSnap.events }));
 
   useEffect(() => {
-    let stopped = false;
-
-    const connect = () => {
-      if (stopped) return;
-      const url = `${BASE_URL}/api/events/stream`;
-      const es = new EventSource(url);
-      esRef.current = es;
-
-      es.onopen = () => {
-        setConnected(true);
-        backoff.current = 1_000;
-      };
-
-      es.onmessage = (e) => {
-        try {
-          const evt = JSON.parse(e.data) as LiveEvent;
-          setEvents((prev) => [...prev.slice(-49), evt]);
-        } catch {
-          /* malformed frame — drop */
-        }
-      };
-
-      es.onerror = () => {
-        setConnected(false);
-        es.close();
-        esRef.current = null;
-        // ponytail: capped exponential backoff; EventSource auto-reconnects,
-        // but we manage it ourselves so a bad token doesn't spin a tight loop.
-        const delay = Math.min(backoff.current, 30_000);
-        backoff.current = Math.min(backoff.current * 2, 30_000);
-        window.setTimeout(connect, delay);
-      };
-    };
-
-    connect();
+    const onChange = () => setSnap({ events: liveSnap.events, connected: liveSnap.connected });
+    liveListeners.add(onChange);
+    startLiveStream();
+    onChange();
     return () => {
-      stopped = true;
-      esRef.current?.close();
-      esRef.current = null;
+      liveListeners.delete(onChange);
+      stopLiveStreamIfIdle();
     };
   }, []);
 
-  return { events, connected };
+  return snap;
 }
 
 export function useRuns(coupleId?: string) {

@@ -68,7 +68,6 @@ function FunnelPanel() {
         {(events ?? []).length === 0 ? (
           <EmptyState
             variant="empty"
-            icon="📈"
             title="No product events yet"
             message="When a couple starts chat or books a consult, post to the webhook with handoff_code or utm_content (couple id)."
           />
@@ -173,7 +172,6 @@ function AutopsyPanel() {
       {!isLoading && (reports ?? []).length === 0 && !latest && (
         <EmptyState
           variant="empty"
-          icon="🧾"
           title="No autopsy reports yet"
           message="Run a 7-day autopsy to generate the weekly trust report for legal and ops."
         />
@@ -311,7 +309,7 @@ export function AuditTrailView() {
           />
         </div>
         {error ? (
-          <EmptyState variant="warning" icon="⚠" title="Audit trail unavailable" message={(error as Error).message} />
+          <EmptyState variant="warning" title="Audit trail unavailable" message={(error as Error).message} />
         ) : isLoading ? (
           <LoadingState variant="skeleton" message="Loading audit trail…" />
         ) : (

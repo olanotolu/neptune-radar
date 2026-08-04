@@ -28,7 +28,7 @@ export function AuditTable({ events }: { events: AuditEvent[] }) {
   const table = useReactTable({ data: events, columns, getCoreRowModel: getCoreRowModel() });
 
   if (events.length === 0) {
-    return <EmptyState variant="empty" icon="📜" title="No audit events yet" message="The watch loop logs every stage as events arrive." />;
+    return <EmptyState variant="empty" title="No audit events yet" message="The watch loop logs every stage as events arrive." />;
   }
 
   return (

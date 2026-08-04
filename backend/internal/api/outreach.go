@@ -206,10 +206,11 @@ func (s *Server) kitPostcardHTML(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, err)
 		return
 	}
-	html := kit.PostcardHTML
-	if html == "" {
-		html = outreach.RenderPostcardHTML(kit)
+	// Always re-render with celebrate deep link so QR stays current.
+	if link, err := s.Store.CelebrateDeepLink(kit.CoupleID); err == nil {
+		kit.CelebrateURL = link
 	}
+	html := outreach.RenderPostcardHTML(kit)
 	// Proxy IG images through our media endpoint if present in HTML
 	// (browser can load /api/media without auth).
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

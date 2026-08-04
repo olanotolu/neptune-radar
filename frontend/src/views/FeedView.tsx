@@ -26,19 +26,19 @@ function categorize(s: Signal): TypeFilter {
   return "all";
 }
 
-function typeVisual(s: Signal): { icon: string; cls: string } {
+function typeVisual(s: Signal): { label: string; cls: string } {
   const c = categorize(s);
   switch (c) {
     case "engagement":
-      return { icon: "💍", cls: "feed-card__icon--mesa" };
+      return { label: "ENG", cls: "feed-card__icon--mesa" };
     case "tags":
-      return { icon: "🏷", cls: "feed-card__icon--cove" };
+      return { label: "TAG", cls: "feed-card__icon--cove" };
     case "mentions":
-      return { icon: "💬", cls: "feed-card__icon--cove-ink" };
+      return { label: "MEN", cls: "feed-card__icon--cove-ink" };
     case "vendor":
-      return { icon: "📸", cls: "feed-card__icon--ink-dim" };
+      return { label: "VND", cls: "feed-card__icon--ink-dim" };
     default:
-      return { icon: "📡", cls: "feed-card__icon--ink-dim" };
+      return { label: "SIG", cls: "feed-card__icon--ink-dim" };
   }
 }
 
@@ -159,7 +159,7 @@ export function FeedView() {
         key={s.id}
         className={`feed-card feed-card--${categorize(s)}${isNew ? " feed-card--new" : ""}${isRefreshing ? " feed-card--refreshing" : ""}`}
       >
-        <div className={`feed-card__icon ${vis.cls}`} aria-hidden>{vis.icon}</div>
+        <div className={`feed-card__icon ${vis.cls}`} aria-hidden>{vis.label}</div>
         <div className="feed-card__body">
           <div className="feed-card__handle">@{s.handle}</div>
           <div className="feed-card__summary">{s.summary}</div>
@@ -217,7 +217,12 @@ export function FeedView() {
           ))}
         </div>
         <div className="feed-search">
-          <span className="feed-search__icon" aria-hidden>⌕</span>
+          <span className="feed-search__icon" aria-hidden>
+            <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="6" cy="6" r="4" />
+              <path d="M9.2 9.2 L12 12" strokeLinecap="round" />
+            </svg>
+          </span>
           <input
             className="feed-search__input"
             placeholder="Filter by monitor (e.g. hashtag:justengaged, vendor:handle)…"
@@ -227,7 +232,7 @@ export function FeedView() {
         </div>
       </div>
 
-      {error && <EmptyState variant="warning" icon="⚠" title="Feed unavailable" message={(error as Error).message} />}
+      {error && <EmptyState variant="warning" title="Feed unavailable" message={(error as Error).message} />}
 
       <div className="feed-meta-row">
         {filtered.length > 0 && <span className="feed-meta-row__count">{filtered.length} signal{filtered.length === 1 ? "" : "s"}</span>}
@@ -240,7 +245,6 @@ export function FeedView() {
         ) : !filtered || filtered.length === 0 ? (
           <EmptyState
             variant="empty"
-            icon="📡"
             title="No signals yet"
             message="The radar is watching. Signals will appear here as couples are detected — check Sources to confirm vendors and budget are configured."
           />

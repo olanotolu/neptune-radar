@@ -93,12 +93,12 @@ export function SearchView() {
         </div>
       </header>
 
-      {!q && <EmptyState variant="empty" icon="🔍" title="Search Neptune" message="Find any couple, lead, or case. Type a query above and press Enter." />}
+      {!q && <EmptyState variant="empty" title="Search Neptune" message="Find any couple, lead, or case. Type a query above and press Enter." />}
       {q && isLoading && <LoadingState variant="skeleton" message="Searching…" />}
-      {q && error && <EmptyState variant="warning" icon="⚠" title="Search failed" message={(error as Error).message} />}
+      {q && error && <EmptyState variant="warning" title="Search failed" message={(error as Error).message} />}
 
       {q && !isLoading && !error && total === 0 && (
-        <EmptyState variant="empty" icon="🔍" title="No results" message={`No matches for “${q}”. Try a different query or lower the confidence filter.`} />
+        <EmptyState variant="empty" title="No results" message={`No matches for “${q}”. Try a different query or lower the confidence filter.`} />
       )}
 
       {q && !isLoading && !error && total > 0 && (

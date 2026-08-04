@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveEvents } from "../api/hooks";
 import type { LiveEvent, LiveEventType } from "../api/types";
 
-const TONE: Record<LiveEventType, { color: string; icon: string; label: string }> = {
-  couple_detected: { color: "green", icon: "♥", label: "Couple detected" },
-  stage_transition: { color: "blue", icon: "→", label: "Stage transition" },
-  action_created: { color: "yellow", icon: "!", label: "Action created" },
-  alert: { color: "red", icon: "⚠", label: "Alert" },
+const TONE: Record<LiveEventType, { color: string; label: string }> = {
+  couple_detected: { color: "green", label: "Couple detected" },
+  stage_transition: { color: "blue", label: "Stage transition" },
+  action_created: { color: "yellow", label: "Action created" },
+  alert: { color: "red", label: "Alert" },
 };
 
 function timeAgo(iso: string): string {
@@ -100,7 +100,10 @@ export function NotificationCenter({ onNavigate }: { onNavigate: (path: string) 
           if (!open) markRead();
         }}
       >
-        <span aria-hidden>🔔</span>
+        <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+          <path d="M4 6.5a4 4 0 0 1 8 0c0 3 1.2 3.8 1.2 3.8H2.8S4 9.5 4 6.5Z" strokeLinejoin="round" />
+          <path d="M6.6 12.2a1.5 1.5 0 0 0 2.8 0" strokeLinecap="round" />
+        </svg>
         {unread > 0 && <span className="notif__badge">{unread > 99 ? "99+" : unread}</span>}
       </button>
       {open && (
@@ -114,7 +117,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: (path: string) 
           <div className="notif__list">
             {recent.length === 0 && <div className="notif__empty">No events yet</div>}
             {recent.map((evt, i) => {
-              const tone = TONE[evt.type];
+              const tone = TONE[evt.type] ?? { color: "blue", label: evt.type };
               return (
                 <button
                   key={`${evt.time}-${i}`}
@@ -122,7 +125,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: (path: string) 
                   className={`notif__item notif__item--${tone.color}`}
                   onClick={() => onClickEvent(evt)}
                 >
-                  <span className="notif__item-icon" aria-hidden>{tone.icon}</span>
+                  <span className={`notif__item-dot notif__item-dot--${tone.color}`} aria-hidden />
                   <span className="notif__item-body">
                     <span className="notif__item-type">{tone.label}</span>
                     <span className="notif__item-summary">{summary(evt)}</span>

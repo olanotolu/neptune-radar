@@ -1,4 +1,5 @@
 interface EmptyStateProps {
+  /** @deprecated Decorative icons removed — ignored. */
   icon?: string;
   title: string;
   message?: string;
@@ -7,7 +8,6 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
-  icon,
   title,
   message,
   action,
@@ -15,8 +15,6 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className={`empty-state-card empty-state-card--${variant}`} role="status">
-      <div className="empty-state-card__bg" aria-hidden />
-      {icon && <div className="empty-state-card__icon" aria-hidden>{icon}</div>}
       <h3 className="empty-state-card__title">{title}</h3>
       {message && <p className="empty-state-card__message">{message}</p>}
       {action && (

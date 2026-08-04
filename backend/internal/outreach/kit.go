@@ -221,6 +221,9 @@ func (a *Agent) BuildKit(ctx context.Context, coupleID string) (store.Congratula
 		kit.BodyMessage = postcardFallback(nameA, nameB, locLabel).CustomerFacing
 	}
 
+	if link, err := a.Store.CelebrateDeepLink(coupleID); err == nil {
+		kit.CelebrateURL = link
+	}
 	kit.PostcardHTML = RenderPostcardHTML(kit)
 	kit.MailPayload = mailPayload(kit)
 	kit.Status = "ready_review"
@@ -576,14 +579,41 @@ func RenderPostcardHTML(k store.CongratulateKit) string {
 		frontPhoto = fmt.Sprintf(`<div class="pc-front__photo" style="background-image:url('%s')"></div>`, img)
 	}
 
+	// Celebrate QR → Meet Neptune dual-counsel chat (tracked). Never a pitch.
+	qrBlock := ""
+	if u := strings.TrimSpace(k.CelebrateURL); u != "" {
+		esc := html.EscapeString(u)
+		qrSrc := html.EscapeString("https://api.qrserver.com/v1/create-qr-code/?size=96x96&margin=4&data=" + url.QueryEscape(u))
+		qrBlock = fmt.Sprintf(`
+      <div class="pc-back__qr">
+        <img src="%s" width="72" height="72" alt="Open Neptune"/>
+        <div class="pc-label">When you are ready — both of you</div>
+        <a class="pc-back__qr-link" href="%s">meetneptune.com</a>
+      </div>`, qrSrc, esc)
+	}
+
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html><head><meta charset="utf-8"/><title>Postcard — %s & %s</title>
 <style>
   @page { size: 6in 4in; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { margin: 0; background: #f7f7f8; color: #0a0a0a; -webkit-font-smoothing: antialiased; }
-  .pc-sheet { display: flex; flex-wrap: wrap; gap: 20px; padding: 24px; justify-content: center; }
-  .pc-card { width: 6in; height: 4in; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.08), 0 12px 32px rgba(0,0,0,.06); position: relative; }
+  .pc-sheet {
+    display: flex; flex-wrap: wrap; gap: 16px; padding: 16px;
+    justify-content: center; align-items: flex-start;
+  }
+  .pc-card {
+    width: min(6in, calc(100vw - 40px));
+    aspect-ratio: 6 / 4;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    position: relative;
+  }
+  @media print {
+    .pc-card { width: 6in; height: 4in; aspect-ratio: auto; }
+  }
 
   /* ---- front: black canvas, photo, minimal type ---- */
   .pc-front { display: grid; grid-template-rows: 1fr auto; height: 100%%; background: #0a0a0a; color: #fafafa; }
@@ -600,13 +630,16 @@ func RenderPostcardHTML(k store.CongratulateKit) string {
   .pc-back__message { padding: 24px 22px; border-right: 1px solid #e8e8ea; display: flex; flex-direction: column; }
   .pc-back__message p { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-size: 13px; line-height: 1.6; color: #1a1a1a; white-space: normal; }
   .pc-back__from { margin-top: auto; padding-top: 16px; font-family: "Geist Mono", "IBM Plex Mono", ui-monospace, monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: #71717a; }
-  .pc-back__addr { padding: 24px 20px; display: flex; flex-direction: column; justify-content: space-between; }
+  .pc-back__addr { padding: 20px 18px; display: flex; flex-direction: column; justify-content: space-between; }
   .pc-back__stamp { width: 44px; height: 52px; border: 1px solid #d1d1d4; align-self: flex-end; border-radius: 2px; display: flex; align-items: center; justify-content: center; }
-  .pc-back__stamp::after { content: "✦"; font-size: 14px; color: #d1d1d4; }
-  .pc-back__to { font-size: 12px; line-height: 1.5; margin-top: 28px; color: #1a1a1a; }
+  .pc-back__stamp::after { content: ""; width: 10px; height: 10px; border: 1px solid #d1d1d4; }
+  .pc-back__to { font-size: 12px; line-height: 1.5; margin-top: 16px; color: #1a1a1a; }
   .pc-back__to strong { display: block; font-weight: 600; margin-bottom: 4px; font-family: "Geist", "Inter", sans-serif; font-size: 13px; }
-  .pc-label { font-family: "Geist Mono", "IBM Plex Mono", ui-monospace, monospace; font-size: 8px; text-transform: uppercase; letter-spacing: .14em; color: #a1a1aa; margin-bottom: 8px; }
+  .pc-label { font-family: "Geist Mono", "IBM Plex Mono", ui-monospace, monospace; font-size: 8px; text-transform: uppercase; letter-spacing: .14em; color: #a1a1aa; margin-bottom: 6px; }
   .pc-back__addr-pending { color: #a1a1aa; font-style: italic; font-size: 11px; }
+  .pc-back__qr { margin-top: 12px; text-align: left; }
+  .pc-back__qr img { display: block; width: 72px; height: 72px; border: 1px solid #e8e8ea; margin-bottom: 6px; }
+  .pc-back__qr-link { font-family: "Geist Mono", ui-monospace, monospace; font-size: 9px; color: #0a0a0a; text-decoration: none; letter-spacing: .04em; }
 
   @media print {
     body { background: #fff; }
@@ -636,6 +669,7 @@ func RenderPostcardHTML(k store.CongratulateKit) string {
         <div class="pc-label">Deliver to</div>
         <strong>%s &amp; %s</strong>
         %s
+        %s
       </div>
     </div>
   </div>
@@ -650,7 +684,7 @@ func RenderPostcardHTML(k store.CongratulateKit) string {
 			}
 			return `<p class="pc-front__loc">` + loc + `</p>`
 		}(),
-		body, nameA, nameB, addr,
+		body, nameA, nameB, addr, qrBlock,
 	)
 }
 

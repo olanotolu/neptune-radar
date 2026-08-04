@@ -50,6 +50,9 @@ type CongratulateKit struct {
 	BodyMessage          string             `json:"body_message,omitempty"`
 	InternalNote         string             `json:"internal_note,omitempty"`
 	PostcardHTML         string             `json:"postcard_html,omitempty"`
+	// CelebrateURL is a tracked Meet Neptune deep link for the postcard QR
+	// (utm_medium=postcard). Not persisted — set at render/build time.
+	CelebrateURL         string             `json:"celebrate_url,omitempty"`
 	MailPayload          map[string]any     `json:"mail_payload,omitempty"`
 	VerifiedBy           string             `json:"verified_by,omitempty"`
 	VerifiedAt           *time.Time         `json:"verified_at,omitempty"`

@@ -19,16 +19,28 @@ func (s *Server) opsSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := map[string]any{
-		"couples_total":      sum.CouplesTotal,
-		"couples_24h":        sum.Couples24h,
-		"pending_actions":    sum.PendingActions,
-		"needs_pics":         sum.NeedsPics,
-		"needs_location":     sum.NeedsLocation,
-		"sources_total":      sum.SourcesTotal,
-		"sources_with_loc":   sum.SourcesWithLoc,
-		"sources_stale":      sum.SourcesStale,
-		"map_pins":           sum.MapPins,
-		"results_used_today": sum.ResultsUsedToday,
+		"couples_total":             sum.CouplesTotal,
+		"couples_24h":               sum.Couples24h,
+		"pending_actions":           sum.PendingActions,
+		"needs_pics":                sum.NeedsPics,
+		"needs_location":            sum.NeedsLocation,
+		"sources_total":             sum.SourcesTotal,
+		"sources_with_loc":          sum.SourcesWithLoc,
+		"sources_stale":             sum.SourcesStale,
+		"map_pins":                  sum.MapPins,
+		"results_used_today":        sum.ResultsUsedToday,
+		"queue_congratulate":        sum.QueueCongratulate,
+		"queue_detective":           sum.QueueDetective,
+		"queue_runway_urgent":       sum.QueueRunwayUrgent,
+		"queue_risk":                sum.QueueRisk,
+		"kits_ready_to_mail":        sum.KitsReadyToMail,
+		"kits_mailed":               sum.KitsMailed,
+		"funnel_chat_started_7d":    sum.FunnelChatStarted7d,
+		"funnel_consult_booked_7d":  sum.FunnelConsultBooked7d,
+		"funnel_closed_won_7d":      sum.FunnelClosedWon7d,
+		"funnel_handoffs_issued":    sum.FunnelHandoffsIssued,
+		"funnel_chat_rate":          sum.FunnelChatRate,
+		"funnel_book_rate":          sum.FunnelBookRate,
 	}
 	if s.Watch != nil {
 		out["paused"] = s.Watch.IsPaused()

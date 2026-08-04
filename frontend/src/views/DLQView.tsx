@@ -25,10 +25,10 @@ export function DLQView() {
       </header>
 
       {isLoading && <LoadingState variant="skeleton" message="Loading DLQ…" />}
-      {error && <EmptyState variant="warning" icon="⚠" title="DLQ unavailable" message={(error as Error).message} />}
+      {error && <EmptyState variant="warning" title="DLQ unavailable" message={(error as Error).message} />}
 
       {!isLoading && !error && items.length === 0 && (
-        <EmptyState variant="success" icon="✓" title="All clear" message="No failed signals. Everything made it through." />
+        <EmptyState variant="success" title="All clear" message="No failed signals. Everything made it through." />
       )}
 
       {!isLoading && !error && items.length > 0 && (

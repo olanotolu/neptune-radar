@@ -118,12 +118,21 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
     setLastB(kit.last_name_b || "");
   }, [kit.id, kit.updated_at]);
 
-  // Load postcard HTML.
+  // Load postcard HTML (prefer live render for QR / celebrate link).
   useEffect(() => {
     let cancelled = false;
+    setPreviewHTML(null);
     const base = import.meta.env.VITE_API_URL ?? "";
     fetch(`${base}/api/kits/${kit.id}/postcard`)
-      .then((r) => r.text())
+      .then(async (r) => {
+        const html = await r.text();
+        if (!r.ok) throw new Error(html || `postcard ${r.status}`);
+        // Guard against API error JSON being stuffed into the iframe.
+        if (html.trimStart().startsWith("{") || !html.toLowerCase().includes("<!doctype")) {
+          throw new Error("invalid postcard html");
+        }
+        return html;
+      })
       .then((html) => {
         if (!cancelled) setPreviewHTML(html);
       })
@@ -235,15 +244,13 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
     <div className="kit-workspace">
       <header className="kit-workspace__hero">
         <div className="kit-workspace__intro">
-          <p className="kit-workspace__eyebrow">Congratulate kit</p>
           <h2>
             {kit.person_a_name || kit.handle_a} <span className="kit-workspace__amp">&</span>{" "}
             {kit.person_b_name || kit.handle_b}
           </h2>
           <p className="kit-workspace__sub">
-            Agent resolved <strong>first names</strong> for the card, gathered market + discovery
-            evidence, and drafted a postcard. Street address is never invented — you verify, then
-            mail.
+            First names resolved, market + discovery evidence gathered, postcard drafted.
+            Street address is never invented — verify, then mail.
           </p>
           <div className="kit-workspace__pills">
             <span className={`kit-pill kit-pill--${kit.status}`}>{STATUS_LABEL[kit.status]}</span>
@@ -252,7 +259,7 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
             </span>
             {kit.market_city && (
               <span className="kit-pill">
-                ⌖ {kit.market_city}
+                {kit.market_city}
                 {kit.market_region ? `, ${kit.market_region}` : ""}
               </span>
             )}
@@ -304,7 +311,12 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
             // sandbox="" = all restrictions: no scripts, no same-origin.
             // srcdoc without sandbox inherits THIS origin — with scraped
             // content inside, that's an XSS path straight to localStorage.
-            <iframe title="Postcard" className="kit-postcard-frame" sandbox="" srcDoc={previewHTML} />
+            <iframe
+              title="Postcard preview"
+              className="kit-postcard-frame"
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
+              srcDoc={previewHTML}
+            />
           ) : (
             <LoadingState variant="spinner" message="Loading postcard…" />
           )}
@@ -793,7 +805,7 @@ function KitWorkspace({ kit, onUpdated }: { kit: CongratulateKit; onUpdated: () 
                       {c.line1 && !/^https?:\/\//i.test(c.line1)
                         ? `${c.line1}, `
                         : c.kind === "research_link"
-                          ? "🔗 "
+                          ? "Link · "
                           : ""}
                       {c.city}
                       {c.region ? `, ${c.region}` : ""}
@@ -886,7 +898,7 @@ export function CongratulateView({
           </div>
           <div className="kit-list__items">
             {(kits ?? []).length === 0 && (
-              <EmptyState variant="empty" icon="✉️" title="No kits yet" message="Open Work → Congratulate on a couple to build a postcard kit." />
+              <EmptyState variant="empty" title="No kits yet" message="Open Work → Congratulate on a couple to build a postcard kit." />
             )}
             {(kits ?? []).map((k) => (
               <KitCard
@@ -904,7 +916,6 @@ export function CongratulateView({
           ) : (
             <EmptyState
               variant="empty"
-              icon="✉️"
               title="No kit selected"
               message="Select a kit or build one for a couple to see the postcard and research workspace."
             />

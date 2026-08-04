@@ -16,7 +16,6 @@ type Stage = {
   cumulative: number;
   color: string;
   gradient: string;
-  icon: string;
 };
 
 export function FunnelView() {
@@ -35,7 +34,6 @@ export function FunnelView() {
     return (
       <EmptyState
         variant="empty"
-        icon="📊"
         title="No funnel data yet"
         message="Funnel analytics will appear once handoffs are issued and product events (chat_started, consult_booked, closed_won) are recorded via webhook."
       />
@@ -53,9 +51,8 @@ export function FunnelView() {
       width: 1,
       convFromPrev: null,
       cumulative: 1,
-      color: "var(--cove-ink)",
-      gradient: "linear-gradient(135deg, #0070a9, #008285)",
-      icon: "📤",
+      color: "var(--ink)",
+      gradient: "var(--ink)",
     },
     {
       label: "Chats Started (7d)",
@@ -64,9 +61,8 @@ export function FunnelView() {
       width: chatRate,
       convFromPrev: stats.handoffs_issued > 0 ? stats.chat_started_7d / stats.handoffs_issued : 0,
       cumulative: chatRate,
-      color: "#5cc6e6",
-      gradient: "linear-gradient(135deg, #0070a9, #5cc6e6)",
-      icon: "💬",
+      color: "var(--ink-soft)",
+      gradient: "var(--ink-soft)",
     },
     {
       label: "Consults Booked (7d)",
@@ -75,9 +71,8 @@ export function FunnelView() {
       width: bookRate * chatRate,
       convFromPrev: stats.chat_started_7d > 0 ? stats.consult_booked_7d / stats.chat_started_7d : 0,
       cumulative: bookRate * chatRate,
-      color: "var(--mesa)",
-      gradient: "linear-gradient(135deg, #5cc6e6, #f3813f)",
-      icon: "📅",
+      color: "var(--ink-dim)",
+      gradient: "var(--ink-dim)",
     },
     {
       label: "Closed Won (7d)",
@@ -86,9 +81,8 @@ export function FunnelView() {
       width: closeRate * bookRate * chatRate,
       convFromPrev: stats.consult_booked_7d > 0 ? stats.closed_won_7d / stats.consult_booked_7d : 0,
       cumulative: closeRate * bookRate * chatRate,
-      color: "var(--green)",
-      gradient: "linear-gradient(135deg, #f3813f, #008285)",
-      icon: "🎉",
+      color: "var(--ink)",
+      gradient: "var(--ink)",
     },
   ];
 
@@ -127,7 +121,6 @@ export function FunnelView() {
             return (
               <div key={s.label} className="funnel-step" style={{ "--w": `${w}%`, "--next-w": `${nextWidth}%` } as React.CSSProperties}>
                 <div className="funnel-step__bar" style={{ background: s.gradient }}>
-                  <span className="funnel-step__icon">{s.icon}</span>
                   <div className="funnel-step__content">
                     <span className="funnel-step__label">{s.label}</span>
                     <span className="funnel-step__count">{s.count}</span>
@@ -176,22 +169,18 @@ export function FunnelView() {
         <h3 className="funnel-kpis-section__title">7-day performance</h3>
         <div className="funnel-kpis-grid">
           <div className="funnel-kpi-card funnel-kpi-card--blue">
-            <span className="funnel-kpi-card__icon">💬</span>
             <span className="funnel-kpi-card__num">{stats.chat_started_7d}</span>
             <span className="funnel-kpi-card__label">Chats started</span>
           </div>
           <div className="funnel-kpi-card funnel-kpi-card--cove">
-            <span className="funnel-kpi-card__icon">📅</span>
             <span className="funnel-kpi-card__num">{stats.consult_booked_7d}</span>
             <span className="funnel-kpi-card__label">Consults booked</span>
           </div>
           <div className="funnel-kpi-card funnel-kpi-card--green">
-            <span className="funnel-kpi-card__icon">🎉</span>
             <span className="funnel-kpi-card__num">{stats.closed_won_7d}</span>
             <span className="funnel-kpi-card__label">Closed won</span>
           </div>
           <div className="funnel-kpi-card funnel-kpi-card--red">
-            <span className="funnel-kpi-card__icon">✕</span>
             <span className="funnel-kpi-card__num">{stats.closed_lost_7d}</span>
             <span className="funnel-kpi-card__label">Closed lost</span>
           </div>
@@ -204,7 +193,6 @@ export function FunnelView() {
         {(events ?? []).length === 0 ? (
           <EmptyState
             variant="empty"
-            icon="📡"
             title="No events recorded"
             message="Product events (chat_started, consult_booked, closed_won, closed_lost) will appear here when posted via the Neptune webhook."
           />

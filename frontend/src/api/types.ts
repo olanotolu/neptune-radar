@@ -654,6 +654,92 @@ export interface AutopsyReport {
   created_at: string;
 }
 
+/** Agentic growth organism — Scout → Celebrate → Align → Dual counsel → Learn */
+export interface SwarmAgent {
+  id: string;
+  name: string;
+  job: string;
+  hard_rule: string;
+  status: "live" | "idle" | "paused" | "warn" | string;
+  metric_label: string;
+  metric_value: string;
+}
+
+export interface Guarantee {
+  id: string;
+  title: string;
+  promise: string;
+  enforced_by: string;
+  evidence: string;
+  status: "holding" | "violated" | "unknown" | string;
+  count_30d: number;
+}
+
+export interface MarketYield {
+  market: string;
+  couples: number;
+  closed_won: number;
+  invited: number;
+}
+
+export interface SourceWin {
+  source: string;
+  signals: number;
+  closed_won: number;
+}
+
+export interface YieldBoard {
+  handoffs_issued: number;
+  chats_7d: number;
+  booked_7d: number;
+  closed_won_7d: number;
+  closed_lost_7d: number;
+  kits_ready: number;
+  kits_mailed: number;
+  chat_rate: number;
+  book_rate: number;
+  win_rate: number;
+  pending_approvals: number;
+  by_market: MarketYield[];
+  top_sources: SourceWin[];
+}
+
+export interface RiskRefusal {
+  couple_id?: string;
+  action: string;
+  reason: string;
+  at: string;
+  audit_kind?: string;
+}
+
+export interface RiskSentinel {
+  promise: string;
+  risk_queue_open: number;
+  pitches_blocked_30d: number;
+  refusals: RiskRefusal[];
+}
+
+export interface MorningBriefing {
+  headline: string;
+  celebrate_ready: number;
+  detective_open: number;
+  runway_urgent: number;
+  risk_pause: number;
+  budget_pct: number;
+  lines: string[];
+}
+
+export interface Organism {
+  thesis: string;
+  updated_at: string;
+  swarm: SwarmAgent[];
+  guarantees: Guarantee[];
+  yield: YieldBoard;
+  risk_sentinel: RiskSentinel;
+  briefing: MorningBriefing;
+  meet_neptune: Record<string, string>;
+}
+
 export interface DossierEvidence {
   id: string;
   kind: string;

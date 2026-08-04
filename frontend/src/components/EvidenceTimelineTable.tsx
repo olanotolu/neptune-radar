@@ -16,7 +16,7 @@ const columns = [
   }),
   columnHelper.accessor("confirmed", {
     header: "Confirmed",
-    cell: (info) => (info.getValue() ? "✓" : "—"),
+    cell: (info) => (info.getValue() ? "yes" : "—"),
   }),
 ];
 
@@ -24,7 +24,7 @@ export function EvidenceTimelineTable({ evidence }: { evidence: Evidence[] }) {
   const table = useReactTable({ data: evidence, columns, getCoreRowModel: getCoreRowModel() });
 
   if (evidence.length === 0) {
-    return <EmptyState variant="empty" icon="🔬" title="No evidence collected yet" message="Signals that confirm or refute this hypothesis will appear here." />;
+    return <EmptyState variant="empty" title="No evidence collected yet" message="Signals that confirm or refute this hypothesis will appear here." />;
   }
 
   return (

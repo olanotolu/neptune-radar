@@ -631,50 +631,62 @@ type OpsSummary struct {
 }
 
 // GetOpsSummary aggregates operator KPIs.
+// ponytail: 15s process cache; queue buckets from SQL action types (no board scan).
+// Runway-urgent needs bio enrichment — left at 0 here; open Work for exact.
 func (s *Store) GetOpsSummary() (OpsSummary, error) {
+	s.mu.RLock()
+	if !s.opsSummaryAt.IsZero() && time.Since(s.opsSummaryAt) < 15*time.Second {
+		v := s.opsSummary
+		s.mu.RUnlock()
+		return v, nil
+	}
+	s.mu.RUnlock()
+
 	var o OpsSummary
-	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM couples WHERE suppressed_at IS NULL`).Scan(&o.CouplesTotal)
-	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM couples WHERE suppressed_at IS NULL AND created_at > now() - interval '24 hours'`).Scan(&o.Couples24h)
-	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM recommended_actions WHERE status = 'pending'`).Scan(&o.PendingActions)
+	// Batch the cheap counts in one round-trip.
+	_ = s.DB.QueryRow(`
+		SELECT
+		  (SELECT COUNT(*) FROM couples WHERE suppressed_at IS NULL),
+		  (SELECT COUNT(*) FROM couples WHERE suppressed_at IS NULL AND created_at > now() - interval '24 hours'),
+		  (SELECT COUNT(*) FROM recommended_actions WHERE status = 'pending'),
+		  (SELECT COUNT(*) FROM couples WHERE suppressed_at IS NULL AND (inferred_city IS NULL OR inferred_city = '')),
+		  (SELECT COUNT(*) FROM watched_sources WHERE active),
+		  (SELECT COUNT(*) FROM watched_sources WHERE active AND city IS NOT NULL AND city <> ''),
+		  (SELECT COUNT(*) FROM couples WHERE suppressed_at IS NULL AND inferred_city IS NOT NULL AND inferred_city <> ''),
+		  (SELECT COUNT(*) FROM congratulate_kits WHERE status IN ('ready_to_mail','address_verified')),
+		  (SELECT COUNT(*) FROM congratulate_kits WHERE status = 'mailed'),
+		  (SELECT COUNT(*) FROM recommended_actions WHERE status = 'pending' AND action_type IN ('review','create_case','draft_outreach')),
+		  (SELECT COUNT(*) FROM recommended_actions WHERE status = 'pending' AND action_type = 'investigate'),
+		  (SELECT COUNT(*) FROM recommended_actions WHERE status = 'pending' AND action_type IN ('concierge_review','pause_automation'))
+	`).Scan(
+		&o.CouplesTotal, &o.Couples24h, &o.PendingActions, &o.NeedsLocation,
+		&o.SourcesTotal, &o.SourcesWithLoc, &o.MapPins,
+		&o.KitsReadyToMail, &o.KitsMailed,
+		&o.QueueCongratulate, &o.QueueDetective, &o.QueueRisk,
+	)
+	// Needs pics stays separate (correlated NOT EXISTS is the heavy one).
 	_ = s.DB.QueryRow(`
 		SELECT COUNT(*) FROM couples c
 		WHERE c.suppressed_at IS NULL AND (
 		  NOT EXISTS (SELECT 1 FROM social_accounts a WHERE a.person_id = c.person_a_id AND a.profile_pic_url IS NOT NULL AND a.profile_pic_url <> '')
 		  OR NOT EXISTS (SELECT 1 FROM social_accounts b WHERE b.person_id = c.person_b_id AND b.profile_pic_url IS NOT NULL AND b.profile_pic_url <> '')
 		)`).Scan(&o.NeedsPics)
-	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM couples WHERE suppressed_at IS NULL AND (inferred_city IS NULL OR inferred_city = '')`).Scan(&o.NeedsLocation)
-	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM watched_sources WHERE active`).Scan(&o.SourcesTotal)
-	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM watched_sources WHERE active AND city IS NOT NULL AND city <> ''`).Scan(&o.SourcesWithLoc)
-	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM couples WHERE suppressed_at IS NULL AND inferred_city IS NOT NULL AND inferred_city <> ''`).Scan(&o.MapPins)
-	used, _ := s.UsageToday("apify")
-	o.ResultsUsedToday = used
-	// Stale sources: active, no post in last 7 days under vendor:handle or as author
+	// Detective queue: pending investigate + couples missing pics (directionally right, cheap).
+	if o.NeedsPics > o.QueueDetective {
+		o.QueueDetective = o.NeedsPics
+	}
+	// Stale sources: skip raw_payload JSON scan — active sources with no recent observation by monitor only.
 	_ = s.DB.QueryRow(`
 		SELECT COUNT(*) FROM watched_sources w
 		WHERE w.active AND NOT EXISTS (
 		  SELECT 1 FROM social_observations o
 		  WHERE o.observation_type = 'post'
 		    AND o.observed_at > now() - interval '7 days'
-		    AND (o.monitor = 'vendor:' || w.handle OR lower(o.raw_payload::jsonb->>'handle') = lower(w.handle))
+		    AND o.monitor = 'vendor:' || w.handle
 		)`).Scan(&o.SourcesStale)
-	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM congratulate_kits WHERE status IN ('ready_to_mail','address_verified')`).Scan(&o.KitsReadyToMail)
-	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM congratulate_kits WHERE status = 'mailed'`).Scan(&o.KitsMailed)
+	used, _ := s.UsageToday("apify")
+	o.ResultsUsedToday = used
 
-	// Concierge queue counts from enriched board (bounded).
-	if cards, err := s.ListProspectBoard(200); err == nil {
-		for _, c := range cards {
-			switch c.Queue {
-			case "congratulate":
-				o.QueueCongratulate++
-			case "detective":
-				o.QueueDetective++
-			case "runway_urgent":
-				o.QueueRunwayUrgent++
-			case "risk":
-				o.QueueRisk++
-			}
-		}
-	}
 	if st, err := s.GetFunnelStats(); err == nil {
 		o.FunnelChatStarted7d = st.ChatStarted7d
 		o.FunnelConsultBooked7d = st.ConsultBooked7d
@@ -683,5 +695,10 @@ func (s *Store) GetOpsSummary() (OpsSummary, error) {
 		o.FunnelChatRate = st.ChatRate
 		o.FunnelBookRate = st.BookRate
 	}
+
+	s.mu.Lock()
+	s.opsSummary = o
+	s.opsSummaryAt = time.Now()
+	s.mu.Unlock()
 	return o, nil
 }

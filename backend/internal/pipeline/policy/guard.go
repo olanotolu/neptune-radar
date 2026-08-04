@@ -186,7 +186,7 @@ func actionAllowed(allowed []string, action string) bool {
 }
 
 func existingPendingAction(s *store.Store, hypothesisID string) (bool, error) {
-	pending, err := s.ListActions("pending")
+	pending, err := s.ListActions("pending", 0)
 	if err != nil {
 		return false, err
 	}

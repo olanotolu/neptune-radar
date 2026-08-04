@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useActions, useBackfillLocations, useDLQ, useEnrichMissing, useOpsSummary, useRunJanitor, useSources } from "../api/hooks";
+import { useActions, useBackfillLocations, useDLQ, useEnrichMissing, useOpsSummary, useRunJanitor } from "../api/hooks";
+import type { OpsSummary } from "../api/types";
 import { useToast } from "../components/Toast";
 
 const TODAY_DATE = new Date().toLocaleDateString("en-US", {
@@ -20,8 +21,7 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
   const budgetPct = budget > 0 ? Math.min(100, Math.round((used / budget) * 100)) : 0;
   const budgetTone = budgetPct >= 90 ? "hot" : budgetPct >= 70 ? "warm" : "ok";
 
-  // ponytail: animate the budget bar from 0 → actual on mount; the existing
-  // width transition on .budget-bar__fill does the easing.
+  // Animate the budget bar from 0 → actual on mount.
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
@@ -61,7 +61,6 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
                 onClick={() => onNavigate("/work?filter=action")}
               >
                 <span className="queue-card__top">
-                  <span className="queue-card__icon" aria-hidden>🎉</span>
                   <span className="queue-card__n">{data.queue_congratulate ?? 0}</span>
                 </span>
                 <span className="queue-card__label">Ready to congratulate</span>
@@ -69,7 +68,6 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
               </button>
               <button type="button" className="queue-card queue-card--detective" onClick={() => onNavigate("/work?filter=pics")}>
                 <span className="queue-card__top">
-                  <span className="queue-card__icon" aria-hidden>🔍</span>
                   <span className="queue-card__n">{data.queue_detective ?? 0}</span>
                 </span>
                 <span className="queue-card__label">Needs detective</span>
@@ -77,7 +75,6 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
               </button>
               <button type="button" className="queue-card queue-card--runway" onClick={() => onNavigate("/work?filter=action")}>
                 <span className="queue-card__top">
-                  <span className="queue-card__icon" aria-hidden>⏰</span>
                   <span className="queue-card__n">{data.queue_runway_urgent ?? 0}</span>
                 </span>
                 <span className="queue-card__label">Runway urgent</span>
@@ -85,7 +82,6 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
               </button>
               <button type="button" className="queue-card queue-card--risk" onClick={() => onNavigate("/work?filter=action")}>
                 <span className="queue-card__top">
-                  <span className="queue-card__icon" aria-hidden>⚠️</span>
                   <span className="queue-card__n">{data.queue_risk ?? 0}</span>
                 </span>
                 <span className="queue-card__label">Relationship risk</span>
@@ -103,14 +99,14 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
               <span className="kpi__value">{data.couples_total}</span>
               <span className="kpi__label">Prospects</span>
               <span className="kpi__sub">
-                <span className="kpi__trend kpi__trend--up">↑</span>+{data.couples_24h} in 24h
+                <span className="kpi__trend kpi__trend--up">+</span>{data.couples_24h} in 24h
               </span>
             </button>
             <button type="button" className="kpi" onClick={() => onNavigate("/congratulate")}>
               <span className="kpi__value">{data.kits_ready_to_mail ?? 0}</span>
               <span className="kpi__label">Kits ready to mail</span>
               <span className="kpi__sub">
-                <span className="kpi__trend">→</span>{data.kits_mailed ?? 0} mailed
+                {data.kits_mailed ?? 0} mailed
               </span>
             </button>
             <button type="button" className="kpi kpi--warn" onClick={() => onNavigate("/work?filter=pics")}>
@@ -125,7 +121,7 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
               <span className="kpi__value">{data.sources_total}</span>
               <span className="kpi__label">Sources</span>
               <span className="kpi__sub">
-                <span className="kpi__trend">→</span>{data.sources_stale} stale
+                {data.sources_stale} stale
               </span>
             </button>
             <button type="button" className="kpi" onClick={() => onNavigate("/map")}>
@@ -136,28 +132,28 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
               <span className="kpi__value">{data.funnel_chat_started_7d ?? 0}</span>
               <span className="kpi__label">Chats (7d)</span>
               <span className="kpi__sub">
-                <span className="kpi__trend">→</span>
                 {data.funnel_consult_booked_7d ?? 0} booked · {Math.round((data.funnel_chat_rate ?? 0) * 100)}% rate
               </span>
             </button>
             <button type="button" className="kpi" onClick={() => onNavigate("/audit")}>
               <span className="kpi__value">{data.funnel_handoffs_issued ?? 0}</span>
               <span className="kpi__label">Handoffs issued</span>
-              <span className="kpi__sub">
-                <span className="kpi__trend">→</span>Tracked chat links
-              </span>
+              <span className="kpi__sub">Tracked chat links</span>
             </button>
           </div>
+
+          <OrganismStrip data={data} onNavigate={onNavigate} />
 
           <BriefingSection onNavigate={onNavigate} />
 
           <div className="today-panels">
             <section className="today-panel">
-              <h3 className="today-panel__title">
-                <span className="today-panel__icon" aria-hidden>📡</span>Provider &amp; budget
-              </h3>
+              <h3 className="today-panel__title">Provider &amp; budget</h3>
               <div className={`budget-bar budget-bar--${budgetTone}`}>
-                <div className="budget-bar__fill" style={{ width: `${mounted ? budgetPct : 0}%` }} />
+                <div
+                  className="budget-bar__fill"
+                  style={{ ["--budget-pct" as string]: mounted ? budgetPct / 100 : 0 }}
+                />
               </div>
               <p className="today-panel__meta">
                 {used}
@@ -176,10 +172,8 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
             </section>
 
             <section className="today-panel">
-              <h3 className="today-panel__title">
-                <span className="today-panel__icon" aria-hidden>🧹</span>Data quality actions
-              </h3>
-              <div className="today-panel__actions today-panel__actions--stacked">
+              <h3 className="today-panel__title">Data quality</h3>
+              <div className="today-panel__actions">
                 <button
                   type="button"
                   className="btn btn--primary today-action"
@@ -191,11 +185,11 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
                     })
                   }
                 >
-                  <span aria-hidden>🖼️</span>{enrich.isPending ? "Enriching…" : "Enrich missing pics"}
+                  {enrich.isPending ? "Enriching…" : "Enrich pics"}
                 </button>
                 <button
                   type="button"
-                  className="btn btn--ghost today-action"
+                  className="btn today-action"
                   disabled={backfill.isPending}
                   onClick={() =>
                     backfill.mutate(100, {
@@ -204,17 +198,11 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
                     })
                   }
                 >
-                  <span aria-hidden>📍</span>{backfill.isPending ? "Backfilling…" : "Backfill map locations"}
-                </button>
-                <button type="button" className="btn btn--ghost today-action" onClick={() => onNavigate("/work?filter=action")}>
-                  <span aria-hidden>📋</span>Open work queue
-                </button>
-                <button type="button" className="btn btn--ghost today-action" onClick={() => onNavigate("/congratulate")}>
-                  <span aria-hidden>✉️</span>Congratulate kits
+                  {backfill.isPending ? "Backfilling…" : "Backfill locations"}
                 </button>
                 <button
                   type="button"
-                  className="btn btn--ghost today-action"
+                  className="btn today-action"
                   disabled={janitor.isPending}
                   onClick={() =>
                     janitor.mutate(undefined, {
@@ -227,15 +215,16 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
                     })
                   }
                 >
-                  <span aria-hidden>🧽</span>{janitor.isPending ? "Cleaning…" : "Run janitor cleanup"}
+                  {janitor.isPending ? "Cleaning…" : "Run janitor"}
+                </button>
+                <button type="button" className="btn btn--ghost today-action" onClick={() => onNavigate("/work?filter=action")}>
+                  Open work queue
                 </button>
               </div>
             </section>
 
             <section className="today-panel today-panel--brand">
-              <h3 className="today-panel__title">
-                <span className="today-panel__icon" aria-hidden>📐</span>Brand rules (Meet Neptune)
-              </h3>
+              <h3 className="today-panel__title">Brand rules</h3>
               <ul className="today-brand-rules">
                 <li>
                   <strong>Celebrate first</strong> — postcard / soft note never mentions prenup on day one
@@ -261,26 +250,72 @@ export function TodayView({ onNavigate }: { onNavigate: (path: string) => void }
   );
 }
 
-// BriefingSection shows the top prioritized items needing human attention,
-// pulled from existing hooks — no new API needed. Each item has a one-click
-// navigate to the right view.
+// ponytail: derive strip from ops (already loaded) — no /api/organism on home.
+function OrganismStrip({ data, onNavigate }: { data: OpsSummary; onNavigate: (path: string) => void }) {
+  const celebrate = data.queue_congratulate ?? 0;
+  const detective = data.queue_detective ?? 0;
+  const risk = data.queue_risk ?? 0;
+  const chats = data.funnel_chat_started_7d ?? 0;
+  const booked = data.funnel_consult_booked_7d ?? 0;
+  const won = data.funnel_closed_won_7d ?? 0;
+  const mailed = data.kits_mailed ?? 0;
+  const parts: string[] = [];
+  if (celebrate > 0) parts.push(`${celebrate} celebrate-ready`);
+  if (risk > 0) parts.push(`${risk} risk-pause`);
+  if (won > 0) parts.push(`${won} closed-won (7d)`);
+  const headline = parts.length ? parts.join(" · ") : "Radar quiet — sources and budget healthy";
+  const agents = [
+    { id: "scout", name: "Scout", val: String(data.results_used_today ?? 0), label: "signals today", status: "live" },
+    { id: "detective", name: "Detective", val: String(detective), label: "needs detective", status: detective > 0 ? "live" : "idle" },
+    { id: "concierge", name: "Concierge", val: String(celebrate), label: "ready to congratulate", status: celebrate > 0 ? "live" : "idle" },
+    { id: "risk", name: "Risk Sentinel", val: String(risk), label: "risk queue", status: risk > 0 ? "live" : "idle" },
+  ];
+  return (
+    <section className="organism-strip">
+      <header className="organism-strip__head">
+        <div>
+          <h3 className="organism-strip__title">Growth organism</h3>
+          <p className="organism-strip__headline">{headline}</p>
+        </div>
+        <button type="button" className="btn btn--ghost btn--sm" onClick={() => onNavigate("/organism")}>
+          Full organism
+        </button>
+      </header>
+      <div className="organism-strip__swarm">
+        {agents.map((a) => (
+          <div key={a.id} className={`organism-strip__agent organism-strip__agent--${a.status}`}>
+            <span className="organism-strip__agent-name">{a.name}</span>
+            <span className="organism-strip__agent-val">{a.val}</span>
+            <span className="organism-strip__agent-label">{a.label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="organism-strip__yield">
+        <span>{chats} chats</span>
+        <span>{booked} booked</span>
+        <span>{won} won</span>
+        <span>{mailed} mailed</span>
+        <span className="organism-strip__risk">{risk} risk pause</span>
+      </div>
+      <p className="organism-strip__rule">Celebrate first. Never pitch prenup on day one. Never pitch on relationship-risk signals.</p>
+    </section>
+  );
+}
+
 function BriefingSection({ onNavigate }: { onNavigate: (path: string) => void }) {
-  const { data: actions } = useActions("pending");
+  // ponytail: limit=8 — full pending list was ~100KB+ for a 5-item strip.
+  const { data: actions } = useActions("pending", 8);
   const { data: dlq } = useDLQ("pending", 5);
-  const { data: sources } = useSources(false);
 
   const pendingActions = (actions ?? []).slice(0, 5);
   const dlqItems = (dlq ?? []).slice(0, 3);
-  const staleSources = (sources ?? []).filter((s) => !s.active).slice(0, 3);
 
-  const hasItems = pendingActions.length > 0 || dlqItems.length > 0 || staleSources.length > 0;
+  const hasItems = pendingActions.length > 0 || dlqItems.length > 0;
   if (!hasItems) return null;
 
   return (
     <section className="briefing">
-      <h3 className="briefing__title">
-        <span className="briefing__icon" aria-hidden>📋</span>Concierge briefing
-      </h3>
+      <h3 className="briefing__title">Concierge briefing</h3>
       <p className="briefing__sub">What deserves attention right now.</p>
       <div className="briefing__grid">
         {pendingActions.length > 0 && (
@@ -308,21 +343,6 @@ function BriefingSection({ onNavigate }: { onNavigate: (path: string) => void })
                 <li key={d.id} className="briefing__item briefing__item--dlq" onClick={() => onNavigate("/dlq")}>
                   <span className="briefing__item-type">{d.source}</span>
                   <span className="briefing__item-meta">{d.error_message.slice(0, 60)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {staleSources.length > 0 && (
-          <div className="briefing__col">
-            <h4 className="briefing__col-title">
-              Inactive sources ({staleSources.length})
-            </h4>
-            <ul className="briefing__list">
-              {staleSources.map((s) => (
-                <li key={s.id} className="briefing__item briefing__item--source" onClick={() => onNavigate("/sources")}>
-                  <span className="briefing__item-type">@{s.handle}</span>
-                  <span className="briefing__item-meta">{s.source_class}</span>
                 </li>
               ))}
             </ul>

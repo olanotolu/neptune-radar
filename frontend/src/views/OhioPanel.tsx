@@ -81,7 +81,7 @@ export function OhioPanel({
             <h3 className="state-panel__title">{stateName}</h3>
             <span className="state-panel__code">{stateCode}</span>
           </div>
-          <button className="state-panel__close" onClick={onClose} aria-label="Close panel">×</button>
+          <button className="state-panel__close" onClick={onClose} aria-label="Close panel">Close</button>
         </div>
         <nav className="ohio-layer-tabs">
           {LAYERS.map((l) => (

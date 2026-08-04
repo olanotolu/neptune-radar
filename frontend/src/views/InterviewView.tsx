@@ -31,12 +31,12 @@ function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-const AGENT_META: Record<string, { icon: string; label: string; color: string }> = {
-  relationship_stage: { icon: "💍", label: "Relationship Stage", color: "#7c5cff" },
-  wedding_timeline: { icon: "📅", label: "Wedding Timeline", color: "#4f8cff" },
-  vendor_interest: { icon: "💐", label: "Vendor Interest", color: "#2dd4a8" },
-  location: { icon: "📍", label: "Location", color: "#f3813f" },
-  budget: { icon: "💰", label: "Budget", color: "#f87171" },
+const AGENT_META: Record<string, { label: string; color: string }> = {
+  relationship_stage: { label: "Relationship Stage", color: "var(--ink)" },
+  wedding_timeline: { label: "Wedding Timeline", color: "var(--ink-soft)" },
+  vendor_interest: { label: "Vendor Interest", color: "var(--ink-dim)" },
+  location: { label: "Location", color: "var(--ink-soft)" },
+  budget: { label: "Budget", color: "var(--ink)" },
 };
 
 function speak(text: string) {
@@ -192,7 +192,7 @@ function ChatColumn({ coupleLabel, couple, messages, onSend, disabled, ttsEnable
           title={listening ? "Stop recording" : "Start voice input"}
           disabled={disabled}
         >
-          {listening ? <span style={styles.recDot} /> : "🎤"}
+          {listening ? <span style={styles.recDot} /> : "Mic"}
         </button>
         <input
           style={styles.textInput}
@@ -217,13 +217,12 @@ interface ExtractionCardProps {
 }
 
 function ExtractionCard({ extraction }: ExtractionCardProps) {
-  const meta = AGENT_META[extraction.agent_type] ?? { icon: "🔍", label: extraction.agent_type, color: "#8b949e" };
+  const meta = AGENT_META[extraction.agent_type] ?? { label: extraction.agent_type, color: "var(--ink-dim)" };
   const pct = Math.round(extraction.confidence * 100);
   const findings = Object.entries(extraction.findings);
   return (
     <div style={{ ...styles.agentCard, borderLeftColor: meta.color }}>
       <div style={styles.agentCardHead}>
-        <span style={styles.agentIcon}>{meta.icon}</span>
         <span style={styles.agentLabel}>{meta.label}</span>
         <span style={{ ...styles.agentPct, color: meta.color }}>{pct}%</span>
       </div>
@@ -343,11 +342,11 @@ export function InterviewView() {
         <div style={styles.topBarRight}>
           <label style={styles.toggle}>
             <input type="checkbox" checked={ttsEnabled} onChange={(e) => setTtsEnabled(e.target.checked)} />
-            🔊 Voice playback
+            Voice playback
           </label>
           <label style={styles.toggle}>
             <input type="checkbox" checked={autoExtract} onChange={(e) => setAutoExtract(e.target.checked)} />
-            ⚡ Auto-extract
+            Auto-extract
           </label>
           <button
             type="button"
