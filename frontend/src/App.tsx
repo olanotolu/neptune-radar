@@ -30,6 +30,7 @@ const AgentRunsView = lazy(() =>
   import("./views/AgentRunsView").then((m) => ({ default: m.AgentRunsView })),
 );
 const DossierView = lazy(() => import("./views/DossierView").then((m) => ({ default: m.DossierView })));
+const JourneyView = lazy(() => import("./views/JourneyView").then((m) => ({ default: m.JourneyView })));
 const SearchView = lazy(() => import("./views/SearchView").then((m) => ({ default: m.SearchView })));
 const DLQView = lazy(() => import("./views/DLQView").then((m) => ({ default: m.DLQView })));
 const JobsView = lazy(() => import("./views/JobsView").then((m) => ({ default: m.JobsView })));
@@ -83,6 +84,10 @@ function parseHash(): Route {
     const c = qs.get("couple");
     if (c) route.coupleId = c;
   }
+  if (tab === "journey") {
+    const c = qs.get("couple");
+    if (c) route.coupleId = c;
+  }
   return route;
 }
 
@@ -100,6 +105,7 @@ type NavItem = { id: string; label: string; path: string };
 /** Daily operator destinations — keep this short. */
 const NAV_PRIMARY: NavItem[] = [
   { id: "today", label: "Today", path: "/today" },
+  { id: "feed", label: "Feed", path: "/feed" },
   { id: "work", label: "Work", path: "/work?filter=action" },
   { id: "licenses", label: "Licenses", path: "/licenses" },
   { id: "congratulate", label: "Congratulate", path: "/congratulate" },
@@ -112,11 +118,11 @@ const NAV_MORE: { group: string; items: NavItem[] }[] = [
   {
     group: "Explore",
     items: [
-      { id: "feed", label: "Feed", path: "/feed" },
       { id: "life-events", label: "Life Events", path: "/life-events" },
       { id: "graph", label: "Graph", path: "/graph" },
       { id: "case", label: "Cases", path: "/case" },
       { id: "interview", label: "Interview", path: "/interview" },
+      { id: "journey", label: "Journey", path: "/journey" },
       { id: "search", label: "Search", path: "/search" },
     ],
   },
@@ -408,6 +414,7 @@ function Shell() {
             coupleId={route.coupleId}
             onClose={() => navigate("/work?filter=action")}
             onCongratulate={(id) => navigate(`/congratulate?couple=${encodeURIComponent(id)}`)}
+            onViewJourney={(id) => navigate(`/journey?couple=${encodeURIComponent(id)}`)}
           />
         );
       case "work":
@@ -445,6 +452,8 @@ function Shell() {
         return <CoupleGraphView />;
       case "case":
         return <CaseDetailView />;
+      case "journey":
+        return <JourneyView coupleId={route.coupleId} />;
       case "organism":
         return <OrganismView onNavigate={navigate} />;
       case "funnel":

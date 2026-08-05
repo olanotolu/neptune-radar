@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -54,7 +55,8 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 		        inferred_lat, inferred_lng, COALESCE(location_source,''),
 		        mistaken, COALESCE(mistaken_reason,''), COALESCE(mistaken_by,''), mistaken_at,
 		        COALESCE(source,'social'), COALESCE(license_county,''),
-		        license_filing_date, predicted_wedding_date, wedding_date
+		        license_filing_date, predicted_wedding_date, wedding_date,
+		        prenup_intent_score, COALESCE(prenup_intent_reason,''), COALESCE(prenup_intent_signals,'[]')
 		 FROM couples ORDER BY created_at ASC, id ASC`)
 	if err != nil {
 		return nil, err
@@ -65,11 +67,16 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 		var c ontology.Couple
 		var lat, lng sql.NullFloat64
 		var mistakenAt, licenseFiled, predictedWedding, wedding sql.NullTime
+		var signalsJSON string
 		if err := rows.Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt,
 			&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource,
 			&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt,
-			&c.Source, &c.LicenseCounty, &licenseFiled, &predictedWedding, &wedding); err != nil {
+			&c.Source, &c.LicenseCounty, &licenseFiled, &predictedWedding, &wedding,
+			&c.PrenupIntentScore, &c.PrenupIntentReason, &signalsJSON); err != nil {
 			return nil, err
+		}
+		if signalsJSON != "" && signalsJSON != "[]" {
+			_ = json.Unmarshal([]byte(signalsJSON), &c.PrenupIntentSignals)
 		}
 		if lat.Valid {
 			v := lat.Float64
@@ -104,20 +111,26 @@ func (s *Store) GetCouple(id string) (ontology.Couple, error) {
 	var c ontology.Couple
 	var lat, lng sql.NullFloat64
 	var mistakenAt, licenseFiled, predictedWedding, wedding sql.NullTime
+	var signalsJSON string
 	err := s.DB.QueryRow(
 		`SELECT id, person_a_id, person_b_id, created_at,
 		        COALESCE(inferred_city,''), COALESCE(inferred_region,''),
 		        inferred_lat, inferred_lng, COALESCE(location_source,''),
 		        mistaken, COALESCE(mistaken_reason,''), COALESCE(mistaken_by,''), mistaken_at,
 		        COALESCE(source,'social'), COALESCE(license_county,''),
-		        license_filing_date, predicted_wedding_date, wedding_date
+		        license_filing_date, predicted_wedding_date, wedding_date,
+		        prenup_intent_score, COALESCE(prenup_intent_reason,''), COALESCE(prenup_intent_signals,'[]')
 		 FROM couples WHERE id = $1`, id,
 	).Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt,
 		&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource,
 		&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt,
-		&c.Source, &c.LicenseCounty, &licenseFiled, &predictedWedding, &wedding)
+		&c.Source, &c.LicenseCounty, &licenseFiled, &predictedWedding, &wedding,
+		&c.PrenupIntentScore, &c.PrenupIntentReason, &signalsJSON)
 	if err != nil {
 		return c, err
+	}
+	if signalsJSON != "" && signalsJSON != "[]" {
+		_ = json.Unmarshal([]byte(signalsJSON), &c.PrenupIntentSignals)
 	}
 	if lat.Valid {
 		v := lat.Float64
@@ -144,6 +157,20 @@ func (s *Store) GetCouple(id string) (ontology.Couple, error) {
 		c.WeddingDate = &t
 	}
 	return c, nil
+}
+
+// SetPrenupIntent stores the LLM-predicted prenup intent score on the couple.
+// Called once by the prep gate; the score is read back from the couple row, not
+// recomputed. Signals are stored as a JSONB array.
+func (s *Store) SetPrenupIntent(coupleID string, score float64, reason string, signals []string) error {
+	sigJSON, _ := json.Marshal(signals)
+	if len(signals) == 0 {
+		sigJSON = []byte("[]")
+	}
+	_, err := s.DB.Exec(
+		`UPDATE couples SET prenup_intent_score = $2, prenup_intent_reason = $3, prenup_intent_signals = $4 WHERE id = $1`,
+		coupleID, score, reason, string(sigJSON))
+	return err
 }
 
 // MarkCoupleMistaken is the human override path: a concierge marks a couple
@@ -396,6 +423,87 @@ func (s *Store) ListMarriageLicenseCouples(limit int) ([]ontology.Couple, error)
 			&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource,
 			&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt,
 			&c.Source, &c.LicenseCounty, &licenseFiled, &predictedWedding, &wedding); err != nil {
+			return nil, err
+		}
+		if lat.Valid {
+			v := lat.Float64
+			c.InferredLat = &v
+		}
+		if lng.Valid {
+			v := lng.Float64
+			c.InferredLng = &v
+		}
+		if mistakenAt.Valid {
+			t := mistakenAt.Time
+			c.MistakenAt = &t
+		}
+		if licenseFiled.Valid {
+			t := licenseFiled.Time
+			c.LicenseFilingDate = &t
+		}
+		if predictedWedding.Valid {
+			t := predictedWedding.Time
+			c.PredictedWeddingDate = &t
+		}
+		if wedding.Valid {
+			t := wedding.Time
+			c.WeddingDate = &t
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// UpdateCoupleSocialWedding stamps a socially-predicted wedding date onto a
+// couple. It only writes predicted_wedding_date when the couple doesn't already
+// have one (marriage-license predictions are more authoritative and never
+// overwritten). The rationale + confidence are always recorded so the dashboard
+// can show the source.
+func (s *Store) UpdateCoupleSocialWedding(coupleID string, predicted time.Time, reason string, confidence float64) error {
+	_, err := s.DB.Exec(
+		`UPDATE couples
+		    SET social_wedding_prediction = $2,
+		        social_wedding_confidence = $3,
+		        predicted_wedding_date = COALESCE(predicted_wedding_date, $4)
+		  WHERE id = $1`,
+		coupleID, reason, confidence, predicted)
+	return err
+}
+
+// ListCouplesWithPredictedWedding returns every couple that has a predicted
+// wedding date from any source (marriage license OR social inference), soonest
+// first. The Wedding Predictions dashboard uses this to show both sources in one
+// view sorted by days-until-wedding.
+func (s *Store) ListCouplesWithPredictedWedding(limit int) ([]ontology.Couple, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := s.DB.Query(
+		`SELECT id, person_a_id, person_b_id, created_at,
+		        COALESCE(inferred_city,''), COALESCE(inferred_region,''),
+		        inferred_lat, inferred_lng, COALESCE(location_source,''),
+		        mistaken, COALESCE(mistaken_reason,''), COALESCE(mistaken_by,''), mistaken_at,
+		        COALESCE(source,'social'), COALESCE(license_county,''),
+		        license_filing_date, predicted_wedding_date, wedding_date,
+		        COALESCE(social_wedding_prediction,''), COALESCE(social_wedding_confidence,0)
+		 FROM couples
+		 WHERE predicted_wedding_date IS NOT NULL
+		 ORDER BY predicted_wedding_date ASC
+		 LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ontology.Couple
+	for rows.Next() {
+		var c ontology.Couple
+		var lat, lng sql.NullFloat64
+		var mistakenAt, licenseFiled, predictedWedding, wedding sql.NullTime
+		if err := rows.Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt,
+			&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource,
+			&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt,
+			&c.Source, &c.LicenseCounty, &licenseFiled, &predictedWedding, &wedding,
+			&c.SocialWeddingPrediction, &c.SocialWeddingConfidence); err != nil {
 			return nil, err
 		}
 		if lat.Valid {

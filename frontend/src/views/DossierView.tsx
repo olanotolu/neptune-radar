@@ -254,16 +254,24 @@ function fmtMoney(n: number): string {
 }
 
 function FinancialProfile({ profile }: { profile?: AssetProfile }) {
-  if (!profile || (!profile.estimated_home_value && !profile.property_asset?.assessed_value)) {
+  if (!profile || (!profile.estimated_home_value && !profile.property_asset?.assessed_value && !profile.net_worth_estimate)) {
     return null;
   }
   const pa = profile.property_asset;
   const confPct = Math.round((profile.confidence || 0) * 100);
+  const tier = profile.net_worth_tier || "low";
+  const tierDot =
+    tier === "high" ? "dossier-nw__dot--high" :
+    tier === "medium" ? "dossier-nw__dot--medium" :
+    "dossier-nw__dot--low";
+  const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+  const bd = profile.net_worth_breakdown || {};
+  const bdKeys = Object.keys(bd).sort((a, b) => bd[b] - bd[a]);
   return (
     <section className="dossier__section dossier__section--financial">
       <h3>Financial Profile</h3>
       <p className="dossier__hint">
-        Internal operator use only — never shown on postcards. From county property records.
+        Internal operator use only — never shown on postcards. From county property records + Instagram signals.
       </p>
       <div className="dossier__grid">
         <div className="dossier-financial__main">
@@ -295,6 +303,74 @@ function FinancialProfile({ profile }: { profile?: AssetProfile }) {
           </tbody>
         </table>
       </div>
+      {profile.net_worth_estimate ? (
+        <div className="dossier-nw">
+          <div className="dossier-nw__head">
+            <span className="dossier-financial__label">Estimated Net Worth</span>
+            <span className={`dossier-nw__dot ${tierDot}`} title={`confidence tier: ${tier}`} />
+            <span className="dossier-nw__tier">{tierLabel} confidence</span>
+          </div>
+          <strong className="dossier-financial__value dossier-nw__value">
+            {fmtMoney(profile.net_worth_estimate)}
+          </strong>
+          <p className="dossier__hint dossier-nw__disclaimer">
+            Estimate — not a fact. Combines property value with Instagram luxury signals (venues, designer brands, jewelry, travel).
+          </p>
+          {bdKeys.length > 0 ? (
+            <table className="dossier-ledger dossier-nw__breakdown">
+              <tbody>
+                {bdKeys.map((k) => (
+                  <tr key={k}><th>{k.replace(/_/g, " ")}</th><td>{fmtMoney(bd[k])}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/* ---------- Prenup Intent Score (the killer feature) ---------- */
+
+function PrenupIntentSection({
+  score,
+  reason,
+  signals,
+}: {
+  score?: number;
+  reason?: string;
+  signals?: string[];
+}) {
+  // ponytail: only render when a score has been predicted (prep gate ran).
+  // A 0 score with no reason means the prep gate hasn't run yet.
+  if (!score || (score === 0 && !reason)) return null;
+  const pctVal = Math.round((score || 0) * 100);
+  const tone = score > 0.7 ? "high" : score >= 0.4 ? "medium" : "low";
+  return (
+    <section className="dossier__section dossier__section--prenup">
+      <h3>Prenup Intent</h3>
+      <p className="dossier__hint">
+        How likely this couple is to need or want a prenup — predicted from career, asset, and life-stage signals.
+      </p>
+      <div className="dossier-prenup__main">
+        <span className={`dossier-prenup__dot dossier-prenup__dot--${tone}`} aria-hidden />
+        <strong className="dossier-prenup__score">{pctVal}%</strong>
+        <span className="dossier-prenup__label">
+          {tone === "high" ? "high intent — priority for outreach" : tone === "medium" ? "moderate intent" : "low intent"}
+        </span>
+      </div>
+      <div className="dossier-prenup__meter">
+        <span className={`dossier-prenup__meter-fill dossier-prenup__meter-fill--${tone}`} style={{ width: `${pctVal}%` }} />
+      </div>
+      {reason && <p className="dossier-prenup__reason">{reason}</p>}
+      {signals && signals.length > 0 && (
+        <ul className="dossier-prenup__signals">
+          {signals.map((s) => (
+            <li key={s} className="dossier-prenup__signal">{s}</li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
@@ -303,10 +379,12 @@ export function DossierView({
   coupleId,
   onClose,
   onCongratulate,
+  onViewJourney,
 }: {
   coupleId: string;
   onClose?: () => void;
   onCongratulate?: (coupleId: string) => void;
+  onViewJourney?: (coupleId: string) => void;
 }) {
   const { data, error, isLoading, refetch } = useCoupleDossier(coupleId);
   const approve = useApproveAction();
@@ -458,11 +536,23 @@ export function DossierView({
             <p className="dossier__tagline">Everything we know about this couple.</p>
           </div>
           <RankGauge rank={data.neptune_rank} />
-          {onClose && (
-            <button type="button" className="btn btn--ghost btn--sm dossier__close" onClick={onClose}>
-              Close
-            </button>
-          )}
+          <div className="dossier__hero-actions">
+            {onViewJourney && (
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                onClick={() => onViewJourney(coupleId)}
+                title="View couple journey timeline"
+              >
+                View Journey
+              </button>
+            )}
+            {onClose && (
+              <button type="button" className="btn btn--ghost btn--sm dossier__close" onClick={onClose}>
+                Close
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -498,6 +588,12 @@ export function DossierView({
       </div>
 
       <FinancialProfile profile={data.asset_profile} />
+
+      <PrenupIntentSection
+        score={data.prenup_intent_score}
+        reason={data.prenup_intent_reason}
+        signals={data.prenup_intent_signals}
+      />
 
       <section className="dossier__section dossier__section--why">
         <h3>Why this couple · now</h3>

@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -68,6 +69,14 @@ type CongratulateKit struct {
 	// Property asset data from county auditor (internal operator use — never on postcards)
 	PropertyAsset        PropertyAsset      `json:"property_asset,omitempty"`
 	EstimatedHomeValue   int64              `json:"estimated_home_value,omitempty"`
+	// Net worth estimate from property + Instagram luxury signals (internal only —
+	// never on postcards). EstimateNetWorth produces estimate + tier + breakdown.
+	NetWorthEstimate     int64              `json:"net_worth_estimate,omitempty"`
+	NetWorthTier         string             `json:"net_worth_tier,omitempty"`
+	NetWorthBreakdown    map[string]int64   `json:"net_worth_breakdown,omitempty"`
+	// QR scan tracking — physical-digital attribution via /r/{code} redirect.
+	QRScanCount          int                `json:"qr_scan_count"`
+	LastQRScanAt         *time.Time         `json:"last_qr_scan_at,omitempty"`
 	CreatedAt            time.Time          `json:"created_at"`
 	UpdatedAt            time.Time          `json:"updated_at"`
 }
@@ -140,6 +149,10 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 	if k.PropertyAsset.AssessedValue == 0 && k.PropertyAsset.Sqft == 0 {
 		assetJ = nil
 	}
+	nwBreakdown, _ := json.Marshal(k.NetWorthBreakdown)
+	if k.NetWorthBreakdown == nil {
+		nwBreakdown = []byte("{}")
+	}
 
 	_, err := s.DB.Exec(`
 		INSERT INTO congratulate_kits (
@@ -154,11 +167,12 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 			verified_by, verified_at, mailed_at,
 			priority_score, follow_up_at, follow_up_template, follow_up_sent_at, follow_up_count,
 			asset_json, estimated_home_value,
+			net_worth_estimate, net_worth_tier, net_worth_breakdown_json,
 			created_at, updated_at
 		) VALUES (
 			$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,
 			$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,
-			$42,$43,$44,$45,$46,$47,$48
+			$42,$43,$44,$45,$46,$47,$48,$49,$50,$51
 		)
 		ON CONFLICT (id) DO UPDATE SET
 			status = EXCLUDED.status,
@@ -189,6 +203,9 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 			follow_up_at = EXCLUDED.follow_up_at, follow_up_template = EXCLUDED.follow_up_template,
 			follow_up_sent_at = EXCLUDED.follow_up_sent_at, follow_up_count = EXCLUDED.follow_up_count,
 			asset_json = EXCLUDED.asset_json, estimated_home_value = EXCLUDED.estimated_home_value,
+			net_worth_estimate = EXCLUDED.net_worth_estimate,
+			net_worth_tier = EXCLUDED.net_worth_tier,
+			net_worth_breakdown_json = EXCLUDED.net_worth_breakdown_json,
 			updated_at = EXCLUDED.updated_at
 	`,
 		k.ID, k.CoupleID, k.Status, nullIfEmpty(k.HandleA), nullIfEmpty(k.HandleB),
@@ -206,6 +223,7 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 		nullIfEmpty(k.VerifiedBy), k.VerifiedAt, k.MailedAt,
 		k.PriorityScore, k.FollowUpAt, nullIfEmpty(k.FollowUpTemplate), k.FollowUpSentAt, k.FollowUpCount,
 		nullIfEmpty(string(assetJ)), k.EstimatedHomeValue,
+		k.NetWorthEstimate, nullIfEmpty(k.NetWorthTier), string(nwBreakdown),
 		k.CreatedAt, k.UpdatedAt,
 	)
 	if err != nil {
@@ -279,13 +297,15 @@ const kitSelect = `SELECT id, couple_id, status,
 	COALESCE(verified_by,''), verified_at, mailed_at,
 	priority_score, follow_up_at, COALESCE(follow_up_template,''), follow_up_sent_at, follow_up_count,
 	COALESCE(asset_json,''), COALESCE(estimated_home_value,0),
+	COALESCE(net_worth_estimate,0), COALESCE(net_worth_tier,''), COALESCE(net_worth_breakdown_json,''),
+	COALESCE(qr_scan_count,0), last_qr_scan_at,
 	created_at, updated_at
 	FROM congratulate_kits`
 
 func (s *Store) scanKit(row *sql.Row) (CongratulateKit, error) {
 	var k CongratulateKit
-	var evidence, steps, cands, mail, assetJ string
-	var verifiedAt, mailedAt, followUpAt, followUpSentAt sql.NullTime
+	var evidence, steps, cands, mail, assetJ, nwBD string
+	var verifiedAt, mailedAt, followUpAt, followUpSentAt, lastQRScan sql.NullTime
 	err := row.Scan(
 		&k.ID, &k.CoupleID, &k.Status,
 		&k.HandleA, &k.HandleB, &k.PersonAName, &k.PersonBName,
@@ -303,6 +323,8 @@ func (s *Store) scanKit(row *sql.Row) (CongratulateKit, error) {
 		&k.VerifiedBy, &verifiedAt, &mailedAt,
 		&k.PriorityScore, &followUpAt, &k.FollowUpTemplate, &followUpSentAt, &k.FollowUpCount,
 		&assetJ, &k.EstimatedHomeValue,
+		&k.NetWorthEstimate, &k.NetWorthTier, &nwBD,
+		&k.QRScanCount, &lastQRScan,
 		&k.CreatedAt, &k.UpdatedAt,
 	)
 	if err != nil {
@@ -316,6 +338,9 @@ func (s *Store) scanKit(row *sql.Row) (CongratulateKit, error) {
 	}
 	if assetJ != "" {
 		_ = json.Unmarshal([]byte(assetJ), &k.PropertyAsset)
+	}
+	if nwBD != "" && nwBD != "{}" {
+		_ = json.Unmarshal([]byte(nwBD), &k.NetWorthBreakdown)
 	}
 	if verifiedAt.Valid {
 		t := verifiedAt.Time
@@ -333,13 +358,17 @@ func (s *Store) scanKit(row *sql.Row) (CongratulateKit, error) {
 		t := followUpSentAt.Time
 		k.FollowUpSentAt = &t
 	}
+	if lastQRScan.Valid {
+		t := lastQRScan.Time
+		k.LastQRScanAt = &t
+	}
 	return k, nil
 }
 
 func (s *Store) scanKitRow(rows *sql.Rows) (CongratulateKit, error) {
 	var k CongratulateKit
-	var evidence, steps, cands, mail, assetJ string
-	var verifiedAt, mailedAt, followUpAt, followUpSentAt sql.NullTime
+	var evidence, steps, cands, mail, assetJ, nwBD string
+	var verifiedAt, mailedAt, followUpAt, followUpSentAt, lastQRScan sql.NullTime
 	err := rows.Scan(
 		&k.ID, &k.CoupleID, &k.Status,
 		&k.HandleA, &k.HandleB, &k.PersonAName, &k.PersonBName,
@@ -357,6 +386,8 @@ func (s *Store) scanKitRow(rows *sql.Rows) (CongratulateKit, error) {
 		&k.VerifiedBy, &verifiedAt, &mailedAt,
 		&k.PriorityScore, &followUpAt, &k.FollowUpTemplate, &followUpSentAt, &k.FollowUpCount,
 		&assetJ, &k.EstimatedHomeValue,
+		&k.NetWorthEstimate, &k.NetWorthTier, &nwBD,
+		&k.QRScanCount, &lastQRScan,
 		&k.CreatedAt, &k.UpdatedAt,
 	)
 	if err != nil {
@@ -370,6 +401,9 @@ func (s *Store) scanKitRow(rows *sql.Rows) (CongratulateKit, error) {
 	}
 	if assetJ != "" {
 		_ = json.Unmarshal([]byte(assetJ), &k.PropertyAsset)
+	}
+	if nwBD != "" && nwBD != "{}" {
+		_ = json.Unmarshal([]byte(nwBD), &k.NetWorthBreakdown)
 	}
 	if verifiedAt.Valid {
 		t := verifiedAt.Time
@@ -386,6 +420,10 @@ func (s *Store) scanKitRow(rows *sql.Rows) (CongratulateKit, error) {
 	if followUpSentAt.Valid {
 		t := followUpSentAt.Time
 		k.FollowUpSentAt = &t
+	}
+	if lastQRScan.Valid {
+		t := lastQRScan.Time
+		k.LastQRScanAt = &t
 	}
 	return k, nil
 }
@@ -503,4 +541,35 @@ func lower(s string) string {
 
 func stringsHasPrefix(s, p string) bool {
 	return len(s) >= len(p) && s[:len(p)] == p
+}
+
+// RecordQRScan resolves a handoff code to the latest kit for that couple,
+// increments qr_scan_count, stamps last_qr_scan_at, and returns the celebrate
+// deep link for the 302 redirect. The audit log row is written in a goroutine
+// so the redirect stays fast (ponytail: ceiling — on process crash the last
+// scan event may be missing, but the count column is already committed).
+func (s *Store) RecordQRScan(code string) (celebrateURL string, kitID string, err error) {
+	var coupleID string
+	err = s.DB.QueryRow(`SELECT id FROM couples WHERE handoff_code = $1`, code).Scan(&coupleID)
+	if err != nil {
+		return "", "", err
+	}
+	kit, err := s.GetLatestKitForCouple(coupleID)
+	if err != nil {
+		return "", "", err
+	}
+	_, err = s.DB.Exec(`
+		UPDATE congratulate_kits SET qr_scan_count = qr_scan_count + 1, last_qr_scan_at = now()
+		WHERE id = $1`, kit.ID)
+	if err != nil {
+		return "", "", err
+	}
+	// Non-blocking audit — the count is already committed.
+	go s.Audit("kit", kit.ID, "qr_scan",
+		map[string]any{"couple_id": coupleID, "handoff_code": code}, "qr_redirect", -1)
+	// Build celebrate URL inline (avoids a redundant EnsureHandoff round-trip).
+	celebrateURL = fmt.Sprintf(
+		"%s?utm_source=neptune_radar&utm_medium=postcard&utm_campaign=celebrate_first&utm_content=%s&ref=%s",
+		chatBaseURL(), coupleID, code)
+	return celebrateURL, kit.ID, nil
 }

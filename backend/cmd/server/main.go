@@ -21,6 +21,7 @@ import (
 	"neptune-social-radar/backend/internal/llm"
 	"neptune-social-radar/backend/internal/mail"
 	"neptune-social-radar/backend/internal/notify"
+	"neptune-social-radar/backend/internal/ops"
 	"neptune-social-radar/backend/internal/outreach"
 	"neptune-social-radar/backend/internal/pipeline"
 	"neptune-social-radar/backend/internal/ratelimit"
@@ -139,6 +140,12 @@ func main() {
 	} else {
 		log.Println("records provider: heuristic only — set TRESTLE_API_KEY or PDL_API_KEY for street hits")
 	}
+
+	// Automated follow-up postcard cron — leader-elected, hourly, non-blocking.
+	// Only the leader replica sends; non-leaders idle (same advisory lock as
+	// the ingest worker). No-op when LOB_API_KEY is unset (SendFollowUp returns
+	// early and the sweep logs+skips).
+	go ops.RunFollowUpCron(ctx, s, agent.Mail)
 	// Rate limiter: 10 req/sec per identity, burst of 20. Tunable via env.
 	// ponytail: ceiling — in-memory, per-process. With leader election only
 	// the leader polls, but all replicas serve the API, so the effective

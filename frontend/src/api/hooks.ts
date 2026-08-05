@@ -23,6 +23,7 @@ import type {
   SourcePost,
   CongratulateKit,
   CoupleDossier,
+  JourneyTimelineEvent,
   FunnelEvent,
   FunnelStats,
   AutopsyReport,
@@ -41,6 +42,7 @@ import type {
   InterviewExtraction,
   Organism,
   MarriageLicenseFiling,
+  WeddingPrediction,
   FenrisEvent,
   VisionAnalysis,
   ProviderAccuracyRow,
@@ -602,6 +604,30 @@ export function useSendPostcard() {
   });
 }
 
+export interface KitScanEvent {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  event: string;
+  detail?: string;
+  created_at: string;
+}
+
+export interface KitScansResponse {
+  kit_id: string;
+  qr_scan_count: number;
+  last_qr_scan_at?: string;
+  scans: KitScanEvent[];
+}
+
+export function useKitScans(kitId?: string) {
+  return useQuery({
+    queryKey: ["kits", kitId, "scans"] as const,
+    queryFn: () => api.get<KitScansResponse>(`/api/kits/${encodeURIComponent(kitId!)}/scans`),
+    enabled: !!kitId,
+  });
+}
+
 export function useRunJanitor() {
   const invalidate = useInvalidateAll();
   return useMutation({
@@ -618,6 +644,16 @@ export function useCoupleDossier(coupleId?: string) {
     queryKey: keys.dossier(coupleId),
     queryFn: () => api.get<CoupleDossier>(`/api/couples/${encodeURIComponent(coupleId!)}/dossier`),
     enabled: !!coupleId,
+  });
+}
+
+export function useCoupleJourney(coupleId?: string) {
+  return useQuery({
+    queryKey: ["couple", coupleId, "journey"],
+    queryFn: () =>
+      api.get<JourneyTimelineEvent[]>(`/api/couple-journey/${encodeURIComponent(coupleId!)}`),
+    enabled: !!coupleId,
+    staleTime: 15_000,
   });
 }
 
@@ -1058,6 +1094,17 @@ export function useMarriageLicenses() {
   return useQuery({
     queryKey: ["marriage-licenses"],
     queryFn: () => api.get<MarriageLicenseFiling[]>("/api/marriage-licenses"),
+    refetchInterval: interval,
+    staleTime: 45_000,
+  });
+}
+
+export function useWeddingPredictions() {
+  // ponytail: 60s polling — predictions shift slowly (ingest ticks, not by the second).
+  const interval = useLiveRefetch(60_000);
+  return useQuery({
+    queryKey: ["wedding-predictions"],
+    queryFn: () => api.get<WeddingPrediction[]>("/api/wedding-predictions"),
     refetchInterval: interval,
     staleTime: 45_000,
   });

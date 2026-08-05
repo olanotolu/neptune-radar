@@ -5050,6 +5050,41 @@
   color: var(--ink-dim);
 }
 
+.kit-card__scan-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-dim);
+  opacity: 0.3;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.kit-card__scan-dot--scanned {
+  background: #0a0a0a;
+  opacity: 1;
+}
+
+.kit-card__followup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--ink-dim);
+  width: fit-content;
+}
+.kit-card__followup--sent {
+  border-color: #0a0a0a;
+  color: #0a0a0a;
+}
+.kit-card__followup--scheduled {
+  color: var(--ink-mid);
+}
+
 .kit-main__empty {
   min-height: 320px;
   display: flex;
@@ -5911,6 +5946,113 @@
   font-size: 12px;
   color: var(--ink-dim);
   font-family: var(--mono);
+}
+
+/* Net worth estimate (internal operator use only) */
+.dossier-nw {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+}
+.dossier-nw__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dossier-nw__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dossier-nw__dot--high { background: #1f9d55; }
+.dossier-nw__dot--medium { background: #c87a1e; }
+.dossier-nw__dot--low { background: var(--ink-dim); opacity: 0.5; }
+.dossier-nw__tier {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+  font-family: var(--mono);
+}
+.dossier-nw__value {
+  display: block;
+  margin-top: 2px;
+}
+.dossier-nw__disclaimer {
+  margin: 6px 0 10px;
+}
+.dossier-nw__breakdown {
+  max-width: 320px;
+}
+.dossier-nw__breakdown th {
+  text-transform: capitalize;
+}
+
+/* Prenup Intent Score — B&W with functional status dot */
+.dossier__section--prenup .dossier-prenup__main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.dossier-prenup__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  align-self: center;
+}
+.dossier-prenup__dot--high { background: var(--green); }
+.dossier-prenup__dot--medium { background: var(--amber); }
+.dossier-prenup__dot--low { background: var(--red); }
+.dossier-prenup__score {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-family: var(--mono);
+}
+.dossier-prenup__label {
+  font-size: 13px;
+  color: var(--ink-dim);
+  font-family: var(--mono);
+}
+.dossier-prenup__meter {
+  height: 4px;
+  background: var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.dossier-prenup__meter-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+.dossier-prenup__meter-fill--high { background: var(--green); }
+.dossier-prenup__meter-fill--medium { background: var(--amber); }
+.dossier-prenup__meter-fill--low { background: var(--red); }
+.dossier-prenup__reason {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 10px;
+  color: var(--ink);
+}
+.dossier-prenup__signals {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dossier-prenup__signal {
+  font-size: 12px;
+  font-family: var(--mono);
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--ink-dim);
+  background: var(--surface);
 }
 
 .dossier-why {
@@ -9910,8 +10052,255 @@ textarea:focus-visible {
 .ml-dot--green { background: var(--green); }
 .ml-dot--dim { background: var(--ink-faint); }
 
+/* Source badge — marks whether a wedding prediction came from a public filing
+   or LLM-inferred Instagram signals. Pure B&W: license = solid ink, social =
+   hairline outline. Functional color only (no decorative tint). */
+.ml-source-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink, #000);
+  background: var(--ink, #000);
+  color: var(--surface, #fff);
+  border-radius: 2px;
+}
+.ml-source-badge--social {
+  background: transparent;
+  color: var(--ink, #000);
+  border: 1px solid var(--border, #e5e5e5);
+}
+
 /* Vision analysis dashboard */
 .vision-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: var(--radius-sm, 4px); border: 1px solid var(--border, #e5e5e5); }
 .vision-thumb-link { display: inline-block; }
 .vision-labels { font-family: var(--font-mono, monospace); font-size: 12px; color: var(--ink-faint, #999); }
 .ops-view__muted { color: var(--ink-faint, #999); }
+
+/* ---------- Couple Journey timeline ---------- */
+
+.journey {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 8px 4px 72px;
+}
+
+.journey__head {
+  margin-bottom: 20px;
+}
+
+.journey__identity {
+  min-width: 0;
+}
+
+.journey__title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.journey__amp {
+  color: var(--ink-faint);
+  font-weight: 400;
+  margin: 0 4px;
+}
+
+.journey__handles {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
+/* Summary bar — flat hairline cells, Geist Mono labels */
+.journey__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  margin-bottom: 28px;
+  overflow: hidden;
+}
+
+.journey__stat {
+  flex: 1 1 0;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  border-right: 1px solid var(--border);
+}
+
+.journey__stat:last-child {
+  border-right: none;
+}
+
+.journey__stat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+}
+
+.journey__stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-transform: capitalize;
+}
+
+/* Vertical timeline rail */
+.journey__timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 4px;
+  position: relative;
+}
+
+.journey__timeline::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--border);
+}
+
+.journey__node {
+  position: relative;
+  padding: 0 0 20px 28px;
+}
+
+.journey__node:last-child {
+  padding-bottom: 0;
+}
+
+.journey__dot {
+  position: absolute;
+  left: 2px;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  z-index: 1;
+  background: var(--ink-faint);
+}
+
+.journey__node--pos .journey__dot { background: var(--green); }
+.journey__node--neg .journey__dot { background: var(--red); }
+.journey__node--pending .journey__dot { background: var(--amber); }
+.journey__node--neutral .journey__dot { background: var(--ink-faint); }
+
+.journey__card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--surface);
+}
+
+.journey__card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.journey__chip {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--bg-alt);
+  color: var(--ink-dim);
+}
+
+.journey__node--pos .journey__chip {
+  background: color-mix(in srgb, var(--green) 14%, var(--surface));
+  color: var(--green);
+}
+.journey__node--neg .journey__chip {
+  background: color-mix(in srgb, var(--red) 14%, var(--surface));
+  color: var(--red);
+}
+.journey__node--pending .journey__chip {
+  background: color-mix(in srgb, var(--amber) 14%, var(--surface));
+  color: var(--amber);
+}
+
+.journey__time {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+.journey__desc {
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.journey__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.journey__conf {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.journey__src {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+/* Dossier hero action cluster — keeps Journey + Close grouped */
+.dossier__hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.dossier__hero-actions .dossier__close {
+  margin-left: 0;
+}
+
+@media (max-width: 720px) {
+  .journey__stat {
+    min-width: 50%;
+    border-bottom: 1px solid var(--border);
+  }
+  .journey__stat:nth-last-child(-n + 2) {
+    border-bottom: none;
+  }
+  .journey__stat:nth-child(odd) {
+    border-right: 1px solid var(--border);
+  }
+  .journey__stat:nth-child(even) {
+    border-right: none;
+  }
+}
+

@@ -10,6 +10,7 @@ import (
 	"neptune-social-radar/backend/internal/auth"
 	"neptune-social-radar/backend/internal/ingest"
 	"neptune-social-radar/backend/internal/ontology"
+	"neptune-social-radar/backend/internal/store"
 )
 
 type signalResponse struct {
@@ -235,6 +236,21 @@ func (s *Server) resumeCouple(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, rel)
 }
 
+// coupleJourney returns the full chronological timeline for a couple — the
+// "wow" demo view from first signal detection through postcard mailed.
+func (s *Server) coupleJourney(w http.ResponseWriter, r *http.Request) {
+	coupleID := r.PathValue("coupleId")
+	events, err := s.Store.GetCoupleJourney(coupleID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err)
+		return
+	}
+	if events == nil {
+		events = []store.JourneyEvent{}
+	}
+	writeJSON(w, http.StatusOK, events)
+}
+
 func (s *Server) hypothesisEvidence(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	role := auth.UserFromContext(r.Context()).Role
@@ -352,33 +368,54 @@ func (s *Server) assetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	if dossier.AssetProfile == nil {
 		writeJSON(w, http.StatusOK, map[string]any{
-			"couple_id": coupleID,
+			"couple_id":            coupleID,
 			"estimated_home_value": 0,
-			"confidence": 0,
-			"source": "",
+			"confidence":           0,
+			"source":               "",
 		})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"couple_id":           coupleID,
+		"couple_id":            coupleID,
 		"estimated_home_value": dossier.AssetProfile.EstimatedHomeValue,
 		"property_asset":       dossier.AssetProfile.PropertyAsset,
 		"confidence":           dossier.AssetProfile.Confidence,
 		"source":               dossier.AssetProfile.Source,
+		"net_worth_estimate":   dossier.AssetProfile.NetWorthEstimate,
+		"net_worth_tier":       dossier.AssetProfile.NetWorthTier,
+		"net_worth_breakdown":  dossier.AssetProfile.NetWorthBreakdown,
+	})
+}
+
+// prenupIntent returns the stored prenup intent prediction for a couple.
+// The score is set once by the prep gate (LLM inference) and read back from
+// the couple row — never recomputed on read.
+func (s *Server) prenupIntent(w http.ResponseWriter, r *http.Request) {
+	coupleID := r.PathValue("coupleId")
+	couple, err := s.Store.GetCouple(coupleID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"couple_id":    coupleID,
+		"intent_score": couple.PrenupIntentScore,
+		"reason":       couple.PrenupIntentReason,
+		"signals":      couple.PrenupIntentSignals,
 	})
 }
 
 // marriageLicenseResponse is one row in the Perfect Timing dashboard view.
 type marriageLicenseResponse struct {
-	ID                  string  `json:"id"`
-	PersonAName         string  `json:"person_a_name"`
-	PersonBName         string  `json:"person_b_name"`
-	County              string  `json:"county"`
-	FilingDate          string  `json:"filing_date"`
+	ID                   string  `json:"id"`
+	PersonAName          string  `json:"person_a_name"`
+	PersonBName          string  `json:"person_b_name"`
+	County               string  `json:"county"`
+	FilingDate           string  `json:"filing_date"`
 	PredictedWeddingDate string  `json:"predicted_wedding_date"`
-	WeddingDate         *string `json:"wedding_date,omitempty"`
-	DaysUntilWedding    *int    `json:"days_until_wedding,omitempty"`
-	Priority            string  `json:"priority"`
+	WeddingDate          *string `json:"wedding_date,omitempty"`
+	DaysUntilWedding     *int    `json:"days_until_wedding,omitempty"`
+	Priority             string  `json:"priority"`
 }
 
 // listMarriageLicenses returns recent marriage-license filings as couples,
@@ -419,6 +456,77 @@ func (s *Server) listMarriageLicenses(w http.ResponseWriter, r *http.Request) {
 		if c.WeddingDate != nil {
 			wd := c.WeddingDate.Format(time.RFC3339)
 			row.WeddingDate = &wd
+		}
+		out = append(out, row)
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// weddingPredictionResponse is one row in the Wedding Predictions view — the
+// union of marriage-license filings and LLM-inferred social predictions, each
+// tagged with its source so the dashboard can show predictive intelligence from
+// both channels.
+type weddingPredictionResponse struct {
+	ID                   string  `json:"id"`
+	PersonAName          string  `json:"person_a_name"`
+	PersonBName          string  `json:"person_b_name"`
+	County               string  `json:"county"`
+	PredictedWeddingDate string  `json:"predicted_wedding_date"`
+	WeddingDate          *string `json:"wedding_date,omitempty"`
+	DaysUntilWedding     *int    `json:"days_until_wedding,omitempty"`
+	Priority             string  `json:"priority"`
+	PredictionSource     string  `json:"prediction_source"`
+	SocialReason         string  `json:"social_reason,omitempty"`
+	SocialConfidence     float64 `json:"social_confidence,omitempty"`
+}
+
+// listWeddingPredictions returns every couple with a predicted wedding date
+// from any source (marriage license OR social inference), soonest first. The
+// prediction_source field is "marriage_license" or "social" so the dashboard can
+// badge each row with where the prediction came from.
+func (s *Server) listWeddingPredictions(w http.ResponseWriter, r *http.Request) {
+	limit := 100
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	couples, err := s.Store.ListCouplesWithPredictedWedding(limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	out := make([]weddingPredictionResponse, 0, len(couples))
+	for _, c := range couples {
+		pA, _ := s.Store.GetPerson(c.PersonAID)
+		pB, _ := s.Store.GetPerson(c.PersonBID)
+		row := weddingPredictionResponse{
+			ID: c.ID, PersonAName: pA.DisplayName, PersonBName: pB.DisplayName,
+			County: c.LicenseCounty, Priority: ingest.PriorityBucket(c),
+		}
+		// Source: marriage_license is authoritative when present; otherwise the
+		// social prediction is what filled predicted_wedding_date.
+		if c.Source == "marriage_license" {
+			row.PredictionSource = "marriage_license"
+		} else {
+			row.PredictionSource = "social"
+		}
+		ref := c.PredictedWeddingDate
+		if c.WeddingDate != nil {
+			ref = c.WeddingDate
+		}
+		if ref != nil {
+			row.PredictedWeddingDate = ref.Format(time.RFC3339)
+			d := int(time.Until(*ref).Hours() / 24)
+			row.DaysUntilWedding = &d
+		}
+		if c.WeddingDate != nil {
+			wd := c.WeddingDate.Format(time.RFC3339)
+			row.WeddingDate = &wd
+		}
+		if c.SocialWeddingPrediction != "" {
+			row.SocialReason = c.SocialWeddingPrediction
+			row.SocialConfidence = c.SocialWeddingConfidence
 		}
 		out = append(out, row)
 	}

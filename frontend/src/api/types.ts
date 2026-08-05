@@ -328,6 +328,12 @@ export interface CongratulateKit {
   verified_by?: string;
   verified_at?: string;
   mailed_at?: string;
+  follow_up_at?: string;
+  follow_up_template?: string;
+  follow_up_sent_at?: string;
+  follow_up_count?: number;
+  qr_scan_count?: number;
+  last_qr_scan_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -839,6 +845,18 @@ export interface CoupleDossier {
   audit_trail: AuditEvent[];
   why_now: string[];
   asset_profile?: AssetProfile;
+  prenup_intent_score?: number;
+  prenup_intent_reason?: string;
+  prenup_intent_signals?: string[];
+}
+
+/** One node on the couple journey timeline (GET /api/couple-journey/:coupleId). */
+export interface JourneyTimelineEvent {
+  timestamp: string;
+  event_type: string;
+  description: string;
+  confidence?: number;
+  source?: string;
 }
 
 export interface PropertyAsset {
@@ -854,6 +872,9 @@ export interface AssetProfile {
   property_asset?: PropertyAsset;
   confidence: number;
   source?: string;
+  net_worth_estimate?: number;
+  net_worth_tier?: string;
+  net_worth_breakdown?: Record<string, number>;
 }
 
 export interface ProspectBoard {
@@ -1019,6 +1040,22 @@ export interface MarriageLicenseFiling {
   wedding_date?: string;
   days_until_wedding?: number;
   priority: "urgent" | "priority" | "early" | "monitor";
+}
+
+// Wedding Predictions — union of marriage-license filings + LLM social
+// predictions. prediction_source badges where the date came from.
+export interface WeddingPrediction {
+  id: string;
+  person_a_name: string;
+  person_b_name: string;
+  county: string;
+  predicted_wedding_date: string;
+  wedding_date?: string;
+  days_until_wedding?: number;
+  priority: "urgent" | "priority" | "early" | "monitor";
+  prediction_source: "marriage_license" | "social";
+  social_reason?: string;
+  social_confidence?: number;
 }
 
 // Fenris Digital Life Events — licensed data-broker cross-validation signal.

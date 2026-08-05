@@ -8,6 +8,7 @@ import (
 	"html"
 	"math"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -245,6 +246,21 @@ func (a *Agent) BuildKit(ctx context.Context, coupleID string) (store.Congratula
 	// Priority boost when detective-ready
 	if prep.Ready {
 		kit.PriorityScore = math.Min(1.0, kit.PriorityScore+0.08)
+	}
+
+	// Prenup intent prediction — run when prep passes. Stored on the couple so
+	// it's read back from the row, not recomputed. High intent (>0.7) boosts
+	// outreach priority. Non-fatal: LLM failure leaves the neutral default.
+	if prep.Ready {
+		pred, _ := llm.PredictPrenupIntent(ctx, llm.PrenupIntentInput{
+			BioA:          kit.BioA,
+			BioB:          kit.BioB,
+			PropertyValue: kit.EstimatedHomeValue,
+		})
+		_ = a.Store.SetPrenupIntent(kit.CoupleID, pred.IntentScore, pred.Reason, pred.Signals)
+		if pred.IntentScore > 0.7 {
+			kit.PriorityScore = math.Min(1.0, kit.PriorityScore+0.06)
+		}
 	}
 
 	saved, err := a.Store.UpsertCongratulateKit(kit)
@@ -580,11 +596,25 @@ func RenderPostcardHTML(k store.CongratulateKit) string {
 		frontPhoto = fmt.Sprintf(`<div class="pc-front__photo" style="background-image:url('%s')"></div>`, img)
 	}
 
-	// Celebrate QR → Meet Neptune dual-counsel chat (tracked). Never a pitch.
+	// Celebrate QR → /r/{code} redirect (logs the scan) → Meet Neptune chat.
+	// The redirect endpoint resolves the handoff code, increments qr_scan_count,
+	// then 302s to the full CelebrateURL with UTM params. Old postcards with
+	// direct URLs still work — they just skip the scan log.
 	qrBlock := ""
 	if u := strings.TrimSpace(k.CelebrateURL); u != "" {
-		esc := html.EscapeString(u)
-		qrSrc := html.EscapeString("https://api.qrserver.com/v1/create-qr-code/?size=96x96&margin=4&data=" + url.QueryEscape(u))
+		// Extract handoff code from the ref= query param on the celebrate URL.
+		qrURL := u // default: direct link (old behavior)
+		if parsed, err := url.Parse(u); err == nil {
+			if code := parsed.Query().Get("ref"); code != "" {
+				base := os.Getenv("NEPTUNE_RADAR_BASE_URL")
+				if base == "" {
+					base = "https://radar.meetneptune.com"
+				}
+				qrURL = base + "/r/" + code
+			}
+		}
+		esc := html.EscapeString(u) // visible link text stays the celebrate URL
+		qrSrc := html.EscapeString("https://api.qrserver.com/v1/create-qr-code/?size=96x96&margin=4&data=" + url.QueryEscape(qrURL))
 		qrBlock = fmt.Sprintf(`
       <div class="pc-back__qr">
         <img src="%s" width="72" height="72" alt="Open Neptune"/>

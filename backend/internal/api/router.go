@@ -111,6 +111,8 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("GET /api/media", srv.mediaProxy)
 
 	// Congratulate kits — dossier + address research + postcard (human-reviewed mail).
+	// QR scan redirect — public, no auth (postcard QR → log scan → 302 to celebrate).
+	mux.HandleFunc("GET /r/{code}", srv.qrRedirect)
 	mux.HandleFunc("GET /api/kits", srv.listCongratulateKits)
 	mux.HandleFunc("POST /api/couples/{id}/congratulate", srv.buildCongratulateKit)
 	mux.HandleFunc("GET /api/couples/{id}/kit", srv.latestKitForCouple)
@@ -120,13 +122,16 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("POST /api/kits/{id}/mailed", srv.kitMarkMailed)
 	mux.HandleFunc("GET /api/kits/{id}/postcard", srv.kitPostcardHTML)
 	mux.HandleFunc("GET /api/kits/{id}/export", srv.kitMailExport)
+	mux.HandleFunc("GET /api/kits/{id}/scans", srv.kitScans)
 	mux.HandleFunc("POST /api/kits/{id}/run-detective", srv.runDetective)
 	mux.HandleFunc("POST /api/kits/{id}/apply-candidate", srv.applyKitCandidate)
 	mux.HandleFunc("POST /api/kits/{id}/verify-address", srv.verifyKitAddress)
 	mux.HandleFunc("POST /api/kits/{id}/parse-address", srv.parseKitAddressText)
 	mux.HandleFunc("POST /api/kits/{id}/send-postcard", srv.sendKitPostcard)
 	mux.HandleFunc("GET /api/couples/{id}/dossier", srv.coupleDossier)
+	mux.HandleFunc("GET /api/couple-journey/{coupleId}", srv.coupleJourney)
 	mux.HandleFunc("GET /api/asset-profile/{coupleId}", srv.assetProfile)
+	mux.HandleFunc("GET /api/prenup-intent/{coupleId}", srv.prenupIntent)
 	mux.HandleFunc("POST /api/couples/{id}/handoff", srv.createHandoff)
 	mux.HandleFunc("POST /api/couples/{id}/journey", srv.setJourneyStage)
 	mux.HandleFunc("POST /api/ops/janitor", srv.runJanitor)
@@ -140,6 +145,8 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("GET /api/kits/operator-queue", srv.operatorQueue)
 	mux.HandleFunc("GET /api/kits/follow-up-queue", srv.followUpQueue)
 	mux.HandleFunc("POST /api/kits/{id}/send-follow-up", srv.sendFollowUp)
+	mux.HandleFunc("GET /api/follow-up-queue", srv.followUpQueue)
+	mux.HandleFunc("POST /api/follow-up-process", srv.followUpProcess)
 
 	// Closed-loop funnel (Meet Neptune app → Radar) + trust autopsy
 	mux.HandleFunc("POST /api/webhooks/neptune", srv.ingestFunnelWebhook)
@@ -208,6 +215,9 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 
 	// Marriage License Monitoring — public filings feed (Perfect Timing view).
 	mux.HandleFunc("GET /api/marriage-licenses", srv.listMarriageLicenses)
+
+	// Wedding Predictions — union of marriage-license + LLM social predictions.
+	mux.HandleFunc("GET /api/wedding-predictions", srv.listWeddingPredictions)
 
 	// Bayesian Provider Fusion — per-provider accuracy by state.
 	mux.HandleFunc("GET /api/provider-accuracy", srv.providerAccuracy)

@@ -616,6 +616,7 @@ func countTier(q []queueItem, tier string) int {
 }
 
 // followUpQueue returns kits that are due for a follow-up card.
+// Uses the shared ops.IsDueForFollowUp so the queue and the cron agree.
 func (s *Server) followUpQueue(w http.ResponseWriter, r *http.Request) {
 	kits, err := s.Store.ListCongratulateKits("mailed", 200)
 	if err != nil {
@@ -623,37 +624,44 @@ func (s *Server) followUpQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	type followUpItem struct {
-		KitID     string  `json:"kit_id"`
-		CoupleID  string  `json:"couple_id"`
-		PersonA   string  `json:"person_a"`
-		PersonB   string  `json:"person_b"`
-		MailedAt  string  `json:"mailed_at"`
-		DaysSince int     `json:"days_since_mail"`
-		Template  string  `json:"template"`
-		Priority  float64 `json:"priority_score"`
+		KitID          string  `json:"kit_id"`
+		CoupleID       string  `json:"couple_id"`
+		PersonA        string  `json:"person_a"`
+		PersonB        string  `json:"person_b"`
+		MailedAt       string  `json:"mailed_at"`
+		DaysSince      int     `json:"days_since_mail"`
+		FollowUpAt     string  `json:"follow_up_at"`
+		FollowUpCount  int     `json:"follow_up_count"`
+		Confidence     float64 `json:"address_confidence"`
+		Template       string  `json:"template"`
+		Priority       float64 `json:"priority_score"`
 	}
 	var queue []followUpItem
 	now := time.Now().UTC()
 	for _, k := range kits {
-		if k.FollowUpAt == nil || k.FollowUpAt.After(now) {
+		if !ops.IsDueForFollowUp(k, now) {
 			continue
 		}
-		if k.FollowUpSentAt != nil {
-			continue // already sent follow-up
+		days := 0
+		if k.MailedAt != nil {
+			days = int(now.Sub(*k.MailedAt).Hours() / 24)
 		}
-		if k.FollowUpCount >= 2 {
-			continue // max 2 follow-ups
+		fuAt := ""
+		if k.FollowUpAt != nil {
+			fuAt = k.FollowUpAt.Format("2006-01-02")
 		}
-		days := int(now.Sub(*k.MailedAt).Hours() / 24)
 		queue = append(queue, followUpItem{
-			KitID:     k.ID,
-			CoupleID:  k.CoupleID,
-			PersonA:   k.PersonAName,
-			PersonB:   k.PersonBName,
-			MailedAt:  k.MailedAt.Format("2006-01-02"),
-			DaysSince: days,
-			Template:  k.FollowUpTemplate,
-			Priority:  k.PriorityScore,
+			KitID:         k.ID,
+			CoupleID:      k.CoupleID,
+			PersonA:       k.PersonAName,
+			PersonB:       k.PersonBName,
+			MailedAt:      fuAt,
+			DaysSince:     days,
+			FollowUpAt:    fuAt,
+			FollowUpCount: k.FollowUpCount,
+			Confidence:    k.AddressConfidence,
+			Template:      k.FollowUpTemplate,
+			Priority:      k.PriorityScore,
 		})
 	}
 	if queue == nil {
@@ -665,95 +673,41 @@ func (s *Server) followUpQueue(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// sendFollowUp sends a follow-up postcard for a kit.
+// followUpProcess manually triggers the follow-up queue sweep (operator control).
+func (s *Server) followUpProcess(w http.ResponseWriter, r *http.Request) {
+	if s.Outreach == nil {
+		writeError(w, http.StatusServiceUnavailable, errorString("outreach agent not configured"))
+		return
+	}
+	res := ops.ProcessFollowUpQueueCtx(r.Context(), s.Store, s.Outreach.Mail)
+	writeJSON(w, http.StatusOK, res)
+}
+
+// sendFollowUp sends a follow-up postcard for a kit. Delegates to the shared
+// ops.SendFollowUp so the manual endpoint and the automatic cron use the
+// exact same sending + recording logic.
 func (s *Server) sendFollowUp(w http.ResponseWriter, r *http.Request) {
 	if s.Outreach == nil {
 		writeError(w, http.StatusServiceUnavailable, errorString("outreach agent not configured"))
 		return
 	}
-	kitID := r.PathValue("id")
-	k, err := s.Store.GetCongratulateKit(kitID)
+	fr, err := ops.SendFollowUp(r.Context(), s.Store, s.Outreach.Mail, r.PathValue("id"))
 	if err != nil {
-		writeError(w, http.StatusNotFound, err)
-		return
-	}
-	if k.Status != "mailed" {
-		writeError(w, http.StatusBadRequest, errorString("kit must be mailed before follow-up"))
-		return
-	}
-	if k.FollowUpCount >= 2 {
-		writeError(w, http.StatusBadRequest, errorString("max 2 follow-ups per kit"))
-		return
-	}
-	if k.AddressLine1 == "" || k.AddressPostal == "" {
-		writeError(w, http.StatusBadRequest, errorString("complete address required for follow-up"))
-		return
-	}
-
-	// Use the follow-up template (different from first card)
-	tpls := outreach.TemplateLibrary()
-	tplID := k.FollowUpTemplate
-	if tplID == "" {
-		tplID = "bright_casual"
-	}
-	var tpl *outreach.GreetingTemplate
-	for i := range tpls {
-		if tpls[i].ID == tplID {
-			tpl = &tpls[i]
-			break
-		}
-	}
-	if tpl == nil {
-		tpl = &tpls[0] // fallback to first template
-	}
-
-	data := outreach.TemplateData{
-		NameA:    k.FirstNameA,
-		NameB:    k.FirstNameB,
-		Location: k.MarketCity,
-	}
-	followUpBody := outreach.RenderTemplate(*tpl, data)
-
-	// Send via Lob
-	if s.Outreach.Mail != nil && s.Outreach.Mail.Available() {
-		front := outreach.RenderPostcardHTML(k)
-		back := fmt.Sprintf(`<html><body style="margin:0;font-family:Georgia,serif;padding:24px;font-size:13px;line-height:1.5;color:#1c1917">%s<p style="margin-top:20px;font-size:12px;color:#57534e">Neptune · with care (follow-up)</p></body></html>`,
-			strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(followUpBody, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"))
-		to := mail.Address{
-			Name:           strings.TrimSpace(k.PersonAName + " & " + k.PersonBName),
-			AddressLine1:   k.AddressLine1,
-			AddressLine2:   k.AddressLine2,
-			AddressCity:    k.AddressCity,
-			AddressState:   k.AddressRegion,
-			AddressZip:     k.AddressPostal,
-			AddressCountry: apiFirstNonEmpty(k.AddressCountry, "US"),
-		}
-		res, err := s.Outreach.Mail.SendPostcard(r.Context(), to, front, back,
-			fmt.Sprintf("Neptune follow-up %s & %s (#%d)", k.PersonAName, k.PersonBName, k.FollowUpCount+1))
-		if err != nil {
+		switch fr.Error {
+		case "kit must be mailed before follow-up", "max follow-ups reached", "complete address required":
+			writeError(w, http.StatusBadRequest, errorString(fr.Error))
+		case "LOB_API_KEY not configured", "lob unavailable":
+			writeError(w, http.StatusServiceUnavailable, errorString(fr.Error))
+		default:
 			writeError(w, http.StatusInternalServerError, err)
-			return
 		}
-		// Record follow-up
-		k.FollowUpCount++
-		now := time.Now().UTC()
-		k.FollowUpSentAt = &now
-		k.InternalNote = strings.TrimSpace(k.InternalNote + fmt.Sprintf(
-			"\n\nFollow-up #%d sent via Lob: %s", k.FollowUpCount, res.ExternalID))
-		k, err = s.Store.UpsertCongratulateKit(k)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, err)
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{
-			"kit_id":          k.ID,
-			"follow_up_count": k.FollowUpCount,
-			"external_id":     res.ExternalID,
-			"status":          "sent",
-		})
-	} else {
-		writeError(w, http.StatusServiceUnavailable, errorString("LOB_API_KEY not configured"))
+		return
 	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"kit_id":      fr.KitID,
+		"external_id": fr.ExternalID,
+		"status":      "sent",
+	})
 }
 
 // coupleDossier returns the god-tier operator dossier (evidence, runway, ICP,
@@ -845,4 +799,41 @@ func (s *Server) kitStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, stats)
+}
+
+// qrRedirect logs a QR scan then 302s to the celebrate deep link.
+// Public endpoint — no auth (someone scanning a postcard QR has no API key).
+func (s *Server) qrRedirect(w http.ResponseWriter, r *http.Request) {
+	code := r.PathValue("code")
+	if code == "" {
+		http.NotFound(w, r)
+		return
+	}
+	dest, _, err := s.Store.RecordQRScan(code)
+	if err != nil {
+		// ponytail: unknown code → 404, not 500. Old postcards with direct URLs
+		// never hit this endpoint; a 404 here means the code is wrong or the
+		// couple was deleted.
+		http.NotFound(w, r)
+		return
+	}
+	http.Redirect(w, r, dest, http.StatusFound)
+}
+
+// kitScans returns QR scan count, last scan timestamp, and recent scan events.
+func (s *Server) kitScans(w http.ResponseWriter, r *http.Request) {
+	kit, err := s.Store.GetCongratulateKit(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, err)
+		return
+	}
+	events, _ := s.Store.ListAudit(store.AuditFilter{
+		EntityType: "kit", EntityID: kit.ID, Event: "qr_scan", Limit: 50,
+	})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"kit_id":          kit.ID,
+		"qr_scan_count":   kit.QRScanCount,
+		"last_qr_scan_at": kit.LastQRScanAt,
+		"scans":           events,
+	})
 }

@@ -54,8 +54,8 @@ const (
 // Defined here so both the scorer and the dashboard can reference them without
 // a circular import on pipeline/scorer.
 const (
-	EvidenceRingDetected   = "ring_detected"    // YOLOv8 ring detection (confidence ≥ 0.5)
-	EvidenceProposalPhoto  = "proposal_photo"   // CLIP zero-shot classified as proposal/engagement shoot
+	EvidenceRingDetected    = "ring_detected"    // YOLOv8 ring detection (confidence ≥ 0.5)
+	EvidenceProposalPhoto   = "proposal_photo"   // CLIP zero-shot classified as proposal/engagement shoot
 	EvidenceDispersionScore = "dispersion_score" // FAIR dispersion metric for relationship scoring
 )
 
@@ -133,25 +133,36 @@ type Couple struct {
 	// Instagram watch loop), "marriage_license" (public filings feed), or
 	// "fenris_life_event" (Fenris Digital life-events API). The license fields
 	// are set only when source = "marriage_license".
-	Source              string     `json:"source,omitempty"`
-	LicenseCounty       string     `json:"license_county,omitempty"`
-	LicenseFilingDate   *time.Time `json:"license_filing_date,omitempty"`
+	Source               string     `json:"source,omitempty"`
+	LicenseCounty        string     `json:"license_county,omitempty"`
+	LicenseFilingDate    *time.Time `json:"license_filing_date,omitempty"`
 	PredictedWeddingDate *time.Time `json:"predicted_wedding_date,omitempty"`
-	WeddingDate         *time.Time `json:"wedding_date,omitempty"`
+	WeddingDate          *time.Time `json:"wedding_date,omitempty"`
 	// FenrisValidated is true when a Fenris Digital life event (Newly Engaged
 	// or Newly Married) independently cross-validates this couple — two
 	// independent signals = higher confidence.
 	FenrisValidated bool `json:"fenris_validated,omitempty"`
+	// PrenupIntentScore predicts how likely a couple is to need/want a prenup
+	// (0-1). Set once by the prep gate via LLM inference, stored — not recomputed.
+	PrenupIntentScore   float64  `json:"prenup_intent_score,omitempty"`
+	PrenupIntentReason  string   `json:"prenup_intent_reason,omitempty"`
+	PrenupIntentSignals []string `json:"prenup_intent_signals,omitempty"`
+	// SocialWeddingPrediction is the LLM's rationale for a wedding date
+	// predicted from Instagram signals (captions, bios, venue/vendor tags) —
+	// distinct from the more authoritative marriage-license prediction. Empty
+	// when no social signal was found or a license prediction already exists.
+	SocialWeddingPrediction string  `json:"social_wedding_prediction,omitempty"`
+	SocialWeddingConfidence float64 `json:"social_wedding_confidence,omitempty"`
 }
 
 // LifeEvent is a Fenris Digital life-events trigger: a licensed data-broker
 // signal (Newly Engaged, Newly Married, etc.) that cross-validates our
 // Instagram discovery. Two independent signals per couple = high confidence.
 type LifeEvent struct {
-	EventType   string    `json:"event_type"`    // "Newly Engaged", "Newly Married"
-	PersonName  string    `json:"person_name"`   // full name of the person
-	HouseholdID string    `json:"household_id"`  // Fenris household identifier
-	Address     string    `json:"address"`       // street address (when available)
+	EventType   string    `json:"event_type"`   // "Newly Engaged", "Newly Married"
+	PersonName  string    `json:"person_name"`  // full name of the person
+	HouseholdID string    `json:"household_id"` // Fenris household identifier
+	Address     string    `json:"address"`      // street address (when available)
 	City        string    `json:"city"`
 	State       string    `json:"state"`
 	Zip         string    `json:"zip"`

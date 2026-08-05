@@ -75,6 +75,31 @@ function KitCard({
           {" · "}
           {STATUS_LABEL[kit.status]}
         </span>
+        {kit.qr_scan_count != null && kit.qr_scan_count > 0 ? (
+          <span className="kit-card__meta">
+            <span className="kit-card__scan-dot kit-card__scan-dot--scanned" />
+            {kit.qr_scan_count} QR scan{kit.qr_scan_count === 1 ? "" : "s"}
+            {kit.last_qr_scan_at
+              ? ` · Last scanned ${new Date(kit.last_qr_scan_at).toLocaleDateString()}`
+              : ""}
+          </span>
+        ) : (
+          <span className="kit-card__meta">
+            <span className="kit-card__scan-dot" />
+            Not scanned
+          </span>
+        )}
+        {kit.follow_up_sent_at ? (
+          <span className="kit-card__meta kit-card__followup kit-card__followup--sent">
+            Follow-up sent: {kit.follow_up_count ?? 1}
+          </span>
+        ) : kit.follow_up_at ? (
+          <span className="kit-card__meta kit-card__followup kit-card__followup--scheduled">
+            Follow-up scheduled: {new Date(kit.follow_up_at).toLocaleDateString()}
+          </span>
+        ) : (
+          <span className="kit-card__meta kit-card__followup">No follow-up</span>
+        )}
       </div>
     </button>
   );

@@ -11,6 +11,7 @@ import (
 	"neptune-social-radar/backend/internal/mail"
 	"neptune-social-radar/backend/internal/records"
 	"neptune-social-radar/backend/internal/store"
+	"neptune-social-radar/backend/internal/vision"
 )
 
 // RunDetective calls people-search providers and writes address candidates onto the kit.
@@ -107,8 +108,10 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 	}
 
 	// --- Extra location evidence: multi-post geotags ---
+	var geotags []string
 	if locsExtra := a.Store.ListCouplePostLocations(k.HandleA, k.HandleB, 20); len(locsExtra) > 0 {
 		for _, locName := range locsExtra {
+			geotags = append(geotags, locName)
 			if q.PostLocation == "" {
 				q.PostLocation = locName
 			}
@@ -736,6 +739,26 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 			}
 			break
 		}
+	}
+
+	// --- Net worth estimation: combine property value + Instagram luxury signals ---
+	// Conservative keyword scan over captions + bios + geotags. Internal operator
+	// use only — never appears on postcards. ponytail: photoLabels left nil — the
+	// current CLIP label set (proposal/ceremony) has no jewelry/brand vocabulary;
+	// wire real luxury labels here when a trained classifier exists.
+	captionsForWealth := []string{k.DiscoveryCaption, k.BioA, k.BioB}
+	if capBlob, _ := a.Store.ListRecentCaptionsForCouple(k.HandleA, k.HandleB, 15); capBlob != "" {
+		captionsForWealth = append(captionsForWealth, capBlob)
+	}
+	signals := vision.ExtractWealthSignals(captionsForWealth, nil, geotags, k.EstimatedHomeValue)
+	est, tier, bd := records.EstimateNetWorth(signals)
+	if est > 0 {
+		k.NetWorthEstimate = est
+		k.NetWorthTier = tier
+		k.NetWorthBreakdown = bd
+		k.ResearchNotes = strings.TrimSpace(k.ResearchNotes + fmt.Sprintf(
+			"\n\n--- Net worth estimate ---\nEstimated couple net worth: $%d (tier: %s) — property + Instagram luxury signals. ESTIMATE, not a fact.",
+			est, tier))
 	}
 
 	k.PostcardHTML = RenderPostcardHTML(k)

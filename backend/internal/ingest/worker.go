@@ -658,10 +658,55 @@ func (w *Worker) enrichTaggedProfiles(ctx context.Context, raw watchtower.RawEve
 				if couple, err := w.store.GetCoupleForAccountPair(a.ID, b.ID); err == nil {
 					lat, lng := cityCoords(loc.City, loc.Region)
 					_ = w.store.UpdateCoupleLocation(couple.ID, loc.City, loc.Region, loc.Source, lat, lng)
+					// Social wedding-date prediction: if the couple has no
+					// marriage-license prediction yet, ask the LLM to infer a
+					// wedding date from these Instagram signals. Non-blocking —
+					// runs in a goroutine so ingest never waits on a model call.
+					w.predictSocialWedding(couple.ID, caption, bioA, bioB, postLoc, raw.Handle)
 				}
 			}
 		}
 	}
+}
+
+// predictSocialWedding runs the LLM wedding-date prediction off the ingest
+// hot path. It only fires when the couple lacks a PredictedWeddingDate (i.e. no
+// marriage-license filing has stamped one yet) — license predictions are more
+// authoritative and never overwritten. ponytail: ceiling = detached context
+// means a slow model call can outlive the tick; upgrade path = a bounded worker
+// pool with per-couple dedup if volume makes this noisy.
+func (w *Worker) predictSocialWedding(coupleID, caption, bioA, bioB, venueTag, vendorHandle string) {
+	go func() {
+		full, err := w.store.GetCouple(coupleID)
+		if err != nil {
+			return
+		}
+		// Don't overwrite a marriage-license prediction (more authoritative),
+		// and skip if we already have a social prediction (avoid re-spending).
+		if full.PredictedWeddingDate != nil || full.SocialWeddingPrediction != "" {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		pred, err := llm.PredictWeddingDateFromSocial(ctx, llm.WeddingDateInput{
+			Caption:     caption,
+			BioA:        bioA,
+			BioB:        bioB,
+			VenueTags:   []string{venueTag},
+			VendorTags:  []string{vendorHandle},
+			CurrentDate: time.Now().UTC(),
+		})
+		if err != nil {
+			log.Printf("[watchtower] social wedding prediction for %s failed: %v", coupleID, err)
+			return
+		}
+		if pred.Confidence == 0 || pred.PredictedDate.IsZero() {
+			return // no clear signal — don't guess
+		}
+		if err := w.store.UpdateCoupleSocialWedding(coupleID, pred.PredictedDate, pred.Reason, pred.Confidence); err != nil {
+			log.Printf("[watchtower] save social wedding prediction for %s: %v", coupleID, err)
+		}
+	}()
 }
 
 // cityCoords is a tiny static table for map pins without a geocoder.

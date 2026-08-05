@@ -30,6 +30,7 @@ func (s *Store) Audit(entityType, entityID, event string, detail any, monitor st
 type AuditFilter struct {
 	EntityType string
 	EntityID   string
+	Event      string
 	Monitor    string
 	Limit      int
 }
@@ -46,6 +47,9 @@ func (s *Store) ListAudit(f AuditFilter) ([]ontology.AuditEvent, error) {
 	}
 	if f.EntityID != "" {
 		add("entity_id = ", f.EntityID)
+	}
+	if f.Event != "" {
+		add("event = ", f.Event)
 	}
 	if f.Monitor != "" {
 		add("monitor = ", f.Monitor)
