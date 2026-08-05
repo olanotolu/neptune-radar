@@ -453,6 +453,8 @@ function Shell() {
         return <CostView />;
       case "provider-accuracy":
         return <ProviderAccuracyView />;
+      case "vision":
+        return <VisionView />;
       case "ops":
         return <OpsView />;
       case "audit":
