@@ -50,6 +50,12 @@ export function MarriageLicensesView() {
     });
   }, [filtered]);
 
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { urgent: 0, priority: 0, early: 0, monitor: 0 };
+    for (const f of filings ?? []) c[f.priority]++;
+    return c;
+  }, [filings]);
+
   if (isLoading) return <LoadingState variant="skeleton" message="Loading marriage license filings…" />;
   if (error) {
     return (
@@ -60,12 +66,6 @@ export function MarriageLicensesView() {
       />
     );
   }
-
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { urgent: 0, priority: 0, early: 0, monitor: 0 };
-    for (const f of filings ?? []) c[f.priority]++;
-    return c;
-  }, [filings]);
 
   return (
     <div className="view view--marriage-licenses">
