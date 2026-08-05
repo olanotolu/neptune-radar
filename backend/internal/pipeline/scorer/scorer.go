@@ -51,6 +51,10 @@ const (
 	EvDispersionScore = "dispersion_score"
 	EvReciprocal         = "reciprocal_relationship"
 	EvRegistryMatch      = "registry_match"
+	// EvWeddingWebsite is a self-reported wedding website hit (The Knot / Zola /
+	// WeddingWire) where both partner names matched — high confidence, the couple
+	// published the details themselves.
+	EvWeddingWebsite     = "wedding_website"
 	EvRecentPost         = "recent_post"
 	EvStyledShoot        = "styled_shoot"
 	EvAdvertisement      = "advertisement"
@@ -66,6 +70,10 @@ const (
 	// role resolution found that an account in the proposed pair is itself
 	// a vendor-shaped node (wrong role — vendor, not partner).
 	EvVendorInPair = "vendor_in_pair"
+	// EvRelationshipStrength is the LLM-predicted relationship strength score
+	// (augments the FAIR dispersion metric). Weight is category-dependent:
+	// engaged/married boost confidence, casual_dating reduces it.
+	EvRelationshipStrength = "relationship_strength"
 )
 
 func pts(p float64) float64 { return p / 100.0 }
@@ -301,6 +309,26 @@ func CollectEvidence(s *store.Store, hyp ontology.LifeEventHypothesis, res ident
 		if err != nil {
 			return nil, err
 		}
+		// Relationship strength: the LLM-predicted score (augments FAIR
+		// dispersion) is read from the couple row. engaged/married boost
+		// the hypothesis confidence; casual_dating reduces it. Re-derived
+		// every touch so a re-scored couple is reflected immediately.
+		if hyp.CoupleID != "" {
+			if couple, err := s.GetCouple(hyp.CoupleID); err == nil && couple.RelationshipStrengthScore > 0 {
+				weight := relationshipStrengthWeight(couple.RelationshipStrengthCategory)
+				desc := fmt.Sprintf("relationship strength: %s (score %.2f) — %s",
+					couple.RelationshipStrengthCategory, couple.RelationshipStrengthScore, couple.RelationshipStrengthRationale)
+				if _, err := s.UpsertEvidenceKind(hyp.ID, EvRelationshipStrength, desc, weight); err != nil {
+					return nil, err
+				}
+			} else {
+				_ = s.DeleteEvidenceKind(hyp.ID, EvRelationshipStrength)
+			}
+		}
+		current, err = s.EvidenceForHypothesis(hyp.ID)
+		if err != nil {
+			return nil, err
+		}
 		partnerPositive := false
 		for _, e := range current {
 			if (e.Kind == EvBothPartnersTagged || e.Kind == EvReciprocal || e.Kind == EvRegistryMatch) && e.Weight > 0 {
@@ -422,6 +450,7 @@ func Score(modelConfidence float64, evidence []ontology.Evidence) float64 {
 var engagementEvidenceKinds = map[string]bool{
 	EvExplicitLanguage: true, EvKnownVendorSource: true, EvVisualRing: true,
 	EvRecentPost: true, EvStyledShoot: true, EvAdvertisement: true, EvOldReposted: true,
+	EvRelationshipStrength: true,
 }
 var partnerEvidenceKinds = map[string]bool{
 	EvBothPartnersTagged: true, EvReciprocal: true, EvRegistryMatch: true,
@@ -467,4 +496,22 @@ func clamp01(v float64) float64 {
 		return 1
 	}
 	return v
+}
+
+// relationshipStrengthWeight maps the LLM relationship strength category to an
+// evidence weight. engaged/married boost the engagement hypothesis confidence;
+// casual_dating reduces it; serious/uncertain are neutral-ish.
+// ponytail: mirrors the worker's categoryEvidenceWeight — kept separate to
+// avoid an ingest→scorer import. Upgrade path = move to a shared constants file.
+func relationshipStrengthWeight(category string) float64 {
+	switch strings.ToLower(category) {
+	case "engaged", "married":
+		return 0.20
+	case "serious":
+		return 0.10
+	case "casual_dating":
+		return -0.10
+	default: // uncertain
+		return 0.0
+	}
 }

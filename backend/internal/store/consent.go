@@ -2,9 +2,75 @@ package store
 
 import (
 	"encoding/json"
+	"time"
 
 	"neptune-social-radar/backend/internal/ontology"
 )
+
+// CreateConsentForCouple creates an active consent policy for both persons in
+// a couple with the given allowed actions. Returns the two policies. Used by
+// the celebrate-page consent capture flow (GDPR/CCPA layer).
+func (s *Store) CreateConsentForCouple(coupleID string, actions []string) ([]ontology.ConsentPolicy, error) {
+	c, err := s.GetCouple(coupleID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ontology.ConsentPolicy, 0, 2)
+	for _, pid := range []string{c.PersonAID, c.PersonBID} {
+		p, err := s.CreateConsentPolicy(ontology.ConsentPolicy{
+			PersonID:       pid,
+			Scope:          ontology.ScopeSharedCouple,
+			AllowedActions: actions,
+		})
+		if err != nil {
+			return out, err
+		}
+		out = append(out, p)
+	}
+	return out, nil
+}
+
+// ConsentStatus is the per-couple consent snapshot returned to the celebrate page.
+type ConsentStatus struct {
+	Granted        bool       `json:"granted"`
+	Revoked        bool       `json:"revoked"`
+	AllowedActions []string   `json:"allowed_actions,omitempty"`
+	GrantedAt      *time.Time `json:"granted_at,omitempty"`
+}
+
+// GetConsentStatus returns the current consent state for a couple. Consent is
+// considered granted when at least one partner has an active (non-revoked)
+// policy; revoked when the most recent policy for either partner is revoked.
+// ponytail: ceiling — checks person_a only; for a symmetric couple flow both
+// partners consent together, so one active policy is sufficient signal. Upgrade
+// path: AND both partners if independent per-person consent is ever needed.
+func (s *Store) GetConsentStatus(coupleID string) (ConsentStatus, error) {
+	c, err := s.GetCouple(coupleID)
+	if err != nil {
+		return ConsentStatus{}, err
+	}
+	// Most recent policy for either partner (active or revoked).
+	var pol ontology.ConsentPolicy
+	var actionsJSON string
+	err = s.DB.QueryRow(
+		`SELECT id, person_id, scope, allowed_actions, revoked_at, granted_at FROM consent_policies
+		 WHERE person_id IN ($1, $2) ORDER BY granted_at DESC LIMIT 1`,
+		c.PersonAID, c.PersonBID,
+	).Scan(&pol.ID, &pol.PersonID, &pol.Scope, &actionsJSON, &pol.RevokedAt, &pol.GrantedAt)
+	if err != nil {
+		// ponytail: sql.ErrNoRows → no consent on file. Treat as not-granted.
+		return ConsentStatus{Granted: false, Revoked: false}, nil
+	}
+	_ = json.Unmarshal([]byte(actionsJSON), &pol.AllowedActions)
+	st := ConsentStatus{AllowedActions: pol.AllowedActions, GrantedAt: &pol.GrantedAt}
+	if pol.RevokedAt != nil {
+		st.Revoked = true
+		st.Granted = false
+	} else {
+		st.Granted = true
+	}
+	return st, nil
+}
 
 func (s *Store) CreateConsentPolicy(c ontology.ConsentPolicy) (ontology.ConsentPolicy, error) {
 	if c.ID == "" {
@@ -72,6 +138,15 @@ func (s *Store) RevokeConsent(personID string) (int, error) {
 		return 0, err
 	}
 	cancelled, _ := res.RowsAffected()
+
+	// 3. Suppress couples involving this person so no further postcards or
+	// follow-ups are generated. Opt-out must take immediate effect.
+	if _, err := tx.Exec(
+		`UPDATE couples SET suppressed_at = now(), suppressed_reason = 'consent_revoked'
+		 WHERE (person_a_id = $1 OR person_b_id = $1) AND suppressed_at IS NULL`, personID,
+	); err != nil {
+		return 0, err
+	}
 
 	if err := tx.Commit(); err != nil {
 		return 0, err

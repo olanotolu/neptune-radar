@@ -106,6 +106,27 @@ type GodTierDossier struct {
 	PrenupIntentScore   float64  `json:"prenup_intent_score,omitempty"`
 	PrenupIntentReason  string   `json:"prenup_intent_reason,omitempty"`
 	PrenupIntentSignals []string `json:"prenup_intent_signals,omitempty"`
+	// Relationship strength (LLM, set once by ingest worker — augments FAIR dispersion)
+	RelationshipStrengthScore     float64  `json:"relationship_strength_score,omitempty"`
+	RelationshipStrengthCategory  string   `json:"relationship_strength_category,omitempty"`
+	RelationshipStrengthSignals   []string `json:"relationship_strength_signals,omitempty"`
+	RelationshipStrengthRationale string   `json:"relationship_strength_rationale,omitempty"`
+	// Address reasoning (LLM, set by detective after Bayesian fusion — internal only)
+	AddressReasoning          string `json:"address_reasoning,omitempty"`
+	AddressReasoningAgreement bool   `json:"address_reasoning_agreement,omitempty"`
+	// Wedding website discovery (The Knot / Zola / WeddingWire) — self-reported.
+	WeddingWebsite *WeddingWebsiteInfo `json:"wedding_website,omitempty"`
+}
+
+// WeddingWebsiteInfo is the self-reported wedding-website data shown on the dossier.
+type WeddingWebsiteInfo struct {
+	URL          string   `json:"url"`
+	Platform     string   `json:"platform"`
+	WeddingDate  string   `json:"wedding_date,omitempty"`
+	VenueName    string   `json:"venue_name,omitempty"`
+	VenueCity    string   `json:"venue_city,omitempty"`
+	VenueState   string   `json:"venue_state,omitempty"`
+	RegistryURLs []string `json:"registry_urls,omitempty"`
 }
 
 // AssetProfile is the financial summary from county property records.
@@ -177,14 +198,17 @@ func (s *Store) GetGodTierDossier(coupleID string) (GodTierDossier, error) {
 
 	// Journey + handoff from DB
 	var journey, handoffCode, handoffURL, handoffUTM string
-	var prenupScore float64
-	var prenupReason, prenupSignalsJSON string
+	var prenupScore, rsScore float64
+	var prenupReason, prenupSignalsJSON, rsCategory, rsSignalsJSON, rsRationale string
 	_ = s.DB.QueryRow(`
 		SELECT COALESCE(journey_stage,'detected'), COALESCE(handoff_code,''),
 		       COALESCE(handoff_url,''), COALESCE(handoff_utm,''),
-		       prenup_intent_score, COALESCE(prenup_intent_reason,''), COALESCE(prenup_intent_signals,'[]')
+		       prenup_intent_score, COALESCE(prenup_intent_reason,''), COALESCE(prenup_intent_signals,'[]'),
+		       COALESCE(relationship_strength_score,0), COALESCE(relationship_strength_category,''),
+		       COALESCE(relationship_strength_signals,'[]'), COALESCE(relationship_strength_rationale,'')
 		FROM couples WHERE id = $1`, coupleID,
-	).Scan(&journey, &handoffCode, &handoffURL, &handoffUTM, &prenupScore, &prenupReason, &prenupSignalsJSON)
+	).Scan(&journey, &handoffCode, &handoffURL, &handoffUTM, &prenupScore, &prenupReason, &prenupSignalsJSON,
+		&rsScore, &rsCategory, &rsSignalsJSON, &rsRationale)
 	if journey != "" {
 		d.JourneyStage = journey
 	}
@@ -193,6 +217,29 @@ func (s *Store) GetGodTierDossier(coupleID string) (GodTierDossier, error) {
 	d.PrenupIntentReason = prenupReason
 	if prenupSignalsJSON != "" && prenupSignalsJSON != "[]" {
 		_ = json.Unmarshal([]byte(prenupSignalsJSON), &d.PrenupIntentSignals)
+	}
+
+	// Wedding website discovery (self-reported) — load from the couple row.
+	if couple, err := s.GetCouple(coupleID); err == nil && couple.WeddingWebsiteURL != "" {
+		dateStr := ""
+		if couple.WeddingWebsiteDate != nil {
+			dateStr = couple.WeddingWebsiteDate.Format("2006-01-02")
+		}
+		d.WeddingWebsite = &WeddingWebsiteInfo{
+			URL:          couple.WeddingWebsiteURL,
+			Platform:     couple.WeddingWebsitePlatform,
+			WeddingDate:  dateStr,
+			VenueName:    couple.WeddingVenueName,
+			VenueCity:    couple.WeddingVenueCity,
+			VenueState:   couple.WeddingVenueState,
+			RegistryURLs: couple.RegistryURLs,
+		}
+	}
+	d.RelationshipStrengthScore = rsScore
+	d.RelationshipStrengthCategory = rsCategory
+	d.RelationshipStrengthRationale = rsRationale
+	if rsSignalsJSON != "" && rsSignalsJSON != "[]" {
+		_ = json.Unmarshal([]byte(rsSignalsJSON), &d.RelationshipStrengthSignals)
 	}
 
 	// Latest hypothesis + evidence ledger
@@ -262,6 +309,9 @@ func (s *Store) GetGodTierDossier(coupleID string) (GodTierDossier, error) {
 				NetWorthBreakdown:  kit.NetWorthBreakdown,
 			}
 		}
+		// Address reasoning from LLM (set by detective after Bayesian fusion)
+		d.AddressReasoning = kit.AddressReasoning
+		d.AddressReasoningAgreement = kit.AddressReasoningAgreement
 	}
 
 	// Aggregate caption + tags for runway

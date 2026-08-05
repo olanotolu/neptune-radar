@@ -153,6 +153,23 @@ type Couple struct {
 	// when no social signal was found or a license prediction already exists.
 	SocialWeddingPrediction string  `json:"social_wedding_prediction,omitempty"`
 	SocialWeddingConfidence float64 `json:"social_wedding_confidence,omitempty"`
+	// RelationshipStrengthScore is the LLM-predicted strength/seriousness of the
+	// couple's relationship (0-1), augmenting the FAIR dispersion metric. Set once
+	// by the ingest worker; category is casual_dating|serious|engaged|married|uncertain.
+	RelationshipStrengthScore    float64  `json:"relationship_strength_score,omitempty"`
+	RelationshipStrengthCategory string   `json:"relationship_strength_category,omitempty"`
+	RelationshipStrengthSignals  []string `json:"relationship_strength_signals,omitempty"`
+	RelationshipStrengthRationale string  `json:"relationship_strength_rationale,omitempty"`
+	// Wedding website discovery — self-reported data scraped from The Knot /
+	// Zola / WeddingWire. wedding_website_date is authoritative over
+	// predicted_wedding_date (the couple published it themselves).
+	WeddingWebsiteURL      string     `json:"wedding_website_url,omitempty"`
+	WeddingWebsitePlatform string     `json:"wedding_website_platform,omitempty"`
+	WeddingWebsiteDate     *time.Time `json:"wedding_website_date,omitempty"`
+	WeddingVenueName       string     `json:"wedding_venue_name,omitempty"`
+	WeddingVenueCity       string     `json:"wedding_venue_city,omitempty"`
+	WeddingVenueState      string     `json:"wedding_venue_state,omitempty"`
+	RegistryURLs           []string   `json:"registry_urls,omitempty"`
 }
 
 // LifeEvent is a Fenris Digital life-events trigger: a licensed data-broker

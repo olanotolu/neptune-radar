@@ -11,7 +11,7 @@ import {
 } from "../api/hooks";
 import { mediaURL } from "../api/media";
 import type { BrandAction, DossierEvidence } from "../api/types";
-import type { AssetProfile } from "../api/types";
+import type { AssetProfile, WeddingWebsiteInfo } from "../api/types";
 import { useToast } from "../components/Toast";
 import { EmptyState } from "../components/EmptyState";
 import { LoadingState } from "../components/LoadingState";
@@ -331,6 +331,66 @@ function FinancialProfile({ profile }: { profile?: AssetProfile }) {
   );
 }
 
+/* ---------- Wedding Website (self-reported, Knot/Zola/WeddingWire) ---------- */
+
+const PLATFORM_LABELS: Record<string, string> = {
+  knot: "The Knot",
+  zola: "Zola",
+  weddingwire: "WeddingWire",
+};
+
+function WeddingWebsiteSection({ info }: { info?: WeddingWebsiteInfo }) {
+  if (!info || !info.url) return null;
+  const platformLabel = PLATFORM_LABELS[info.platform] || info.platform || "Website";
+  const venueLoc = [info.venue_city, info.venue_state].filter(Boolean).join(", ");
+  return (
+    <section className="dossier__section">
+      <h3>Wedding Website</h3>
+      <p className="dossier__hint">
+        Self-reported — the couple published this. Date is authoritative over predicted.
+      </p>
+      <div className="dossier__grid">
+        <div>
+          <span className="dossier-financial__label">Platform</span>
+          <strong className="dossier-financial__value" style={{ fontSize: "1rem" }}>
+            {platformLabel}
+          </strong>
+          <a href={info.url} target="_blank" rel="noopener noreferrer" className="dossier__link">
+            Open wedding website ↗
+          </a>
+        </div>
+        <table className="dossier-ledger">
+          <tbody>
+            {info.wedding_date ? (
+              <tr><th>Wedding Date</th><td>{info.wedding_date}</td></tr>
+            ) : null}
+            {info.venue_name ? (
+              <tr><th>Venue</th><td>{info.venue_name}</td></tr>
+            ) : null}
+            {venueLoc ? (
+              <tr><th>Venue Location</th><td>{venueLoc}</td></tr>
+            ) : null}
+            {info.registry_urls && info.registry_urls.length > 0 ? (
+              <tr><th>Registries</th><td>{info.registry_urls.length}</td></tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+      {info.registry_urls && info.registry_urls.length > 0 ? (
+        <ul className="dossier-identity">
+          {info.registry_urls.map((u) => (
+            <li key={u} className="dossier-identity__item dossier-identity--medium">
+              <a href={u} target="_blank" rel="noopener noreferrer" className="dossier__link">
+                {u.replace(/^https?:\/\//, "").replace(/\/$/, "")} ↗
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
 /* ---------- Prenup Intent Score (the killer feature) ---------- */
 
 function PrenupIntentSection({
@@ -371,6 +431,75 @@ function PrenupIntentSection({
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+/* ---------- Relationship Strength (LLM-augmented FAIR dispersion) ---------- */
+
+function RelationshipStrengthSection({
+  score,
+  category,
+  signals,
+  rationale,
+}: {
+  score?: number;
+  category?: string;
+  signals?: string[];
+  rationale?: string;
+}) {
+  // ponytail: only render when a score has been predicted (ingest worker ran).
+  if (!score || (score === 0 && !category)) return null;
+  const pctVal = Math.round((score || 0) * 100);
+  const tone = score > 0.7 ? "high" : score >= 0.4 ? "medium" : "low";
+  const catLabel = (category || "uncertain").replace(/_/g, " ");
+  return (
+    <section className="dossier__section dossier__section--prenup">
+      <h3>Relationship Strength</h3>
+      <p className="dossier__hint">
+        LLM assessment of relationship seriousness from social signals — augments the FAIR dispersion metric.
+      </p>
+      <div className="dossier-prenup__main">
+        <span className={`dossier-prenup__dot dossier-prenup__dot--${tone}`} aria-hidden />
+        <strong className="dossier-prenup__score">{pctVal}%</strong>
+        <span className="dossier-prenup__label">{catLabel}</span>
+      </div>
+      <div className="dossier-prenup__meter">
+        <span className={`dossier-prenup__meter-fill dossier-prenup__meter-fill--${tone}`} style={{ width: `${pctVal}%` }} />
+      </div>
+      {rationale && <p className="dossier-prenup__reason">“{rationale}”</p>}
+      {signals && signals.length > 0 && (
+        <ul className="dossier-prenup__signals">
+          {signals.map((s) => (
+            <li key={s} className="dossier-prenup__signal">{s}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/* ---------- AI Address Reasoning (secondary confidence boost) ---------- */
+
+function AddressReasoningSection({
+  rationale,
+  agreement,
+}: {
+  rationale?: string;
+  agreement?: boolean;
+}) {
+  // ponytail: only render when the detective ran the LLM reasoner.
+  if (!rationale) return null;
+  const dotClass = agreement ? "dossier-ai__dot--agree" : "dossier-ai__dot--disagree";
+  const label = agreement ? "AI agrees with top candidate" : "AI suggests alternative";
+  return (
+    <section className="dossier__section dossier__section--ai-reasoning">
+      <h3>AI Reasoning</h3>
+      <div className="dossier-ai__head">
+        <span className={`dossier-ai__dot ${dotClass}`} aria-hidden />
+        <span className="dossier-ai__label">{label}</span>
+      </div>
+      <blockquote className="dossier-ai__rationale">{rationale}</blockquote>
     </section>
   );
 }
@@ -589,10 +718,24 @@ export function DossierView({
 
       <FinancialProfile profile={data.asset_profile} />
 
+      <WeddingWebsiteSection info={data.wedding_website} />
+
       <PrenupIntentSection
         score={data.prenup_intent_score}
         reason={data.prenup_intent_reason}
         signals={data.prenup_intent_signals}
+      />
+
+      <RelationshipStrengthSection
+        score={data.relationship_strength_score}
+        category={data.relationship_strength_category}
+        signals={data.relationship_strength_signals}
+        rationale={data.relationship_strength_rationale}
+      />
+
+      <AddressReasoningSection
+        rationale={data.address_reasoning}
+        agreement={data.address_reasoning_agreement}
       />
 
       <section className="dossier__section dossier__section--why">

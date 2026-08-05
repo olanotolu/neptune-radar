@@ -10,6 +10,9 @@ import { useKeyboard } from "./hooks/useKeyboard";
 // Only Today + shell stay eager. Everything else is route-lazy.
 import { TodayView } from "./views/TodayView";
 
+const CommandCenterView = lazy(() =>
+  import("./views/CommandCenterView").then((m) => ({ default: m.CommandCenterView })),
+);
 const WorkView = lazy(() => import("./views/WorkView").then((m) => ({ default: m.WorkView })));
 const SourcesView = lazy(() => import("./views/SourcesView").then((m) => ({ default: m.SourcesView })));
 const MapView = lazy(() => import("./views/MapView").then((m) => ({ default: m.MapView })));
@@ -58,6 +61,13 @@ const LifeEventsView = lazy(() =>
 const MarriageLicensesView = lazy(() =>
   import("./views/MarriageLicensesView").then((m) => ({ default: m.MarriageLicensesView })),
 );
+const ExperimentsView = lazy(() =>
+  import("./views/ExperimentsView").then((m) => ({ default: m.ExperimentsView })),
+);
+// ponytail: public landing page — not in nav, couples reach via postcard QR.
+const CelebrateView = lazy(() =>
+  import("./views/CelebrateView").then((m) => ({ default: m.CelebrateView })),
+);
 
 type Route = {
   tab: string;
@@ -67,11 +77,11 @@ type Route = {
 };
 
 function parseHash(): Route {
-  const raw = (window.location.hash || "#/today").replace(/^#/, "") || "/today";
+  const raw = (window.location.hash || "#/command").replace(/^#/, "") || "/command";
   const [pathPart, queryPart] = raw.split("?");
   const parts = pathPart.split("/").filter(Boolean);
   const qs = new URLSearchParams(queryPart || "");
-  const tab = parts[0] || "today";
+  const tab = parts[0] || "command";
   const route: Route = { tab };
   if (tab === "sources" && parts[1]) route.sourceHandle = decodeURIComponent(parts[1]);
   if (tab === "work" || tab === "dossier") {
@@ -104,6 +114,7 @@ type NavItem = { id: string; label: string; path: string };
 
 /** Daily operator destinations — keep this short. */
 const NAV_PRIMARY: NavItem[] = [
+  { id: "command", label: "Command", path: "/command" },
   { id: "today", label: "Today", path: "/today" },
   { id: "feed", label: "Feed", path: "/feed" },
   { id: "work", label: "Work", path: "/work?filter=action" },
@@ -123,6 +134,7 @@ const NAV_MORE: { group: string; items: NavItem[] }[] = [
       { id: "case", label: "Cases", path: "/case" },
       { id: "interview", label: "Interview", path: "/interview" },
       { id: "journey", label: "Journey", path: "/journey" },
+      { id: "experiments", label: "Experiments", path: "/experiments" },
       { id: "search", label: "Search", path: "/search" },
     ],
   },
@@ -362,7 +374,7 @@ function Shell() {
   useEffect(() => {
     const onHash = () => setRoute(parseHash());
     window.addEventListener("hashchange", onHash);
-    if (!window.location.hash) setHash("/today");
+    if (!window.location.hash) setHash("/command");
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
@@ -403,6 +415,8 @@ function Shell() {
 
   const body = useMemo(() => {
     switch (route.tab) {
+      case "command":
+        return <CommandCenterView onNavigate={navigate} />;
       case "today":
         return <TodayView onNavigate={navigate} />;
       case "dossier":
@@ -432,6 +446,8 @@ function Shell() {
         return <CongratulateView initialCoupleId={route.coupleId} />;
       case "licenses":
         return <MarriageLicensesView />;
+      case "celebrate":
+        return <CelebrateView />;
       case "interview":
         return <InterviewView />;
       case "sources":
@@ -472,6 +488,8 @@ function Shell() {
         return <AgentRunsView />;
       case "search":
         return <SearchView />;
+      case "experiments":
+        return <ExperimentsView />;
       case "dlq":
         return <DLQView />;
       case "jobs":

@@ -100,6 +100,18 @@ function KitCard({
         ) : (
           <span className="kit-card__meta kit-card__followup">No follow-up</span>
         )}
+        {kit.variant_id ? (
+          <span className="kit-card__meta kit-card__variant-badge">
+            Variant {kit.variant_id}
+            {kit.is_personalized ? " · Personalized" : ""}
+          </span>
+        ) : null}
+        {kit.is_personalized && kit.personalized_copy ? (
+          <span className="kit-card__meta kit-card__personalized-preview">
+            {kit.personalized_copy.slice(0, 80)}
+            {kit.personalized_copy.length > 80 ? "…" : ""}
+          </span>
+        ) : null}
       </div>
     </button>
   );

@@ -10,75 +10,83 @@ import (
 // CongratulateKit is a human-reviewed outreach package: dossier, address research,
 // and a postcard draft. Nothing is mailed until status is ready_to_mail.
 type CongratulateKit struct {
-	ID                   string             `json:"id"`
-	CoupleID             string             `json:"couple_id"`
-	Status               string             `json:"status"`
-	HandleA              string             `json:"handle_a,omitempty"`
-	HandleB              string             `json:"handle_b,omitempty"`
-	PersonAName          string             `json:"person_a_name,omitempty"`
-	PersonBName          string             `json:"person_b_name,omitempty"`
-	FirstNameA           string             `json:"first_name_a,omitempty"`
-	LastNameA            string             `json:"last_name_a,omitempty"`
-	FirstNameB           string             `json:"first_name_b,omitempty"`
-	LastNameB            string             `json:"last_name_b,omitempty"`
-	NameSourceA          string             `json:"name_source_a,omitempty"`
-	NameSourceB          string             `json:"name_source_b,omitempty"`
-	BioA                 string             `json:"bio_a,omitempty"`
-	BioB                 string             `json:"bio_b,omitempty"`
-	ProfilePicA          string             `json:"profile_pic_a,omitempty"`
-	ProfilePicB          string             `json:"profile_pic_b,omitempty"`
-	MarketCity           string             `json:"market_city,omitempty"`
-	MarketRegion         string             `json:"market_region,omitempty"`
-	MarketSource         string             `json:"market_source,omitempty"`
-	SourceHandle         string             `json:"source_handle,omitempty"`
-	SourceClass          string             `json:"source_class,omitempty"`
-	DiscoveryCaption     string             `json:"discovery_caption,omitempty"`
-	DiscoveryImageURL    string             `json:"discovery_image_url,omitempty"`
-	DiscoveryPostURL     string             `json:"discovery_post_url,omitempty"`
-	Evidence             []string           `json:"evidence,omitempty"`
-	ResearchNotes        string             `json:"research_notes,omitempty"`
-	ResearchSteps        []ResearchStep     `json:"research_steps,omitempty"`
-	AddressLine1         string             `json:"address_line1,omitempty"`
-	AddressLine2         string             `json:"address_line2,omitempty"`
-	AddressCity          string             `json:"address_city,omitempty"`
-	AddressRegion        string             `json:"address_region,omitempty"`
-	AddressPostal        string             `json:"address_postal,omitempty"`
-	AddressCountry       string             `json:"address_country,omitempty"`
-	AddressConfidence    float64            `json:"address_confidence"`
-	AddressSource        string             `json:"address_source,omitempty"`
-	AddressCandidates    []AddressCandidate `json:"address_candidates,omitempty"`
-	Headline             string             `json:"headline,omitempty"`
-	BodyMessage          string             `json:"body_message,omitempty"`
-	InternalNote         string             `json:"internal_note,omitempty"`
-	PostcardHTML         string             `json:"postcard_html,omitempty"`
+	ID                string             `json:"id"`
+	CoupleID          string             `json:"couple_id"`
+	Status            string             `json:"status"`
+	HandleA           string             `json:"handle_a,omitempty"`
+	HandleB           string             `json:"handle_b,omitempty"`
+	PersonAName       string             `json:"person_a_name,omitempty"`
+	PersonBName       string             `json:"person_b_name,omitempty"`
+	FirstNameA        string             `json:"first_name_a,omitempty"`
+	LastNameA         string             `json:"last_name_a,omitempty"`
+	FirstNameB        string             `json:"first_name_b,omitempty"`
+	LastNameB         string             `json:"last_name_b,omitempty"`
+	NameSourceA       string             `json:"name_source_a,omitempty"`
+	NameSourceB       string             `json:"name_source_b,omitempty"`
+	BioA              string             `json:"bio_a,omitempty"`
+	BioB              string             `json:"bio_b,omitempty"`
+	ProfilePicA       string             `json:"profile_pic_a,omitempty"`
+	ProfilePicB       string             `json:"profile_pic_b,omitempty"`
+	MarketCity        string             `json:"market_city,omitempty"`
+	MarketRegion      string             `json:"market_region,omitempty"`
+	MarketSource      string             `json:"market_source,omitempty"`
+	SourceHandle      string             `json:"source_handle,omitempty"`
+	SourceClass       string             `json:"source_class,omitempty"`
+	DiscoveryCaption  string             `json:"discovery_caption,omitempty"`
+	DiscoveryImageURL string             `json:"discovery_image_url,omitempty"`
+	DiscoveryPostURL  string             `json:"discovery_post_url,omitempty"`
+	Evidence          []string           `json:"evidence,omitempty"`
+	ResearchNotes     string             `json:"research_notes,omitempty"`
+	ResearchSteps     []ResearchStep     `json:"research_steps,omitempty"`
+	AddressLine1      string             `json:"address_line1,omitempty"`
+	AddressLine2      string             `json:"address_line2,omitempty"`
+	AddressCity       string             `json:"address_city,omitempty"`
+	AddressRegion     string             `json:"address_region,omitempty"`
+	AddressPostal     string             `json:"address_postal,omitempty"`
+	AddressCountry    string             `json:"address_country,omitempty"`
+	AddressConfidence float64            `json:"address_confidence"`
+	AddressSource     string             `json:"address_source,omitempty"`
+	AddressCandidates []AddressCandidate `json:"address_candidates,omitempty"`
+	Headline          string             `json:"headline,omitempty"`
+	BodyMessage       string             `json:"body_message,omitempty"`
+	InternalNote      string             `json:"internal_note,omitempty"`
+	PostcardHTML      string             `json:"postcard_html,omitempty"`
 	// CelebrateURL is a tracked Meet Neptune deep link for the postcard QR
 	// (utm_medium=postcard). Not persisted — set at render/build time.
-	CelebrateURL         string             `json:"celebrate_url,omitempty"`
-	MailPayload          map[string]any     `json:"mail_payload,omitempty"`
-	VerifiedBy           string             `json:"verified_by,omitempty"`
-	VerifiedAt           *time.Time         `json:"verified_at,omitempty"`
-	MailedAt             *time.Time         `json:"mailed_at,omitempty"`
-	PriorityScore        float64            `json:"priority_score"`
+	CelebrateURL  string         `json:"celebrate_url,omitempty"`
+	MailPayload   map[string]any `json:"mail_payload,omitempty"`
+	VerifiedBy    string         `json:"verified_by,omitempty"`
+	VerifiedAt    *time.Time     `json:"verified_at,omitempty"`
+	MailedAt      *time.Time     `json:"mailed_at,omitempty"`
+	PriorityScore float64        `json:"priority_score"`
 	// FenrisValidated is true when a Fenris Digital life event independently
 	// cross-validates this couple — two independent signals = +0.15 prep boost.
-	FenrisValidated      bool               `json:"fenris_validated,omitempty"`
-	FollowUpAt           *time.Time         `json:"follow_up_at,omitempty"`
-	FollowUpTemplate     string             `json:"follow_up_template,omitempty"`
-	FollowUpSentAt       *time.Time         `json:"follow_up_sent_at,omitempty"`
-	FollowUpCount        int                `json:"follow_up_count"`
+	FenrisValidated  bool       `json:"fenris_validated,omitempty"`
+	FollowUpAt       *time.Time `json:"follow_up_at,omitempty"`
+	FollowUpTemplate string     `json:"follow_up_template,omitempty"`
+	FollowUpSentAt   *time.Time `json:"follow_up_sent_at,omitempty"`
+	FollowUpCount    int        `json:"follow_up_count"`
 	// Property asset data from county auditor (internal operator use — never on postcards)
-	PropertyAsset        PropertyAsset      `json:"property_asset,omitempty"`
-	EstimatedHomeValue   int64              `json:"estimated_home_value,omitempty"`
+	PropertyAsset      PropertyAsset `json:"property_asset,omitempty"`
+	EstimatedHomeValue int64         `json:"estimated_home_value,omitempty"`
 	// Net worth estimate from property + Instagram luxury signals (internal only —
 	// never on postcards). EstimateNetWorth produces estimate + tier + breakdown.
-	NetWorthEstimate     int64              `json:"net_worth_estimate,omitempty"`
-	NetWorthTier         string             `json:"net_worth_tier,omitempty"`
-	NetWorthBreakdown    map[string]int64   `json:"net_worth_breakdown,omitempty"`
+	NetWorthEstimate  int64            `json:"net_worth_estimate,omitempty"`
+	NetWorthTier      string           `json:"net_worth_tier,omitempty"`
+	NetWorthBreakdown map[string]int64 `json:"net_worth_breakdown,omitempty"`
 	// QR scan tracking — physical-digital attribution via /r/{code} redirect.
-	QRScanCount          int                `json:"qr_scan_count"`
-	LastQRScanAt         *time.Time         `json:"last_qr_scan_at,omitempty"`
-	CreatedAt            time.Time          `json:"created_at"`
-	UpdatedAt            time.Time          `json:"updated_at"`
+	QRScanCount  int        `json:"qr_scan_count"`
+	LastQRScanAt *time.Time `json:"last_qr_scan_at,omitempty"`
+	// AddressReasoning is the LLM address reasoner's rationale (audit trail).
+	AddressReasoning          string `json:"address_reasoning,omitempty"`
+	AddressReasoningAgreement bool   `json:"address_reasoning_agreement,omitempty"`
+	// A/B testing — variant assignment + LLM personalization tracking.
+	VariantID        string    `json:"variant_id,omitempty"`
+	ExperimentID     string    `json:"experiment_id,omitempty"`
+	IsPersonalized   bool      `json:"is_personalized,omitempty"`
+	PersonalizedCopy string    `json:"personalized_copy,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 // PropertyAsset holds parsed county auditor financial data for a kit.
@@ -91,11 +99,11 @@ type PropertyAsset struct {
 }
 
 type ResearchStep struct {
-	ID      string `json:"id"`
-	Label   string `json:"label"`
-	Detail  string `json:"detail"`
-	Status  string `json:"status"` // done | suggested | blocked
-	URL     string `json:"url,omitempty"`
+	ID     string `json:"id"`
+	Label  string `json:"label"`
+	Detail string `json:"detail"`
+	Status string `json:"status"` // done | suggested | blocked
+	URL    string `json:"url,omitempty"`
 }
 
 type AddressCandidate struct {
@@ -168,11 +176,13 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 			priority_score, follow_up_at, follow_up_template, follow_up_sent_at, follow_up_count,
 			asset_json, estimated_home_value,
 			net_worth_estimate, net_worth_tier, net_worth_breakdown_json,
+			address_reasoning, address_reasoning_agreement,
+			variant_id, experiment_id, is_personalized, personalized_copy,
 			created_at, updated_at
 		) VALUES (
 			$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,
 			$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,
-			$42,$43,$44,$45,$46,$47,$48,$49,$50,$51
+			$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,$53,$54,$55,$56,$57
 		)
 		ON CONFLICT (id) DO UPDATE SET
 			status = EXCLUDED.status,
@@ -206,6 +216,10 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 			net_worth_estimate = EXCLUDED.net_worth_estimate,
 			net_worth_tier = EXCLUDED.net_worth_tier,
 			net_worth_breakdown_json = EXCLUDED.net_worth_breakdown_json,
+			address_reasoning = EXCLUDED.address_reasoning,
+			address_reasoning_agreement = EXCLUDED.address_reasoning_agreement,
+			variant_id = EXCLUDED.variant_id, experiment_id = EXCLUDED.experiment_id,
+			is_personalized = EXCLUDED.is_personalized, personalized_copy = EXCLUDED.personalized_copy,
 			updated_at = EXCLUDED.updated_at
 	`,
 		k.ID, k.CoupleID, k.Status, nullIfEmpty(k.HandleA), nullIfEmpty(k.HandleB),
@@ -224,6 +238,8 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 		k.PriorityScore, k.FollowUpAt, nullIfEmpty(k.FollowUpTemplate), k.FollowUpSentAt, k.FollowUpCount,
 		nullIfEmpty(string(assetJ)), k.EstimatedHomeValue,
 		k.NetWorthEstimate, nullIfEmpty(k.NetWorthTier), string(nwBreakdown),
+		nullIfEmpty(k.AddressReasoning), k.AddressReasoningAgreement,
+		nullIfEmpty(k.VariantID), nullIfEmpty(k.ExperimentID), k.IsPersonalized, nullIfEmpty(k.PersonalizedCopy),
 		k.CreatedAt, k.UpdatedAt,
 	)
 	if err != nil {
@@ -299,6 +315,8 @@ const kitSelect = `SELECT id, couple_id, status,
 	COALESCE(asset_json,''), COALESCE(estimated_home_value,0),
 	COALESCE(net_worth_estimate,0), COALESCE(net_worth_tier,''), COALESCE(net_worth_breakdown_json,''),
 	COALESCE(qr_scan_count,0), last_qr_scan_at,
+	COALESCE(address_reasoning,''), COALESCE(address_reasoning_agreement,false),
+	COALESCE(variant_id,''), COALESCE(experiment_id,''), COALESCE(is_personalized,false), COALESCE(personalized_copy,''),
 	created_at, updated_at
 	FROM congratulate_kits`
 
@@ -325,6 +343,8 @@ func (s *Store) scanKit(row *sql.Row) (CongratulateKit, error) {
 		&assetJ, &k.EstimatedHomeValue,
 		&k.NetWorthEstimate, &k.NetWorthTier, &nwBD,
 		&k.QRScanCount, &lastQRScan,
+		&k.AddressReasoning, &k.AddressReasoningAgreement,
+		&k.VariantID, &k.ExperimentID, &k.IsPersonalized, &k.PersonalizedCopy,
 		&k.CreatedAt, &k.UpdatedAt,
 	)
 	if err != nil {
@@ -388,6 +408,8 @@ func (s *Store) scanKitRow(rows *sql.Rows) (CongratulateKit, error) {
 		&assetJ, &k.EstimatedHomeValue,
 		&k.NetWorthEstimate, &k.NetWorthTier, &nwBD,
 		&k.QRScanCount, &lastQRScan,
+		&k.AddressReasoning, &k.AddressReasoningAgreement,
+		&k.VariantID, &k.ExperimentID, &k.IsPersonalized, &k.PersonalizedCopy,
 		&k.CreatedAt, &k.UpdatedAt,
 	)
 	if err != nil {
@@ -571,5 +593,9 @@ func (s *Store) RecordQRScan(code string) (celebrateURL string, kitID string, er
 	celebrateURL = fmt.Sprintf(
 		"%s?utm_source=neptune_radar&utm_medium=postcard&utm_campaign=celebrate_first&utm_content=%s&ref=%s",
 		chatBaseURL(), coupleID, code)
+	// Signal the frontend to show the consent modal when consent isn't granted yet.
+	if st, err := s.GetConsentStatus(coupleID); err == nil && !st.Granted {
+		celebrateURL += "&consent_required=1"
+	}
 	return celebrateURL, kit.ID, nil
 }

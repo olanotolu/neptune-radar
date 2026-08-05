@@ -46,6 +46,7 @@ import type {
   FenrisEvent,
   VisionAnalysis,
   ProviderAccuracyRow,
+  ExperimentResults,
 } from "./types";
 
 const keys = {
@@ -1125,6 +1126,15 @@ export function useProviderAccuracy() {
   return useQuery({
     queryKey: ["provider-accuracy"],
     queryFn: () => api.get<ProviderAccuracyRow[]>("/api/provider-accuracy"),
+    staleTime: 60_000,
+  });
+}
+
+export function useExperimentResults(experimentId: string) {
+  return useQuery({
+    queryKey: ["experiments", experimentId, "results"],
+    queryFn: () =>
+      api.get<ExperimentResults>(`/api/experiments/${encodeURIComponent(experimentId)}/results`),
     staleTime: 60_000,
   });
 }

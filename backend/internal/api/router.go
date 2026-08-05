@@ -113,6 +113,11 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	// Congratulate kits — dossier + address research + postcard (human-reviewed mail).
 	// QR scan redirect — public, no auth (postcard QR → log scan → 302 to celebrate).
 	mux.HandleFunc("GET /r/{code}", srv.qrRedirect)
+
+	// Consent capture + opt-out — public, no auth (couples reach via QR code).
+	mux.HandleFunc("POST /api/consent/grant", srv.consentGrant)
+	mux.HandleFunc("POST /api/consent/revoke", srv.consentRevoke)
+	mux.HandleFunc("GET /api/consent/status/{handoffCode}", srv.consentStatus)
 	mux.HandleFunc("GET /api/kits", srv.listCongratulateKits)
 	mux.HandleFunc("POST /api/couples/{id}/congratulate", srv.buildCongratulateKit)
 	mux.HandleFunc("GET /api/couples/{id}/kit", srv.latestKitForCouple)
@@ -221,6 +226,9 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 
 	// Bayesian Provider Fusion — per-provider accuracy by state.
 	mux.HandleFunc("GET /api/provider-accuracy", srv.providerAccuracy)
+
+	// A/B testing — experiment variant conversion results.
+	mux.HandleFunc("GET /api/experiments/{id}/results", srv.experimentResults)
 
 	return mux
 }

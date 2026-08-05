@@ -334,8 +334,30 @@ export interface CongratulateKit {
   follow_up_count?: number;
   qr_scan_count?: number;
   last_qr_scan_at?: string;
+  variant_id?: string;
+  experiment_id?: string;
+  is_personalized?: boolean;
+  personalized_copy?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface VariantResult {
+  variant_id: string;
+  variant_name: string;
+  mailed: number;
+  scans: number;
+  scan_rate: number;
+  chats: number;
+  conversion_rate: number;
+  sample_size: number;
+}
+
+export interface ExperimentResults {
+  experiment_id: string;
+  experiment_name: string;
+  variants: VariantResult[];
+  winner_id?: string;
 }
 
 // --- Ohio source registry (real government/church/social connectors) -------
@@ -848,6 +870,13 @@ export interface CoupleDossier {
   prenup_intent_score?: number;
   prenup_intent_reason?: string;
   prenup_intent_signals?: string[];
+  relationship_strength_score?: number;
+  relationship_strength_category?: string;
+  relationship_strength_signals?: string[];
+  relationship_strength_rationale?: string;
+  address_reasoning?: string;
+  address_reasoning_agreement?: boolean;
+  wedding_website?: WeddingWebsiteInfo;
 }
 
 /** One node on the couple journey timeline (GET /api/couple-journey/:coupleId). */
@@ -875,6 +904,16 @@ export interface AssetProfile {
   net_worth_estimate?: number;
   net_worth_tier?: string;
   net_worth_breakdown?: Record<string, number>;
+}
+
+export interface WeddingWebsiteInfo {
+  url: string;
+  platform: string;
+  wedding_date?: string;
+  venue_name?: string;
+  venue_city?: string;
+  venue_state?: string;
+  registry_urls?: string[];
 }
 
 export interface ProspectBoard {

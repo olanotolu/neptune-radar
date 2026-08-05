@@ -663,6 +663,10 @@ func (w *Worker) enrichTaggedProfiles(ctx context.Context, raw watchtower.RawEve
 					// wedding date from these Instagram signals. Non-blocking —
 					// runs in a goroutine so ingest never waits on a model call.
 					w.predictSocialWedding(couple.ID, caption, bioA, bioB, postLoc, raw.Handle)
+					// Relationship strength scoring: LLM augments the FAIR
+					// dispersion metric with caption/tag/engagement signals.
+					// Non-blocking goroutine — never stalls ingest.
+					w.scoreRelationshipStrength(couple.ID, bioA, bioB, caption, handles)
 				}
 			}
 		}
@@ -707,6 +711,125 @@ func (w *Worker) predictSocialWedding(coupleID, caption, bioA, bioB, venueTag, v
 			log.Printf("[watchtower] save social wedding prediction for %s: %v", coupleID, err)
 		}
 	}()
+}
+
+// scoreRelationshipStrength runs the LLM relationship-strength scorer off the
+// ingest hot path. It augments the FAIR dispersion metric with caption/tag/
+// engagement signals. Non-blocking — runs in a goroutine so ingest never waits
+// on a model call. ponytail: ceiling = detached context means a slow model call
+// can outlive the tick; upgrade path = a bounded worker pool with per-couple
+// dedup if volume makes this noisy. Skips if already scored (avoid re-spending).
+func (w *Worker) scoreRelationshipStrength(coupleID, bioA, bioB, caption string, handles []string) {
+	go func() {
+		full, err := w.store.GetCouple(coupleID)
+		if err != nil {
+			return
+		}
+		// Skip if already scored — avoid re-spending LLM budget per tick.
+		if full.RelationshipStrengthScore > 0 {
+			return
+		}
+		// Collect recent captions from posts where both partners are tagged.
+		// ponytail: reuse the observations already stored on the couple dossier
+		// rather than a fresh query — the caption from the triggering post is
+		// the freshest signal we have in-hand.
+		recentCaptions := w.collectCoupleCaptions(coupleID, 20)
+		if caption != "" {
+			recentCaptions = append([]string{caption}, recentCaptions...)
+		}
+		// Tag frequency: count how many of the collected posts tag both handles.
+		tagFreq := len(recentCaptions)
+		// Post frequency: rough posts/week from caption count over a 4-week window.
+		// ponytail: heuristic — assumes ~4 weeks of recent posts; not exact.
+		postFreq := float64(tagFreq) / 4.0
+		// Mutual follows: check reciprocal follow edges between the two accounts.
+		mutualFollows := false
+		if len(handles) >= 2 {
+			a, errA := w.store.GetAccountByHandle("instagram", handles[0])
+			b, errB := w.store.GetAccountByHandle("instagram", handles[1])
+			if errA == nil && errB == nil {
+				ab, _ := w.store.GetEdge(ontology.EdgeFollows, a.ID, b.ID)
+				ba, _ := w.store.GetEdge(ontology.EdgeFollows, b.ID, a.ID)
+				mutualFollows = ab.Active && ba.Active
+			}
+		}
+		// Dispersion score: ponytail: reuse the FAIR metric if computable.
+		// The full graph isn't available here, so pass 0 — the LLM uses the
+		// other signals. Upgrade path: compute dispersion from stored edges.
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		result, err := llm.ScoreRelationshipStrength(ctx, llm.RelationshipStrengthInput{
+			Partner1Name:   full.PersonAID, // ponytail: names not readily available here; IDs as placeholder
+			Partner2Name:   full.PersonBID,
+			Partner1Bio:    bioA,
+			Partner2Bio:    bioB,
+			RecentCaptions: recentCaptions,
+			TagFrequency:   tagFreq,
+			PostFrequency:  postFreq,
+			MutualFollows:  mutualFollows,
+			DispersionScore: 0,
+		})
+		if err != nil {
+			log.Printf("[watchtower] relationship strength for %s failed: %v", coupleID, err)
+		}
+		if err := w.store.SetRelationshipStrength(coupleID, result.Score, result.Category, result.KeySignals, result.Rationale); err != nil {
+			log.Printf("[watchtower] save relationship strength for %s: %v", coupleID, err)
+			return
+		}
+		// Add evidence to the couple's latest hypothesis: weight by category.
+		// engaged/married = high weight, serious = medium, casual = low/negative.
+		weight := categoryEvidenceWeight(result.Category)
+		if hypID, err := w.latestHypothesisID(coupleID); err == nil && hypID != "" {
+			desc := fmt.Sprintf("relationship strength: %s (score %.2f) — %s", result.Category, result.Score, result.Rationale)
+			if _, err := w.store.UpsertEvidenceKind(hypID, "relationship_strength", desc, weight); err != nil {
+				log.Printf("[watchtower] save relationship strength evidence for %s: %v", coupleID, err)
+			}
+		}
+	}()
+}
+
+// collectCoupleCaptions gathers recent captions from posts linked to the couple.
+// ponytail: queries observations via the couple dossier (already joined); caps
+// at maxCount to bound LLM prompt size.
+func (w *Worker) collectCoupleCaptions(coupleID string, maxCount int) []string {
+	d, err := w.store.GetCoupleDossier(coupleID)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, o := range d.Observations {
+		if o.Caption != "" {
+			out = append(out, o.Caption)
+			if len(out) >= maxCount {
+				break
+			}
+		}
+	}
+	return out
+}
+
+// latestHypothesisID returns the most recent hypothesis ID for a couple, or "".
+func (w *Worker) latestHypothesisID(coupleID string) (string, error) {
+	var hypID string
+	err := w.store.DB.QueryRow(
+		`SELECT id FROM life_event_hypotheses WHERE couple_id = $1 ORDER BY created_at DESC LIMIT 1`, coupleID,
+	).Scan(&hypID)
+	return hypID, err
+}
+
+// categoryEvidenceWeight maps the relationship strength category to an evidence
+// weight. engaged/married boost confidence; casual_dating reduces it.
+func categoryEvidenceWeight(category string) float64 {
+	switch strings.ToLower(category) {
+	case "engaged", "married":
+		return 0.20
+	case "serious":
+		return 0.10
+	case "casual_dating":
+		return -0.10
+	default: // uncertain
+		return 0.0
+	}
 }
 
 // cityCoords is a tiny static table for map pins without a geocoder.

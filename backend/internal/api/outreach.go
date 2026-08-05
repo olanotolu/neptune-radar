@@ -837,3 +837,14 @@ func (s *Server) kitScans(w http.ResponseWriter, r *http.Request) {
 		"scans":           events,
 	})
 }
+
+// experimentResults returns per-variant conversion performance for one experiment.
+func (s *Server) experimentResults(w http.ResponseWriter, r *http.Request) {
+	experimentID := r.PathValue("id")
+	results, err := outreach.GetExperimentResults(s.Store, experimentID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, results)
+}

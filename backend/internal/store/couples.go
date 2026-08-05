@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"neptune-social-radar/backend/internal/ontology"
@@ -56,7 +57,13 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 		        mistaken, COALESCE(mistaken_reason,''), COALESCE(mistaken_by,''), mistaken_at,
 		        COALESCE(source,'social'), COALESCE(license_county,''),
 		        license_filing_date, predicted_wedding_date, wedding_date,
-		        prenup_intent_score, COALESCE(prenup_intent_reason,''), COALESCE(prenup_intent_signals,'[]')
+		        prenup_intent_score, COALESCE(prenup_intent_reason,''), COALESCE(prenup_intent_signals,'[]'),
+		        relationship_strength_score, COALESCE(relationship_strength_category,''),
+		        COALESCE(relationship_strength_signals,'[]'), COALESCE(relationship_strength_rationale,''),
+		        COALESCE(wedding_website_url,''), COALESCE(wedding_website_platform,''),
+		        wedding_website_date, COALESCE(wedding_venue_name,''),
+		        COALESCE(wedding_venue_city,''), COALESCE(wedding_venue_state,''),
+		        COALESCE(registry_urls,'[]')
 		 FROM couples ORDER BY created_at ASC, id ASC`)
 	if err != nil {
 		return nil, err
@@ -66,17 +73,30 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 	for rows.Next() {
 		var c ontology.Couple
 		var lat, lng sql.NullFloat64
-		var mistakenAt, licenseFiled, predictedWedding, wedding sql.NullTime
-		var signalsJSON string
+		var mistakenAt, licenseFiled, predictedWedding, wedding, wwDate sql.NullTime
+		var signalsJSON, rsSignalsJSON, registryJSON string
 		if err := rows.Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt,
 			&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource,
 			&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt,
 			&c.Source, &c.LicenseCounty, &licenseFiled, &predictedWedding, &wedding,
-			&c.PrenupIntentScore, &c.PrenupIntentReason, &signalsJSON); err != nil {
+			&c.PrenupIntentScore, &c.PrenupIntentReason, &signalsJSON,
+			&c.RelationshipStrengthScore, &c.RelationshipStrengthCategory, &rsSignalsJSON, &c.RelationshipStrengthRationale,
+			&c.WeddingWebsiteURL, &c.WeddingWebsitePlatform, &wwDate,
+			&c.WeddingVenueName, &c.WeddingVenueCity, &c.WeddingVenueState, &registryJSON); err != nil {
 			return nil, err
 		}
 		if signalsJSON != "" && signalsJSON != "[]" {
 			_ = json.Unmarshal([]byte(signalsJSON), &c.PrenupIntentSignals)
+		}
+		if rsSignalsJSON != "" && rsSignalsJSON != "[]" {
+			_ = json.Unmarshal([]byte(rsSignalsJSON), &c.RelationshipStrengthSignals)
+		}
+		if registryJSON != "" && registryJSON != "[]" {
+			_ = json.Unmarshal([]byte(registryJSON), &c.RegistryURLs)
+		}
+		if wwDate.Valid {
+			t := wwDate.Time
+			c.WeddingWebsiteDate = &t
 		}
 		if lat.Valid {
 			v := lat.Float64
@@ -110,8 +130,8 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 func (s *Store) GetCouple(id string) (ontology.Couple, error) {
 	var c ontology.Couple
 	var lat, lng sql.NullFloat64
-	var mistakenAt, licenseFiled, predictedWedding, wedding sql.NullTime
-	var signalsJSON string
+	var mistakenAt, licenseFiled, predictedWedding, wedding, wwDate sql.NullTime
+	var signalsJSON, rsSignalsJSON, registryJSON string
 	err := s.DB.QueryRow(
 		`SELECT id, person_a_id, person_b_id, created_at,
 		        COALESCE(inferred_city,''), COALESCE(inferred_region,''),
@@ -119,18 +139,37 @@ func (s *Store) GetCouple(id string) (ontology.Couple, error) {
 		        mistaken, COALESCE(mistaken_reason,''), COALESCE(mistaken_by,''), mistaken_at,
 		        COALESCE(source,'social'), COALESCE(license_county,''),
 		        license_filing_date, predicted_wedding_date, wedding_date,
-		        prenup_intent_score, COALESCE(prenup_intent_reason,''), COALESCE(prenup_intent_signals,'[]')
+		        prenup_intent_score, COALESCE(prenup_intent_reason,''), COALESCE(prenup_intent_signals,'[]'),
+		        relationship_strength_score, COALESCE(relationship_strength_category,''),
+		        COALESCE(relationship_strength_signals,'[]'), COALESCE(relationship_strength_rationale,''),
+		        COALESCE(wedding_website_url,''), COALESCE(wedding_website_platform,''),
+		        wedding_website_date, COALESCE(wedding_venue_name,''),
+		        COALESCE(wedding_venue_city,''), COALESCE(wedding_venue_state,''),
+		        COALESCE(registry_urls,'[]')
 		 FROM couples WHERE id = $1`, id,
 	).Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt,
 		&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource,
 		&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt,
 		&c.Source, &c.LicenseCounty, &licenseFiled, &predictedWedding, &wedding,
-		&c.PrenupIntentScore, &c.PrenupIntentReason, &signalsJSON)
+		&c.PrenupIntentScore, &c.PrenupIntentReason, &signalsJSON,
+		&c.RelationshipStrengthScore, &c.RelationshipStrengthCategory, &rsSignalsJSON, &c.RelationshipStrengthRationale,
+		&c.WeddingWebsiteURL, &c.WeddingWebsitePlatform, &wwDate,
+		&c.WeddingVenueName, &c.WeddingVenueCity, &c.WeddingVenueState, &registryJSON)
 	if err != nil {
 		return c, err
 	}
 	if signalsJSON != "" && signalsJSON != "[]" {
 		_ = json.Unmarshal([]byte(signalsJSON), &c.PrenupIntentSignals)
+	}
+	if rsSignalsJSON != "" && rsSignalsJSON != "[]" {
+		_ = json.Unmarshal([]byte(rsSignalsJSON), &c.RelationshipStrengthSignals)
+	}
+	if registryJSON != "" && registryJSON != "[]" {
+		_ = json.Unmarshal([]byte(registryJSON), &c.RegistryURLs)
+	}
+	if wwDate.Valid {
+		t := wwDate.Time
+		c.WeddingWebsiteDate = &t
 	}
 	if lat.Valid {
 		v := lat.Float64
@@ -170,6 +209,49 @@ func (s *Store) SetPrenupIntent(coupleID string, score float64, reason string, s
 	_, err := s.DB.Exec(
 		`UPDATE couples SET prenup_intent_score = $2, prenup_intent_reason = $3, prenup_intent_signals = $4 WHERE id = $1`,
 		coupleID, score, reason, string(sigJSON))
+	return err
+}
+
+// UpdateWeddingWebsite stores self-reported wedding-website data scraped from
+// The Knot / Zola / WeddingWire. weddingDate is authoritative over
+// predicted_wedding_date (the couple published it). An empty date clears the
+// column; empty strings leave existing values untouched via COALESCE-free SET.
+func (s *Store) UpdateWeddingWebsite(coupleID, webURL, platform, weddingDate, venueName, venueCity, venueState string, registryURLs []string) error {
+	regJSON, _ := json.Marshal(registryURLs)
+	if len(registryURLs) == 0 {
+		regJSON = []byte("[]")
+	}
+	// weddingDate may be "" — pass as NULL so the column clears when no date.
+	var dateArg any
+	if d := strings.TrimSpace(weddingDate); d != "" {
+		dateArg = d
+	}
+	_, err := s.DB.Exec(
+		`UPDATE couples SET
+		   wedding_website_url = $2,
+		   wedding_website_platform = $3,
+		   wedding_website_date = $4,
+		   wedding_venue_name = $5,
+		   wedding_venue_city = $6,
+		   wedding_venue_state = $7,
+		   registry_urls = $8
+		 WHERE id = $1`,
+		coupleID, webURL, platform, dateArg, venueName, venueCity, venueState, string(regJSON))
+	return err
+}
+
+// SetRelationshipStrength stores the LLM-predicted relationship strength on the
+// couple. Called once by the ingest worker; read back from the couple row, not
+// recomputed. Signals are stored as a JSONB array (same pattern as prenup_intent).
+func (s *Store) SetRelationshipStrength(coupleID string, score float64, category string, signals []string, rationale string) error {
+	sigJSON, _ := json.Marshal(signals)
+	if len(signals) == 0 {
+		sigJSON = []byte("[]")
+	}
+	_, err := s.DB.Exec(
+		`UPDATE couples SET relationship_strength_score = $2, relationship_strength_category = $3,
+		    relationship_strength_signals = $4, relationship_strength_rationale = $5 WHERE id = $1`,
+		coupleID, score, category, string(sigJSON), rationale)
 	return err
 }
 

@@ -30,6 +30,7 @@ const (
 	PtsVisualRing           = 10  // ring or proposal visually detected (supports the caption, never identifies people)
 	PtsReciprocalEvidence   = 10  // reciprocal relationship evidence (mutual tag/follow)
 	PtsRegistryMatch        = 15  // public registry with matching names
+	PtsWeddingWebsite       = 20  // self-reported wedding website (Knot/Zola/WeddingWire) — higher than registry: couple published it
 	PtsRecentPost           = 10  // fresh, original post
 	PtsStyledShoot          = -50 // styled/editorial shoot or vendor inspiration content
 	PtsAdvertisement        = -50 // advertisement, sponsorship, or giveaway

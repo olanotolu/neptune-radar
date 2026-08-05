@@ -223,6 +223,32 @@ func (a *Agent) BuildKit(ctx context.Context, coupleID string) (store.Congratula
 		kit.BodyMessage = postcardFallback(nameA, nameB, locLabel).CustomerFacing
 	}
 
+	// A/B testing — assign variant deterministically by coupleID, then apply
+	// tone modifier (B/C) and optional LLM personalization.
+	exp := DefaultExperiment()
+	variant := AssignVariant(coupleID, exp)
+	kit.VariantID = variant.ID
+	kit.ExperimentID = exp.ID
+	if variant.ID != "A" {
+		kit.BodyMessage = applyVariantTone(kit.BodyMessage, variant.CopyModifier, nameA, nameB, locLabel)
+	}
+	if variant.Personalized {
+		pcopy, _ := llm.PersonalizePostcardCopy(ctx, llm.PostcardCopyInput{
+			NameA:            nameA,
+			NameB:            nameB,
+			City:             kit.MarketCity,
+			Venue:            postLoc,
+			BioA:             kit.BioA,
+			BioB:             kit.BioB,
+			DiscoveryCaption: kit.DiscoveryCaption,
+		}, kit.BodyMessage)
+		if pcopy.Message != "" {
+			kit.PersonalizedCopy = pcopy.Message
+			kit.BodyMessage = pcopy.Message
+			kit.IsPersonalized = true
+		}
+	}
+
 	if link, err := a.Store.CelebrateDeepLink(coupleID); err == nil {
 		kit.CelebrateURL = link
 	}

@@ -10,6 +10,7 @@ import (
 	"neptune-social-radar/backend/internal/llm"
 	"neptune-social-radar/backend/internal/mail"
 	"neptune-social-radar/backend/internal/records"
+	sigvocab "neptune-social-radar/backend/internal/signals"
 	"neptune-social-radar/backend/internal/store"
 	"neptune-social-radar/backend/internal/vision"
 )
@@ -648,6 +649,51 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 		}
 	}
 
+	// --- LLM address reasoning: secondary confidence boost after Bayesian fusion ---
+	// Takes top 5 candidates + couple context, asks the LLM to rank them. The boost
+	// is capped at ±0.05 — a subtle tiebreaker, never a replacement for fusion.
+	// Falls back to no-op on any LLM failure — never blocks the pipeline.
+	if len(cands) > 1 {
+		topN := cands
+		if len(topN) > 5 {
+			topN = topN[:5]
+		}
+		var llmCands []llm.AddressCandidateInput
+		for i, c := range topN {
+			llmCands = append(llmCands, llm.AddressCandidateInput{
+				Index: i, Line1: c.Line1, City: c.City, Region: c.Region,
+				Postal: c.Postal, Confidence: c.Confidence, Source: c.Source,
+			})
+		}
+		rr, rerr := llm.ReasonAboutAddresses(ctx, llm.AddressReasoningInput{
+			PersonA: strings.TrimSpace(firstA + " " + lastA),
+			PersonB: strings.TrimSpace(firstB + " " + lastB),
+			BioA: q.BioA, BioB: q.BioB,
+			VendorCity: q.VendorCity, VendorState: q.VendorState,
+			PostGeotags: geotags, Candidates: llmCands,
+		})
+		if rerr == nil && len(rr.RankedIndices) > 0 {
+			k.AddressReasoning = rr.Rationale
+			k.AddressReasoningAgreement = rr.Agreement
+			if rr.Agreement {
+				// LLM agrees with Bayesian top pick: +0.03 boost
+				cands[0].Confidence = clampConf(cands[0].Confidence + 0.03)
+			} else {
+				// LLM disagrees: +0.02 boost to LLM's top pick
+				llmTop := rr.RankedIndices[0]
+				if llmTop >= 0 && llmTop < len(cands) {
+					cands[llmTop].Confidence = clampConf(cands[llmTop].Confidence + 0.02)
+				}
+			}
+			k.AddressCandidates = cands // re-assign with boosted confidences
+			k.ResearchNotes = strings.TrimSpace(k.ResearchNotes + fmt.Sprintf(
+				"\n\n--- AI address reasoning ---\n%s\nAgreement: %v · confidence: %.0f%% · %s",
+				rr.Rationale, rr.Agreement, rr.Confidence*100, rr.Source))
+		} else if rerr != nil {
+			k.ResearchNotes = strings.TrimSpace(k.ResearchNotes + "\nAI address reasoning skipped: "+rerr.Error())
+		}
+	}
+
 	// Research notes append — include all location signals + county records for operator context
 	var signalSummary []string
 	if q.VendorCity != "" {
@@ -759,6 +805,55 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 		k.ResearchNotes = strings.TrimSpace(k.ResearchNotes + fmt.Sprintf(
 			"\n\n--- Net worth estimate ---\nEstimated couple net worth: $%d (tier: %s) — property + Instagram luxury signals. ESTIMATE, not a fact.",
 			est, tier))
+	}
+
+	// --- Wedding website discovery: search The Knot / Zola / WeddingWire ---
+	// Conservative: requires BOTH partner names on the page. Self-reported date
+	// is authoritative over predicted_wedding_date. Never blocks the cascade —
+	// errors are swallowed. ponytail: HTML scraping is fragile; a platform
+	// markup change silently yields no hits (no crash).
+	if k.CoupleID != "" && firstA != "" && lastA != "" && firstB != "" && lastB != "" {
+		ww := records.WeddingWebsiteProvider{}
+		wwRes, _ := ww.Search(ctx, records.Query{
+			FirstName: firstA, LastName: lastA,
+			PartnerFirst: firstB, PartnerLast: lastB,
+			City: q.City, Region: q.Region,
+		})
+		if wwRes.Status == "ok" && wwRes.RawJSON != "" {
+			var hits []records.WeddingWebsiteResult
+			if err := json.Unmarshal([]byte(wwRes.RawJSON), &hits); err == nil && len(hits) > 0 {
+				best := hits[0]
+				_ = a.Store.UpdateWeddingWebsite(k.CoupleID, best.URL, best.Platform,
+					best.WeddingDate, best.VenueName, best.VenueCity, best.VenueState, best.RegistryURLs)
+				// Evidence: high-weight, self-reported. Add to the latest hypothesis.
+				if hyp, err := a.Store.LatestHypothesisForCouple(k.CoupleID); err == nil && hyp.ID != "" {
+					desc := fmt.Sprintf("Wedding website found on %s — %s", best.Platform, best.URL)
+					if best.WeddingDate != "" {
+						desc += " · date " + best.WeddingDate
+					}
+					if best.VenueName != "" {
+						desc += " · venue " + best.VenueName
+					}
+					_, _ = a.Store.UpsertEvidenceKind(hyp.ID, "wedding_website", desc,
+						float64(sigvocab.PtsWeddingWebsite)/100.0)
+				}
+				// Self-reported wedding date is authoritative — promote to wedding_date
+				// when the couple has no confirmed date yet.
+				if best.WeddingDate != "" {
+					if couple, err := a.Store.GetCouple(k.CoupleID); err == nil && couple.WeddingDate == nil {
+						if t, perr := time.Parse("2006-01-02", best.WeddingDate); perr == nil {
+							_, _ = a.Store.DB.Exec(
+								`UPDATE couples SET wedding_date = $2 WHERE id = $1 AND wedding_date IS NULL`,
+								k.CoupleID, t)
+						}
+					}
+				}
+				k.ResearchNotes = strings.TrimSpace(k.ResearchNotes + fmt.Sprintf(
+					"\n\n--- Wedding website ---\n%s: %s\nDate: %s · Venue: %s, %s %s · Registries: %d",
+					best.Platform, best.URL, best.WeddingDate, best.VenueName,
+					best.VenueCity, best.VenueState, len(best.RegistryURLs)))
+			}
+		}
 	}
 
 	k.PostcardHTML = RenderPostcardHTML(k)
@@ -1161,6 +1256,17 @@ func splitNameFirst(full string) string {
 func splitNameLast(full string) string {
 	_, l := splitName(full)
 	return l
+}
+
+// clampConf snaps a confidence value to [0, 1].
+func clampConf(c float64) float64 {
+	if c < 0 {
+		return 0
+	}
+	if c > 1 {
+		return 1
+	}
+	return c
 }
 
 func postcardFrontHTML(k store.CongratulateKit) string {
