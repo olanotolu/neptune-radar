@@ -45,6 +45,18 @@ const InterviewView = lazy(() =>
 const OrganismView = lazy(() =>
   import("./views/OrganismView").then((m) => ({ default: m.OrganismView })),
 );
+const ProviderAccuracyView = lazy(() =>
+  import("./views/ProviderAccuracyView").then((m) => ({ default: m.ProviderAccuracyView })),
+);
+const VisionView = lazy(() =>
+  import("./views/VisionView").then((m) => ({ default: m.VisionView })),
+);
+const LifeEventsView = lazy(() =>
+  import("./views/LifeEventsView").then((m) => ({ default: m.LifeEventsView })),
+);
+const MarriageLicensesView = lazy(() =>
+  import("./views/MarriageLicensesView").then((m) => ({ default: m.MarriageLicensesView })),
+);
 
 type Route = {
   tab: string;
@@ -89,6 +101,7 @@ type NavItem = { id: string; label: string; path: string };
 const NAV_PRIMARY: NavItem[] = [
   { id: "today", label: "Today", path: "/today" },
   { id: "work", label: "Work", path: "/work?filter=action" },
+  { id: "licenses", label: "Licenses", path: "/licenses" },
   { id: "congratulate", label: "Congratulate", path: "/congratulate" },
   { id: "sources", label: "Sources", path: "/sources" },
   { id: "map", label: "Map", path: "/map" },
@@ -100,6 +113,7 @@ const NAV_MORE: { group: string; items: NavItem[] }[] = [
     group: "Explore",
     items: [
       { id: "feed", label: "Feed", path: "/feed" },
+      { id: "life-events", label: "Life Events", path: "/life-events" },
       { id: "graph", label: "Graph", path: "/graph" },
       { id: "case", label: "Cases", path: "/case" },
       { id: "interview", label: "Interview", path: "/interview" },
@@ -110,8 +124,10 @@ const NAV_MORE: { group: string; items: NavItem[] }[] = [
     group: "Insights",
     items: [
       { id: "organism", label: "Organism", path: "/organism" },
+      { id: "vision", label: "Vision", path: "/vision" },
       { id: "funnel", label: "Funnel", path: "/funnel" },
       { id: "cost", label: "Budget", path: "/cost" },
+      { id: "provider-accuracy", label: "Provider Accuracy", path: "/provider-accuracy" },
     ],
   },
   {
@@ -407,6 +423,8 @@ function Shell() {
       case "congratulate":
       case "kits":
         return <CongratulateView initialCoupleId={route.coupleId} />;
+      case "licenses":
+        return <MarriageLicensesView />;
       case "interview":
         return <InterviewView />;
       case "sources":
@@ -421,6 +439,8 @@ function Shell() {
         return <MapView />;
       case "feed":
         return <FeedView />;
+      case "life-events":
+        return <LifeEventsView />;
       case "graph":
         return <CoupleGraphView />;
       case "case":
@@ -431,6 +451,8 @@ function Shell() {
         return <FunnelView />;
       case "cost":
         return <CostView />;
+      case "provider-accuracy":
+        return <ProviderAccuracyView />;
       case "ops":
         return <OpsView />;
       case "audit":

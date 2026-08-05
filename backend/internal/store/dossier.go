@@ -100,6 +100,17 @@ type GodTierDossier struct {
 	AuditTrail      []ontology.AuditEvent `json:"audit_trail"`
 	// Why this couple, now
 	WhyNow          []string           `json:"why_now"`
+	// Financial profile from county property records (internal operator use only)
+	AssetProfile    *AssetProfile      `json:"asset_profile,omitempty"`
+}
+
+// AssetProfile is the financial summary from county property records.
+// Internal operator use only — never appears on postcards.
+type AssetProfile struct {
+	EstimatedHomeValue int64         `json:"estimated_home_value,omitempty"`
+	PropertyAsset      PropertyAsset `json:"property_asset,omitempty"`
+	Confidence         float64       `json:"confidence"` // 0-1, based on data completeness
+	Source             string        `json:"source,omitempty"`
 }
 
 // GetGodTierDossier builds the operator dossier for one couple.
@@ -210,6 +221,28 @@ func (s *Store) GetGodTierDossier(coupleID string) (GodTierDossier, error) {
 	if kit, err := s.GetLatestKitForCouple(coupleID); err == nil {
 		d.LatestKitID = kit.ID
 		d.LatestKitStatus = kit.Status
+		// Financial profile from county property records (internal only)
+		if kit.EstimatedHomeValue > 0 || kit.PropertyAsset.AssessedValue > 0 || kit.PropertyAsset.Sqft > 0 {
+			conf := 0.0
+			if kit.PropertyAsset.AssessedValue > 0 {
+				conf += 0.4
+			}
+			if kit.PropertyAsset.Sqft > 0 {
+				conf += 0.3
+			}
+			if kit.PropertyAsset.YearBuilt > 0 {
+				conf += 0.15
+			}
+			if kit.PropertyAsset.TaxAnnual > 0 {
+				conf += 0.15
+			}
+			d.AssetProfile = &AssetProfile{
+				EstimatedHomeValue: kit.EstimatedHomeValue,
+				PropertyAsset:      kit.PropertyAsset,
+				Confidence:         conf,
+				Source:             "county_property",
+			}
+		}
 	}
 
 	// Aggregate caption + tags for runway

@@ -58,12 +58,27 @@ type CongratulateKit struct {
 	VerifiedAt           *time.Time         `json:"verified_at,omitempty"`
 	MailedAt             *time.Time         `json:"mailed_at,omitempty"`
 	PriorityScore        float64            `json:"priority_score"`
+	// FenrisValidated is true when a Fenris Digital life event independently
+	// cross-validates this couple — two independent signals = +0.15 prep boost.
+	FenrisValidated      bool               `json:"fenris_validated,omitempty"`
 	FollowUpAt           *time.Time         `json:"follow_up_at,omitempty"`
 	FollowUpTemplate     string             `json:"follow_up_template,omitempty"`
 	FollowUpSentAt       *time.Time         `json:"follow_up_sent_at,omitempty"`
 	FollowUpCount        int                `json:"follow_up_count"`
+	// Property asset data from county auditor (internal operator use — never on postcards)
+	PropertyAsset        PropertyAsset      `json:"property_asset,omitempty"`
+	EstimatedHomeValue   int64              `json:"estimated_home_value,omitempty"`
 	CreatedAt            time.Time          `json:"created_at"`
 	UpdatedAt            time.Time          `json:"updated_at"`
+}
+
+// PropertyAsset holds parsed county auditor financial data for a kit.
+type PropertyAsset struct {
+	AssessedValue int64   `json:"assessed_value,omitempty"`
+	Sqft          int     `json:"sqft,omitempty"`
+	YearBuilt     int     `json:"year_built,omitempty"`
+	LotSize       float64 `json:"lot_size,omitempty"`
+	TaxAnnual     int64   `json:"tax_annual,omitempty"`
 }
 
 type ResearchStep struct {
@@ -121,6 +136,10 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 	if k.MailPayload == nil {
 		mail = []byte("null")
 	}
+	assetJ, _ := json.Marshal(k.PropertyAsset)
+	if k.PropertyAsset.AssessedValue == 0 && k.PropertyAsset.Sqft == 0 {
+		assetJ = nil
+	}
 
 	_, err := s.DB.Exec(`
 		INSERT INTO congratulate_kits (
@@ -134,11 +153,12 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 			headline, body_message, internal_note, postcard_html, mail_payload_json,
 			verified_by, verified_at, mailed_at,
 			priority_score, follow_up_at, follow_up_template, follow_up_sent_at, follow_up_count,
+			asset_json, estimated_home_value,
 			created_at, updated_at
 		) VALUES (
 			$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,
 			$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,
-			$42,$43,$44,$45,$46
+			$42,$43,$44,$45,$46,$47,$48
 		)
 		ON CONFLICT (id) DO UPDATE SET
 			status = EXCLUDED.status,
@@ -168,6 +188,7 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 			priority_score = EXCLUDED.priority_score,
 			follow_up_at = EXCLUDED.follow_up_at, follow_up_template = EXCLUDED.follow_up_template,
 			follow_up_sent_at = EXCLUDED.follow_up_sent_at, follow_up_count = EXCLUDED.follow_up_count,
+			asset_json = EXCLUDED.asset_json, estimated_home_value = EXCLUDED.estimated_home_value,
 			updated_at = EXCLUDED.updated_at
 	`,
 		k.ID, k.CoupleID, k.Status, nullIfEmpty(k.HandleA), nullIfEmpty(k.HandleB),
@@ -184,6 +205,7 @@ func (s *Store) UpsertCongratulateKit(k CongratulateKit) (CongratulateKit, error
 		nullIfEmpty(k.PostcardHTML), string(mail),
 		nullIfEmpty(k.VerifiedBy), k.VerifiedAt, k.MailedAt,
 		k.PriorityScore, k.FollowUpAt, nullIfEmpty(k.FollowUpTemplate), k.FollowUpSentAt, k.FollowUpCount,
+		nullIfEmpty(string(assetJ)), k.EstimatedHomeValue,
 		k.CreatedAt, k.UpdatedAt,
 	)
 	if err != nil {
@@ -256,12 +278,13 @@ const kitSelect = `SELECT id, couple_id, status,
 	COALESCE(postcard_html,''), COALESCE(mail_payload_json,''),
 	COALESCE(verified_by,''), verified_at, mailed_at,
 	priority_score, follow_up_at, COALESCE(follow_up_template,''), follow_up_sent_at, follow_up_count,
+	COALESCE(asset_json,''), COALESCE(estimated_home_value,0),
 	created_at, updated_at
 	FROM congratulate_kits`
 
 func (s *Store) scanKit(row *sql.Row) (CongratulateKit, error) {
 	var k CongratulateKit
-	var evidence, steps, cands, mail string
+	var evidence, steps, cands, mail, assetJ string
 	var verifiedAt, mailedAt, followUpAt, followUpSentAt sql.NullTime
 	err := row.Scan(
 		&k.ID, &k.CoupleID, &k.Status,
@@ -279,6 +302,7 @@ func (s *Store) scanKit(row *sql.Row) (CongratulateKit, error) {
 		&k.PostcardHTML, &mail,
 		&k.VerifiedBy, &verifiedAt, &mailedAt,
 		&k.PriorityScore, &followUpAt, &k.FollowUpTemplate, &followUpSentAt, &k.FollowUpCount,
+		&assetJ, &k.EstimatedHomeValue,
 		&k.CreatedAt, &k.UpdatedAt,
 	)
 	if err != nil {
@@ -289,6 +313,9 @@ func (s *Store) scanKit(row *sql.Row) (CongratulateKit, error) {
 	_ = json.Unmarshal([]byte(cands), &k.AddressCandidates)
 	if mail != "" && mail != "null" {
 		_ = json.Unmarshal([]byte(mail), &k.MailPayload)
+	}
+	if assetJ != "" {
+		_ = json.Unmarshal([]byte(assetJ), &k.PropertyAsset)
 	}
 	if verifiedAt.Valid {
 		t := verifiedAt.Time
@@ -311,7 +338,7 @@ func (s *Store) scanKit(row *sql.Row) (CongratulateKit, error) {
 
 func (s *Store) scanKitRow(rows *sql.Rows) (CongratulateKit, error) {
 	var k CongratulateKit
-	var evidence, steps, cands, mail string
+	var evidence, steps, cands, mail, assetJ string
 	var verifiedAt, mailedAt, followUpAt, followUpSentAt sql.NullTime
 	err := rows.Scan(
 		&k.ID, &k.CoupleID, &k.Status,
@@ -329,6 +356,7 @@ func (s *Store) scanKitRow(rows *sql.Rows) (CongratulateKit, error) {
 		&k.PostcardHTML, &mail,
 		&k.VerifiedBy, &verifiedAt, &mailedAt,
 		&k.PriorityScore, &followUpAt, &k.FollowUpTemplate, &followUpSentAt, &k.FollowUpCount,
+		&assetJ, &k.EstimatedHomeValue,
 		&k.CreatedAt, &k.UpdatedAt,
 	)
 	if err != nil {
@@ -339,6 +367,9 @@ func (s *Store) scanKitRow(rows *sql.Rows) (CongratulateKit, error) {
 	_ = json.Unmarshal([]byte(cands), &k.AddressCandidates)
 	if mail != "" && mail != "null" {
 		_ = json.Unmarshal([]byte(mail), &k.MailPayload)
+	}
+	if assetJ != "" {
+		_ = json.Unmarshal([]byte(assetJ), &k.PropertyAsset)
 	}
 	if verifiedAt.Valid {
 		t := verifiedAt.Time

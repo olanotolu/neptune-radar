@@ -16,6 +16,7 @@ package scorer
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 	"strconv"
@@ -37,6 +38,17 @@ const (
 	EvBothPartnersTagged = "both_partners_tagged"
 	EvKnownVendorSource  = "known_vendor_source"
 	EvVisualRing         = "visual_ring_detected"
+	// EvRingDetected is the YOLOv8 ring-detection signal (confidence ≥ 0.5).
+	// Stronger than EvVisualRing because it comes from a dedicated ring model,
+	// not a general visual classifier.
+	EvRingDetected = "ring_detected"
+	// EvProposalPhoto is the CLIP zero-shot photo classification signal: the
+	// image was classified as "marriage proposal" or "engagement photo shoot"
+	// with high confidence.
+	EvProposalPhoto = "proposal_photo"
+	// EvDispersionScore is the FAIR dispersion metric: high dispersion of
+	// mutual follows indicates a romantic relationship bridging social circles.
+	EvDispersionScore = "dispersion_score"
 	EvReciprocal         = "reciprocal_relationship"
 	EvRegistryMatch      = "registry_match"
 	EvRecentPost         = "recent_post"
@@ -155,6 +167,28 @@ func CollectEvidence(s *store.Store, hyp ontology.LifeEventHypothesis, res ident
 					"visual/on-screen signals detected: "+strings.Join(sig.Visual, ", ")+" (supports the caption; identifies no one)",
 					pts(signals.PtsVisualRing)); err != nil {
 					return nil, err
+				}
+			}
+			// YOLOv8 ring detection — dedicated ring model, stronger signal
+			// than the general visual classifier. Proposal photos with rings
+			// are the highest-confidence engagement signal.
+			if ringConf, ok := raw.Payload["ring_confidence"].(float64); ok && ringConf >= 0.5 {
+				if _, err := s.UpsertEvidenceKind(hyp.ID, EvRingDetected,
+					fmt.Sprintf("YOLOv8 ring detector confidence %.0f%%", ringConf*100),
+					0.20); err != nil { // ponytail: +20 pts — stronger than general visual (+10)
+					return nil, err
+				}
+			}
+			// CLIP zero-shot photo classification — "marriage proposal" or
+			// "engagement photo shoot" labels are direct engagement signals.
+			if photoLabel, ok := raw.Payload["photo_label"].(string); ok && photoLabel != "" {
+				if photoLabel == "marriage proposal" || photoLabel == "engagement photo shoot" {
+					photoConf, _ := raw.Payload["photo_confidence"].(float64)
+					if _, err := s.UpsertEvidenceKind(hyp.ID, EvProposalPhoto,
+						fmt.Sprintf("CLIP classified photo as \"%s\" (%.0f%% confidence)", photoLabel, photoConf*100),
+						0.15); err != nil { // ponytail: +15 pts — proposal-shaped photo
+						return nil, err
+					}
 				}
 			}
 			// Recency is computed from the post's real timestamp, not assumed.

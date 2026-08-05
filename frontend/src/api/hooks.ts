@@ -40,6 +40,10 @@ import type {
   InterviewMessage,
   InterviewExtraction,
   Organism,
+  MarriageLicenseFiling,
+  FenrisEvent,
+  VisionAnalysis,
+  ProviderAccuracyRow,
 } from "./types";
 
 const keys = {
@@ -78,6 +82,7 @@ const keys = {
   runs: ["runs"] as const,
   run: (id: string) => ["runs", id] as const,
   notifications: ["notifications"] as const,
+  visionAnalysis: (limit: number) => ["vision", "analysis", limit] as const,
 };
 
 function useInvalidateAll() {
@@ -665,6 +670,14 @@ export function useOrganism() {
   });
 }
 
+export function useVisionAnalysis(limit = 100) {
+  return useQuery({
+    queryKey: ["vision", "analysis", limit],
+    queryFn: () => api.get<VisionAnalysis[]>(`/api/vision/analysis?limit=${limit}`),
+    staleTime: 30_000,
+  });
+}
+
 export function useFunnelEvents(coupleId?: string) {
   return useQuery({
     queryKey: ["funnel", "events", coupleId ?? "all"],
@@ -1036,5 +1049,35 @@ export function useEndInterviewSession() {
   return useMutation({
     mutationFn: (id: string) => api.post<{ status: string }>(`/api/interview/sessions/${encodeURIComponent(id)}/end`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["interview"] }),
+  });
+}
+
+export function useMarriageLicenses() {
+  // ponytail: 60s polling — filings arrive daily, not by the second.
+  const interval = useLiveRefetch(60_000);
+  return useQuery({
+    queryKey: ["marriage-licenses"],
+    queryFn: () => api.get<MarriageLicenseFiling[]>("/api/marriage-licenses"),
+    refetchInterval: interval,
+    staleTime: 45_000,
+  });
+}
+
+export function useFenrisEvents() {
+  // ponytail: 60s polling — Fenris events arrive daily, not by the second.
+  const interval = useLiveRefetch(60_000);
+  return useQuery({
+    queryKey: ["fenris-events"],
+    queryFn: () => api.get<FenrisEvent[]>("/api/fenris-events"),
+    refetchInterval: interval,
+    staleTime: 45_000,
+  });
+}
+
+export function useProviderAccuracy() {
+  return useQuery({
+    queryKey: ["provider-accuracy"],
+    queryFn: () => api.get<ProviderAccuracyRow[]>("/api/provider-accuracy"),
+    staleTime: 60_000,
   });
 }

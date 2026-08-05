@@ -18,6 +18,7 @@ import (
 	"neptune-social-radar/backend/internal/pipeline/watchtower"
 	"neptune-social-radar/backend/internal/signals"
 	"neptune-social-radar/backend/internal/store"
+	"neptune-social-radar/backend/internal/vision"
 )
 
 // WorkerConfig tunes the watch loop. All knobs are env-wired in cmd/server.
@@ -453,16 +454,41 @@ func (w *Worker) processPost(ctx context.Context, raw watchtower.RawEvent, image
 		sig := signals.ExtractFromPayload(raw.Payload)
 		if sig.CreatesCandidate() {
 			labels, err := w.vision.ClassifyVisualSignals(ctx, imageURL)
-			// Record the classification for calibration tracking — even
+			// Ring detection + CLIP photo classification (HuggingFace sidecar).
+			// These run alongside the existing vision call and fall back to 0/""
+			// when HF_TOKEN is unset or the API is down — never blocks ingest.
+			ringConf, ringErr := vision.DetectRing(ctx, imageURL)
+			photoLabel, photoConf, clipErr := vision.ClassifyPhoto(ctx, imageURL)
+			// Record the combined analysis for calibration tracking — even
 			// failures, so we can see the error rate over time.
 			model := w.visionModelName()
-			if logErr := w.store.RecordVisionClassification("", raw.ExternalEventID, imageURL, model, labels, errToString(err)); logErr != nil {
+			combinedErr := errToString(err)
+			if ringErr != nil {
+				log.Printf("[watchtower] ring detect failed for %s: %v", raw.ExternalEventID, ringErr)
+			}
+			if clipErr != nil {
+				log.Printf("[watchtower] photo classify failed for %s: %v", raw.ExternalEventID, clipErr)
+			}
+			if logErr := w.store.RecordVisionAnalysis(raw.ExternalEventID, imageURL, model, labels, combinedErr, ringConf, photoLabel, photoConf); logErr != nil {
 				log.Printf("[watchtower] vision log failed: %v", logErr)
 			}
 			if err != nil {
 				log.Printf("[watchtower] vision classify failed for %s: %v", raw.ExternalEventID, err)
 			} else if len(labels) > 0 {
 				raw.Payload["visual_signals"] = labels
+			}
+			// Ring detection: add "ring" to visual signals if the YOLOv8 model
+			// detected a ring with confidence ≥ 0.5 — the scorer picks it up
+			// via the existing VisualEngagementSignals vocabulary.
+			if ringErr == nil && ringConf >= 0.5 {
+				vs, _ := raw.Payload["visual_signals"].([]string)
+				raw.Payload["visual_signals"] = append(vs, "ring")
+				raw.Payload["ring_confidence"] = ringConf
+			}
+			// Photo classification: store the CLIP label for the scorer.
+			if clipErr == nil && photoLabel != "" {
+				raw.Payload["photo_label"] = photoLabel
+				raw.Payload["photo_confidence"] = photoConf
 			}
 		}
 	}

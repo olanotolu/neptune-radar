@@ -5,8 +5,10 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"neptune-social-radar/backend/internal/auth"
+	"neptune-social-radar/backend/internal/ingest"
 	"neptune-social-radar/backend/internal/ontology"
 )
 
@@ -313,6 +315,22 @@ func (s *Server) listLeads(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, leads)
 }
 
+// listFenrisEvents returns recent Fenris Digital life events for the dashboard.
+func (s *Server) listFenrisEvents(w http.ResponseWriter, r *http.Request) {
+	limit := 100
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	events, err := s.Store.ListFenrisEvents(limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, events)
+}
+
 func (s *Server) listAudit(w http.ResponseWriter, r *http.Request) {
 	f := ontologyAuditFilterFromQuery(r)
 	events, err := s.Store.ListAudit(f)
@@ -321,4 +339,88 @@ func (s *Server) listAudit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, events)
+}
+
+// assetProfile returns the financial profile from county property records
+// for a couple. Internal operator use only — never exposed on postcards.
+func (s *Server) assetProfile(w http.ResponseWriter, r *http.Request) {
+	coupleID := r.PathValue("coupleId")
+	dossier, err := s.Store.GetGodTierDossier(coupleID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err)
+		return
+	}
+	if dossier.AssetProfile == nil {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"couple_id": coupleID,
+			"estimated_home_value": 0,
+			"confidence": 0,
+			"source": "",
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"couple_id":           coupleID,
+		"estimated_home_value": dossier.AssetProfile.EstimatedHomeValue,
+		"property_asset":       dossier.AssetProfile.PropertyAsset,
+		"confidence":           dossier.AssetProfile.Confidence,
+		"source":               dossier.AssetProfile.Source,
+	})
+}
+
+// marriageLicenseResponse is one row in the Perfect Timing dashboard view.
+type marriageLicenseResponse struct {
+	ID                  string  `json:"id"`
+	PersonAName         string  `json:"person_a_name"`
+	PersonBName         string  `json:"person_b_name"`
+	County              string  `json:"county"`
+	FilingDate          string  `json:"filing_date"`
+	PredictedWeddingDate string  `json:"predicted_wedding_date"`
+	WeddingDate         *string `json:"wedding_date,omitempty"`
+	DaysUntilWedding    *int    `json:"days_until_wedding,omitempty"`
+	Priority            string  `json:"priority"`
+}
+
+// listMarriageLicenses returns recent marriage-license filings as couples,
+// newest first. Each row carries the predicted wedding date + a priority bucket
+// (urgent/priority/early/monitor) that drives outreach timing.
+func (s *Server) listMarriageLicenses(w http.ResponseWriter, r *http.Request) {
+	limit := 100
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	couples, err := s.Store.ListMarriageLicenseCouples(limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	out := make([]marriageLicenseResponse, 0, len(couples))
+	for _, c := range couples {
+		pA, _ := s.Store.GetPerson(c.PersonAID)
+		pB, _ := s.Store.GetPerson(c.PersonBID)
+		row := marriageLicenseResponse{
+			ID: c.ID, PersonAName: pA.DisplayName, PersonBName: pB.DisplayName,
+			County: c.LicenseCounty, Priority: ingest.PriorityBucket(c),
+		}
+		if c.LicenseFilingDate != nil {
+			row.FilingDate = c.LicenseFilingDate.Format(time.RFC3339)
+		}
+		ref := c.PredictedWeddingDate
+		if c.WeddingDate != nil {
+			ref = c.WeddingDate
+		}
+		if ref != nil {
+			row.PredictedWeddingDate = ref.Format(time.RFC3339)
+			d := int(time.Until(*ref).Hours() / 24)
+			row.DaysUntilWedding = &d
+		}
+		if c.WeddingDate != nil {
+			wd := c.WeddingDate.Format(time.RFC3339)
+			row.WeddingDate = &wd
+		}
+		out = append(out, row)
+	}
+	writeJSON(w, http.StatusOK, out)
 }

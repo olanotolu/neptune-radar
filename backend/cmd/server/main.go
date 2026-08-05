@@ -111,6 +111,7 @@ func main() {
 		Vision:        llm.NewVisionClassifier(),
 	})
 	go worker.Run(ctx)
+	go worker.RunFenrisPoller(ctx) // no-op when FENRIS_API_KEY unset
 
 	adminToken := os.Getenv("NEPTUNE_ADMIN_TOKEN")
 	if adminToken == "" {

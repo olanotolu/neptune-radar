@@ -11,6 +11,7 @@ import {
 } from "../api/hooks";
 import { mediaURL } from "../api/media";
 import type { BrandAction, DossierEvidence } from "../api/types";
+import type { AssetProfile } from "../api/types";
 import { useToast } from "../components/Toast";
 import { EmptyState } from "../components/EmptyState";
 import { LoadingState } from "../components/LoadingState";
@@ -244,6 +245,60 @@ function NotesSection({ coupleId }: { coupleId: string }) {
   );
 }
 
+/* ---------- Financial Profile (internal operator use only) ---------- */
+
+function fmtMoney(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
+  return `$${n}`;
+}
+
+function FinancialProfile({ profile }: { profile?: AssetProfile }) {
+  if (!profile || (!profile.estimated_home_value && !profile.property_asset?.assessed_value)) {
+    return null;
+  }
+  const pa = profile.property_asset;
+  const confPct = Math.round((profile.confidence || 0) * 100);
+  return (
+    <section className="dossier__section dossier__section--financial">
+      <h3>Financial Profile</h3>
+      <p className="dossier__hint">
+        Internal operator use only — never shown on postcards. From county property records.
+      </p>
+      <div className="dossier__grid">
+        <div className="dossier-financial__main">
+          <span className="dossier-financial__label">Estimated Home Value</span>
+          <strong className="dossier-financial__value">
+            {profile.estimated_home_value ? fmtMoney(profile.estimated_home_value) : "—"}
+          </strong>
+          <span className="dossier-financial__conf">
+            confidence {confPct}% · {profile.source || "county_property"}
+          </span>
+        </div>
+        <table className="dossier-ledger">
+          <tbody>
+            {pa?.assessed_value ? (
+              <tr><th>Assessed Value</th><td>{fmtMoney(pa.assessed_value)}</td></tr>
+            ) : null}
+            {pa?.sqft ? (
+              <tr><th>Square Feet</th><td>{pa.sqft.toLocaleString()}</td></tr>
+            ) : null}
+            {pa?.year_built ? (
+              <tr><th>Year Built</th><td>{pa.year_built}</td></tr>
+            ) : null}
+            {pa?.lot_size ? (
+              <tr><th>Lot Size</th><td>{pa.lot_size} acres</td></tr>
+            ) : null}
+            {pa?.tax_annual ? (
+              <tr><th>Annual Tax</th><td>{fmtMoney(pa.tax_annual)}</td></tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export function DossierView({
   coupleId,
   onClose,
@@ -441,6 +496,8 @@ export function DossierView({
           accent={data.runway?.band || "unknown"}
         />
       </div>
+
+      <FinancialProfile profile={data.asset_profile} />
 
       <section className="dossier__section dossier__section--why">
         <h3>Why this couple · now</h3>

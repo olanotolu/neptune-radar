@@ -340,6 +340,13 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 		baseMulti = records.NewMulti()
 		multiOK = true
 	}
+	// Bayesian Provider Fusion: load historical accuracy per provider×state.
+	// Cold start (empty table) → nil map → FuseCandidates uses 0.5 prior for all.
+	if baseMulti != nil {
+		if acc, err := a.Store.GetProviderAccuracy(); err == nil && len(acc) > 0 {
+			baseMulti.Accuracy = acc
+		}
+	}
 
 	// Paid-only fan-out — skip entirely without last names (saves budget)
 	if multiOK && baseMulti.HasPaidProviders() && hasLastName {
@@ -549,6 +556,10 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 	}
 
 	// Lob verification post-step: verify each real street candidate
+	// ponytail: accuracy feedback is collected here and fired in a goroutine
+	// below so the store write never blocks the detective pipeline.
+	type lobFeedback struct{ provider, state string; success bool }
+	var lobFeedbacks []lobFeedback
 	if a.Mail != nil && a.Mail.Available() && len(cands) > 0 {
 		for i := range cands {
 			c := &cands[i]
@@ -597,8 +608,20 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 				}
 				c.Note = strings.TrimSpace(c.Note + " · Lob USPS NOT deliverable — review unit/street")
 			}
+			// Record feedback for Bayesian fusion (before Source is prefixed)
+			lobFeedbacks = append(lobFeedbacks, lobFeedback{c.Source, c.Region, vr.Deliverable})
 			c.Source = "lob_check_" + c.Source
 		}
+	}
+	// Non-blocking accuracy feedback — fire-and-forget goroutine.
+	// ponytail: ceiling — if the process dies mid-flight, this batch is lost.
+	// Acceptable: accuracy is a statistical aggregate, not transactional state.
+	if len(lobFeedbacks) > 0 && a.Store != nil {
+		go func(fb []lobFeedback) {
+			for _, f := range fb {
+				a.Store.RecordProviderAttempt(f.provider, f.state, f.success)
+			}
+		}(lobFeedbacks)
 	}
 
 	k.AddressCandidates = cands
@@ -689,6 +712,32 @@ func (a *Agent) RunDetective(ctx context.Context, kitID string) (store.Congratul
 		}}, steps...)
 	}
 	k.ResearchSteps = steps
+
+	// --- Asset discovery: extract property asset from county_property candidates ---
+	// The detective swarm may include county_property candidates with parsed
+	// asset data (assessed value, sqft, etc.). Pick the best one and estimate
+	// home value. This is internal operator data — never appears on postcards.
+	for _, c := range res.Candidates {
+		if c.Asset.AssessedValue > 0 || c.Asset.Sqft > 0 {
+			k.PropertyAsset = store.PropertyAsset{
+				AssessedValue: c.Asset.AssessedValue,
+				Sqft:          c.Asset.Sqft,
+				YearBuilt:     c.Asset.YearBuilt,
+				LotSize:       c.Asset.LotSize,
+				TaxAnnual:     c.Asset.TaxAnnual,
+			}
+			county := records.CountyName(firstNonEmpty(q.City, k.MarketCity), q.Region)
+			avg := records.CountyAvgPricePerSqft(county, q.Region)
+			k.EstimatedHomeValue = records.EstimateHomeValue(records.PropertyAsset(c.Asset), avg)
+			if k.EstimatedHomeValue > 0 {
+				k.ResearchNotes = strings.TrimSpace(k.ResearchNotes + fmt.Sprintf(
+					"\n\n--- Asset discovery ---\nEstimated home value: $%d (assessed=$%d, sqft=%d, county avg $%.0f/sqft)",
+					k.EstimatedHomeValue, c.Asset.AssessedValue, c.Asset.Sqft, avg))
+			}
+			break
+		}
+	}
+
 	k.PostcardHTML = RenderPostcardHTML(k)
 	k.MailPayload = mailPayload(k)
 	if k.Status == "draft" {
@@ -995,6 +1044,7 @@ func cloneMultiPaidOnly(src *records.Multi, maxPaid int) *records.Multi {
 		SkipFree:        true,
 		SkipFallback:    true,
 		PrimaryOnlyPaid: true, // stretch budget across more name×loc pairs
+		Accuracy:        src.Accuracy,
 	}
 }
 
@@ -1011,6 +1061,7 @@ func cloneMultiFull(src *records.Multi, maxPaid int) *records.Multi {
 		MaxPaidCalls: maxPaid,
 		SkipFree:     false,
 		SkipFallback: false,
+		Accuracy:     src.Accuracy,
 	}
 }
 
@@ -1026,6 +1077,7 @@ func cloneMultiFreeOnly(src *records.Multi) *records.Multi {
 		Fallback:     src.Fallback,
 		SkipFree:     false,
 		SkipFallback: false,
+		Accuracy:     src.Accuracy,
 	}
 }
 

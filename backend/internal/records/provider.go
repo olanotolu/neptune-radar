@@ -60,6 +60,8 @@ type Candidate struct {
 	// Optional identity hints from the provider
 	FullName string `json:"full_name,omitempty"`
 	Phone    string `json:"phone,omitempty"`
+	// Property asset data from county auditor HTML (internal operator use only)
+	Asset PropertyAsset `json:"asset,omitempty"`
 }
 
 // Result is one provider call outcome for audit storage.
@@ -124,6 +126,11 @@ type Multi struct {
 	// PrimaryOnlyPaid: on fan-out, run only the primary paid provider (stretch budget
 	// across more name×loc pairs). Full free pass sets false to merge all paid.
 	PrimaryOnlyPaid bool
+
+	// Accuracy is the Bayesian provider accuracy map (provider→state→rate).
+	// When non-nil, finish() re-ranks candidates via FuseCandidates.
+	// Set by the detective from the store; nil = cold-start 0.5 prior for all.
+	Accuracy map[string]map[string]float64
 }
 
 func NewMulti() *Multi {
@@ -319,6 +326,9 @@ func isPaidProvider(pr Provider) bool {
 func (m *Multi) finish(all []Candidate, providers []string, cost, paidCalls int, rawParts []string, lastErr error) (Result, error) {
 	all = dedupeCandidates(all)
 	rankCandidates(all)
+	if m.Accuracy != nil {
+		all = FuseCandidates(all, m.Accuracy)
+	}
 	name := strings.Join(providers, "+")
 	if name == "" {
 		name = "multi"

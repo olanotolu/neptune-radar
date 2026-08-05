@@ -87,6 +87,9 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("POST /api/ingest/pause", srv.pauseIngest)
 	mux.HandleFunc("POST /api/ingest/resume", srv.resumeIngest)
 
+	// Fenris Digital life events — licensed data-broker cross-validation signal.
+	mux.HandleFunc("GET /api/fenris-events", srv.listFenrisEvents)
+
 	// National map: any USPS state (seed-geography required). OH legacy paths
 	// remain identical via {state}=OH.
 	mux.HandleFunc("GET /api/map/coverage/summary", srv.mapCoverageSummary)
@@ -100,6 +103,7 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("GET /api/map/connectors/{id}/runs", srv.mapConnectorRuns)
 
 	mux.HandleFunc("GET /api/audit", srv.listAudit)
+	mux.HandleFunc("GET /api/vision/analysis", srv.visionAnalysis)
 	mux.HandleFunc("GET /api/health", srv.health)
 	mux.HandleFunc("GET /api/events/stream", srv.eventsStream)
 	mux.HandleFunc("GET /api/pipeline/metrics", srv.pipelineMetrics)
@@ -122,6 +126,7 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("POST /api/kits/{id}/parse-address", srv.parseKitAddressText)
 	mux.HandleFunc("POST /api/kits/{id}/send-postcard", srv.sendKitPostcard)
 	mux.HandleFunc("GET /api/couples/{id}/dossier", srv.coupleDossier)
+	mux.HandleFunc("GET /api/asset-profile/{coupleId}", srv.assetProfile)
 	mux.HandleFunc("POST /api/couples/{id}/handoff", srv.createHandoff)
 	mux.HandleFunc("POST /api/couples/{id}/journey", srv.setJourneyStage)
 	mux.HandleFunc("POST /api/ops/janitor", srv.runJanitor)
@@ -200,6 +205,12 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("POST /api/interview/sessions/{id}/messages", srv.addInterviewMessage)
 	mux.HandleFunc("POST /api/interview/sessions/{id}/extract", srv.runExtraction)
 	mux.HandleFunc("POST /api/interview/sessions/{id}/end", srv.endInterviewSession)
+
+	// Marriage License Monitoring — public filings feed (Perfect Timing view).
+	mux.HandleFunc("GET /api/marriage-licenses", srv.listMarriageLicenses)
+
+	// Bayesian Provider Fusion — per-provider accuracy by state.
+	mux.HandleFunc("GET /api/provider-accuracy", srv.providerAccuracy)
 
 	return mux
 }

@@ -52,7 +52,9 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 		`SELECT id, person_a_id, person_b_id, created_at,
 		        COALESCE(inferred_city,''), COALESCE(inferred_region,''),
 		        inferred_lat, inferred_lng, COALESCE(location_source,''),
-		        mistaken, COALESCE(mistaken_reason,''), COALESCE(mistaken_by,''), mistaken_at
+		        mistaken, COALESCE(mistaken_reason,''), COALESCE(mistaken_by,''), mistaken_at,
+		        COALESCE(source,'social'), COALESCE(license_county,''),
+		        license_filing_date, predicted_wedding_date, wedding_date
 		 FROM couples ORDER BY created_at ASC, id ASC`)
 	if err != nil {
 		return nil, err
@@ -62,10 +64,11 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 	for rows.Next() {
 		var c ontology.Couple
 		var lat, lng sql.NullFloat64
-		var mistakenAt sql.NullTime
+		var mistakenAt, licenseFiled, predictedWedding, wedding sql.NullTime
 		if err := rows.Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt,
 			&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource,
-			&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt); err != nil {
+			&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt,
+			&c.Source, &c.LicenseCounty, &licenseFiled, &predictedWedding, &wedding); err != nil {
 			return nil, err
 		}
 		if lat.Valid {
@@ -80,6 +83,18 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 			t := mistakenAt.Time
 			c.MistakenAt = &t
 		}
+		if licenseFiled.Valid {
+			t := licenseFiled.Time
+			c.LicenseFilingDate = &t
+		}
+		if predictedWedding.Valid {
+			t := predictedWedding.Time
+			c.PredictedWeddingDate = &t
+		}
+		if wedding.Valid {
+			t := wedding.Time
+			c.WeddingDate = &t
+		}
 		out = append(out, c)
 	}
 	return out, rows.Err()
@@ -88,16 +103,19 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 func (s *Store) GetCouple(id string) (ontology.Couple, error) {
 	var c ontology.Couple
 	var lat, lng sql.NullFloat64
-	var mistakenAt sql.NullTime
+	var mistakenAt, licenseFiled, predictedWedding, wedding sql.NullTime
 	err := s.DB.QueryRow(
 		`SELECT id, person_a_id, person_b_id, created_at,
 		        COALESCE(inferred_city,''), COALESCE(inferred_region,''),
 		        inferred_lat, inferred_lng, COALESCE(location_source,''),
-		        mistaken, COALESCE(mistaken_reason,''), COALESCE(mistaken_by,''), mistaken_at
+		        mistaken, COALESCE(mistaken_reason,''), COALESCE(mistaken_by,''), mistaken_at,
+		        COALESCE(source,'social'), COALESCE(license_county,''),
+		        license_filing_date, predicted_wedding_date, wedding_date
 		 FROM couples WHERE id = $1`, id,
 	).Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt,
 		&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource,
-		&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt)
+		&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt,
+		&c.Source, &c.LicenseCounty, &licenseFiled, &predictedWedding, &wedding)
 	if err != nil {
 		return c, err
 	}
@@ -112,6 +130,18 @@ func (s *Store) GetCouple(id string) (ontology.Couple, error) {
 	if mistakenAt.Valid {
 		t := mistakenAt.Time
 		c.MistakenAt = &t
+	}
+	if licenseFiled.Valid {
+		t := licenseFiled.Time
+		c.LicenseFilingDate = &t
+	}
+	if predictedWedding.Valid {
+		t := predictedWedding.Time
+		c.PredictedWeddingDate = &t
+	}
+	if wedding.Valid {
+		t := wedding.Time
+		c.WeddingDate = &t
 	}
 	return c, nil
 }
@@ -296,6 +326,103 @@ func (s *Store) RelationshipHistory(coupleID string) ([]ontology.Relationship, e
 			r.EffectiveTo = &t
 		}
 		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// IngestMarriageLicenseFiling creates (or reuses) the two persons and the couple
+// for a marriage-license filing, then stamps the couple with the license
+// metadata + predicted wedding date. Idempotent on the person pair: the
+// couples_pair_unique constraint means a re-ingest of the same filing updates
+// the license fields rather than creating a duplicate couple.
+func (s *Store) IngestMarriageLicenseFiling(nameA, nameB, county string, filedAt time.Time, predictedWedding, weddingDate *time.Time) (ontology.Couple, error) {
+	pA, err := s.CreatePerson(ontology.Person{DisplayName: nameA, CRMSource: "marriage_license"})
+	if err != nil {
+		return ontology.Couple{}, fmt.Errorf("create person A: %w", err)
+	}
+	pB, err := s.CreatePerson(ontology.Person{DisplayName: nameB, CRMSource: "marriage_license"})
+	if err != nil {
+		return ontology.Couple{}, fmt.Errorf("create person B: %w", err)
+	}
+	c, err := s.EnsureCouple(pA.ID, pB.ID)
+	if err != nil {
+		return c, err
+	}
+	_, err = s.DB.Exec(
+		`UPDATE couples
+		    SET source = 'marriage_license',
+		        license_county = $2,
+		        license_filing_date = $3,
+		        predicted_wedding_date = $4,
+		        wedding_date = $5
+		  WHERE id = $1`,
+		c.ID, county, filedAt, predictedWedding, weddingDate)
+	if err != nil {
+		return c, fmt.Errorf("stamp license fields: %w", err)
+	}
+	s.Audit("couple", c.ID, "marriage_license_ingested",
+		map[string]any{"county": county, "filed_at": filedAt, "predicted_wedding": predictedWedding}, "marriage_license", -1)
+	return s.GetCouple(c.ID)
+}
+
+// ListMarriageLicenseCouples returns couples discovered via marriage-license
+// filings, newest filing first. The dashboard uses this for the "Perfect
+// Timing" view — couples in the 30-60 day pre-wedding window get priority.
+func (s *Store) ListMarriageLicenseCouples(limit int) ([]ontology.Couple, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := s.DB.Query(
+		`SELECT id, person_a_id, person_b_id, created_at,
+		        COALESCE(inferred_city,''), COALESCE(inferred_region,''),
+		        inferred_lat, inferred_lng, COALESCE(location_source,''),
+		        mistaken, COALESCE(mistaken_reason,''), COALESCE(mistaken_by,''), mistaken_at,
+		        COALESCE(source,'social'), COALESCE(license_county,''),
+		        license_filing_date, predicted_wedding_date, wedding_date
+		 FROM couples
+		 WHERE source = 'marriage_license'
+		 ORDER BY license_filing_date DESC NULLS LAST, created_at DESC
+		 LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ontology.Couple
+	for rows.Next() {
+		var c ontology.Couple
+		var lat, lng sql.NullFloat64
+		var mistakenAt, licenseFiled, predictedWedding, wedding sql.NullTime
+		if err := rows.Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt,
+			&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource,
+			&c.Mistaken, &c.MistakenReason, &c.MistakenBy, &mistakenAt,
+			&c.Source, &c.LicenseCounty, &licenseFiled, &predictedWedding, &wedding); err != nil {
+			return nil, err
+		}
+		if lat.Valid {
+			v := lat.Float64
+			c.InferredLat = &v
+		}
+		if lng.Valid {
+			v := lng.Float64
+			c.InferredLng = &v
+		}
+		if mistakenAt.Valid {
+			t := mistakenAt.Time
+			c.MistakenAt = &t
+		}
+		if licenseFiled.Valid {
+			t := licenseFiled.Time
+			c.LicenseFilingDate = &t
+		}
+		if predictedWedding.Valid {
+			t := predictedWedding.Time
+			c.PredictedWeddingDate = &t
+		}
+		if wedding.Valid {
+			t := wedding.Time
+			c.WeddingDate = &t
+		}
+		out = append(out, c)
 	}
 	return out, rows.Err()
 }

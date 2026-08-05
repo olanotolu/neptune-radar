@@ -27,6 +27,17 @@ func (s *Server) sourceYield(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, yield)
 }
 
+// providerAccuracy returns per-provider accuracy scores by state for the
+// Bayesian Provider Fusion dashboard.
+func (s *Server) providerAccuracy(w http.ResponseWriter, r *http.Request) {
+	rows, err := s.Store.ListProviderAccuracy()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, rows)
+}
+
 // runEval runs the golden eval cases against the current interpreter and
 // returns the results. Admin-only — this makes LLM calls that cost money.
 func (s *Server) runEval(w http.ResponseWriter, r *http.Request) {

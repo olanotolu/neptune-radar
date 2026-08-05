@@ -22,7 +22,10 @@ type PrepResult struct {
 	HasLastA       bool `json:"has_last_a"`
 	HasLastB       bool `json:"has_last_b"`
 	HasCity        bool `json:"has_city"`
-	Summary        string `json:"summary"`
+	// FenrisCrossValidated is true when a Fenris Digital life event
+	// independently confirms this couple — two independent signals = +0.15.
+	FenrisCrossValidated bool `json:"fenris_cross_validated,omitempty"`
+	Summary              string `json:"summary"`
 }
 
 // ReadyThreshold — auto-detective and aggressive hunters require this.
@@ -43,6 +46,11 @@ func RunPrep(k store.CongratulateKit) PrepResult {
 	p := PrepResult{
 		HasLastA: lastA != "",
 		HasLastB: lastB != "",
+	}
+	// Fenris cross-validation: two independent signals (Instagram + Fenris
+	// life event) = higher confidence. +0.15 boost to the prep score.
+	if k.FenrisValidated {
+		p.FenrisCrossValidated = true
 	}
 
 	// --- Blockers: identity ---
@@ -138,6 +146,10 @@ func RunPrep(k store.CongratulateKit) PrepResult {
 	// Handles present (0.05)
 	if k.HandleA != "" && k.HandleB != "" {
 		score += 0.05
+	}
+	// Fenris cross-validation (+0.15) — two independent signals per couple.
+	if p.FenrisCrossValidated {
+		score += 0.15
 	}
 
 	// Hard cap if critical blockers

@@ -46,8 +46,9 @@ func (a *Agent) BuildKit(ctx context.Context, coupleID string) (store.Congratula
 	}
 
 	kit := store.CongratulateKit{
-		CoupleID: coupleID,
-		Status:   "draft",
+		CoupleID:       coupleID,
+		Status:         "draft",
+		FenrisValidated: couple.FenrisValidated,
 	}
 	if card != nil {
 		kit.HandleA, kit.HandleB = card.HandleA, card.HandleB

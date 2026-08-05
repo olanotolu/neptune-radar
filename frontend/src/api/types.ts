@@ -750,6 +750,19 @@ export interface DossierEvidence {
   created_at?: string;
 }
 
+export interface VisionAnalysis {
+  id: string;
+  external_event_id: string;
+  image_url: string;
+  labels: string;
+  model: string;
+  error: string;
+  ring_confidence: number;
+  photo_label: string;
+  photo_confidence: number;
+  created_at: string;
+}
+
 export interface DossierIdentity {
   kind: string;
   description: string;
@@ -825,6 +838,22 @@ export interface CoupleDossier {
   latest_kit_status?: string;
   audit_trail: AuditEvent[];
   why_now: string[];
+  asset_profile?: AssetProfile;
+}
+
+export interface PropertyAsset {
+  assessed_value?: number;
+  sqft?: number;
+  year_built?: number;
+  lot_size?: number;
+  tax_annual?: number;
+}
+
+export interface AssetProfile {
+  estimated_home_value?: number;
+  property_asset?: PropertyAsset;
+  confidence: number;
+  source?: string;
 }
 
 export interface ProspectBoard {
@@ -977,4 +1006,39 @@ export interface InterviewSessionDetail {
   session: InterviewSession;
   messages: InterviewMessage[];
   extractions: InterviewExtraction[];
+}
+
+// Marriage License Monitoring — Perfect Timing view.
+export interface MarriageLicenseFiling {
+  id: string;
+  person_a_name: string;
+  person_b_name: string;
+  county: string;
+  filing_date: string;
+  predicted_wedding_date: string;
+  wedding_date?: string;
+  days_until_wedding?: number;
+  priority: "urgent" | "priority" | "early" | "monitor";
+}
+
+// Fenris Digital Life Events — licensed data-broker cross-validation signal.
+export interface FenrisEvent {
+  id: string;
+  event_type: string;
+  person_name: string;
+  state: string;
+  city: string;
+  event_date: string;
+  confidence: number;
+  couple_id?: string;
+  cross_validated: boolean;
+  ingested_at: string;
+}
+
+export interface ProviderAccuracyRow {
+  provider: string;
+  state: string;
+  total_attempts: number;
+  successful: number;
+  accuracy: number;
 }

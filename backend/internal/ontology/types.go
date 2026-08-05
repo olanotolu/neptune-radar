@@ -50,6 +50,15 @@ const (
 	EventTypeRelationshipChange = "relationship_state_change"
 )
 
+// EvidenceKind values for Evidence.Kind — the named signals the scorer writes.
+// Defined here so both the scorer and the dashboard can reference them without
+// a circular import on pipeline/scorer.
+const (
+	EvidenceRingDetected   = "ring_detected"    // YOLOv8 ring detection (confidence ≥ 0.5)
+	EvidenceProposalPhoto  = "proposal_photo"   // CLIP zero-shot classified as proposal/engagement shoot
+	EvidenceDispersionScore = "dispersion_score" // FAIR dispersion metric for relationship scoring
+)
+
 type ActionType string
 
 const (
@@ -120,6 +129,34 @@ type Couple struct {
 	MistakenReason   string     `json:"mistaken_reason,omitempty"`
 	MistakenBy       string     `json:"mistaken_by,omitempty"`
 	MistakenAt       *time.Time `json:"mistaken_at,omitempty"`
+	// Marriage-license monitoring fields. Source is "social" (default, the
+	// Instagram watch loop), "marriage_license" (public filings feed), or
+	// "fenris_life_event" (Fenris Digital life-events API). The license fields
+	// are set only when source = "marriage_license".
+	Source              string     `json:"source,omitempty"`
+	LicenseCounty       string     `json:"license_county,omitempty"`
+	LicenseFilingDate   *time.Time `json:"license_filing_date,omitempty"`
+	PredictedWeddingDate *time.Time `json:"predicted_wedding_date,omitempty"`
+	WeddingDate         *time.Time `json:"wedding_date,omitempty"`
+	// FenrisValidated is true when a Fenris Digital life event (Newly Engaged
+	// or Newly Married) independently cross-validates this couple — two
+	// independent signals = higher confidence.
+	FenrisValidated bool `json:"fenris_validated,omitempty"`
+}
+
+// LifeEvent is a Fenris Digital life-events trigger: a licensed data-broker
+// signal (Newly Engaged, Newly Married, etc.) that cross-validates our
+// Instagram discovery. Two independent signals per couple = high confidence.
+type LifeEvent struct {
+	EventType   string    `json:"event_type"`    // "Newly Engaged", "Newly Married"
+	PersonName  string    `json:"person_name"`   // full name of the person
+	HouseholdID string    `json:"household_id"`  // Fenris household identifier
+	Address     string    `json:"address"`       // street address (when available)
+	City        string    `json:"city"`
+	State       string    `json:"state"`
+	Zip         string    `json:"zip"`
+	EventDate   time.Time `json:"event_date"`
+	Confidence  float64   `json:"confidence"` // 0–1, Fenris-provided match confidence
 }
 
 type Relationship struct {
