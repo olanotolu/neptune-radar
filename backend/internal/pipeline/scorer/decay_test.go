@@ -85,8 +85,8 @@ func TestProspectScoreAppliesDecay(t *testing.T) {
 	if final >= 0.5 {
 		t.Errorf("ProspectScore with decay = %.4f, expected < 0.5 (decay should reduce old evidence)", final)
 	}
-	// Engagement sub-score: (40 + 3.75) / maxEngagementPoints(75) = 0.583
-	if eng < 0.55 || eng > 0.62 {
-		t.Errorf("engagement sub-score = %.4f, expected ~0.58", eng)
+	// Engagement sub-score: (40 + 3.75) / maxEngagementPoints(115) = 0.380
+	if eng < 0.35 || eng > 0.42 {
+		t.Errorf("engagement sub-score = %.4f, expected ~0.38", eng)
 	}
 }

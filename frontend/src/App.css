@@ -5070,7 +5070,7 @@
   align-items: center;
   gap: 4px;
   padding: 1px 6px;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   border-radius: 2px;
   font-size: 10px;
   font-family: var(--mono);
@@ -5090,7 +5090,7 @@
   align-items: center;
   gap: 4px;
   padding: 1px 6px;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   border-radius: 2px;
   font-size: 10px;
   font-family: var(--mono);
@@ -5123,7 +5123,7 @@
 }
 .experiments-view__winner {
   padding: 8px 12px;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   border-radius: 2px;
   font-size: 13px;
   margin-bottom: 16px;
@@ -5137,7 +5137,7 @@
 .experiments-table td {
   text-align: left;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--border);
 }
 .experiments-table th {
   font-family: var(--mono);
@@ -6028,7 +6028,7 @@
 .dossier-nw {
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px solid var(--hairline);
+  border-top: 1px solid var(--border);
 }
 .dossier-nw__head {
   display: flex;

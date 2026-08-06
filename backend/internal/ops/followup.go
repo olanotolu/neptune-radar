@@ -83,6 +83,10 @@ func SendFollowUp(ctx context.Context, s *store.Store, mailer *mail.Client, kitI
 
 	// Use the follow-up template (different from first card).
 	tpls := outreach.TemplateLibrary()
+	if len(tpls) == 0 {
+		return FollowUpResult{KitID: kitID, Error: "no templates available"},
+			fmt.Errorf("template library empty")
+	}
 	tplID := k.FollowUpTemplate
 	if tplID == "" {
 		tplID = "bright_casual"

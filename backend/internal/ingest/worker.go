@@ -753,14 +753,24 @@ func (w *Worker) scoreRelationshipStrength(coupleID, bioA, bioB, caption string,
 				mutualFollows = ab.Active && ba.Active
 			}
 		}
+		// Fetch person display names for the LLM (better than UUIDs).
+		pA, _ := w.store.GetPerson(full.PersonAID)
+		pB, _ := w.store.GetPerson(full.PersonBID)
+		nameA, nameB := pA.DisplayName, pB.DisplayName
+		if nameA == "" {
+			nameA = handles[0]
+		}
+		if nameB == "" && len(handles) >= 2 {
+			nameB = handles[1]
+		}
 		// Dispersion score: ponytail: reuse the FAIR metric if computable.
 		// The full graph isn't available here, so pass 0 — the LLM uses the
 		// other signals. Upgrade path: compute dispersion from stored edges.
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		result, err := llm.ScoreRelationshipStrength(ctx, llm.RelationshipStrengthInput{
-			Partner1Name:   full.PersonAID, // ponytail: names not readily available here; IDs as placeholder
-			Partner2Name:   full.PersonBID,
+			Partner1Name:   nameA,
+			Partner2Name:   nameB,
 			Partner1Bio:    bioA,
 			Partner2Bio:    bioB,
 			RecentCaptions: recentCaptions,

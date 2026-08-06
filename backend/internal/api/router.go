@@ -148,7 +148,6 @@ func NewRouter(s *store.Store, worker *ingest.Worker, agent *outreach.Agent, hub
 	mux.HandleFunc("POST /api/kits/batch-detective", srv.batchDetective)
 	mux.HandleFunc("POST /api/kits/batch-verify", srv.batchVerifyAddresses)
 	mux.HandleFunc("GET /api/kits/operator-queue", srv.operatorQueue)
-	mux.HandleFunc("GET /api/kits/follow-up-queue", srv.followUpQueue)
 	mux.HandleFunc("POST /api/kits/{id}/send-follow-up", srv.sendFollowUp)
 	mux.HandleFunc("GET /api/follow-up-queue", srv.followUpQueue)
 	mux.HandleFunc("POST /api/follow-up-process", srv.followUpProcess)

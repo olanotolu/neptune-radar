@@ -1,6 +1,7 @@
 package scorer
 
 import (
+	"math"
 	"testing"
 
 	"neptune-social-radar/backend/internal/ontology"
@@ -81,7 +82,7 @@ func TestProspectScore_SpecExamples(t *testing.T) {
 }
 
 func TestProspectScore_SubScoresAreSeparate(t *testing.T) {
-	// 40 language + 10 recent + 10 visual = 60/75 engagement points, and
+	// 40 language + 10 recent + 10 visual = 60/115 engagement points, and
 	// only the −30 no-second-person on the partner side — the two numbers
 	// must stay distinguishable, never averaged.
 	final, engagement, partner := ProspectScore([]ontology.Evidence{
@@ -91,8 +92,8 @@ func TestProspectScore_SubScoresAreSeparate(t *testing.T) {
 	if final != 0.30 {
 		t.Errorf("final = %.2f, want 0.30", final)
 	}
-	if engagement != 0.80 {
-		t.Errorf("engagement sub-score = %.2f, want 0.80 (60/75)", engagement)
+	if math.Abs(engagement-0.52) > 0.01 {
+		t.Errorf("engagement sub-score = %.2f, want ~0.52 (60/115)", engagement)
 	}
 	if partner != 0 {
 		t.Errorf("partner sub-score = %.2f, want 0 (negative clamps)", partner)

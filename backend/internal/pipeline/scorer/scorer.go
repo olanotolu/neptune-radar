@@ -450,7 +450,7 @@ func Score(modelConfidence float64, evidence []ontology.Evidence) float64 {
 var engagementEvidenceKinds = map[string]bool{
 	EvExplicitLanguage: true, EvKnownVendorSource: true, EvVisualRing: true,
 	EvRecentPost: true, EvStyledShoot: true, EvAdvertisement: true, EvOldReposted: true,
-	EvRelationshipStrength: true,
+	EvRelationshipStrength: true, EvWeddingWebsite: true,
 }
 var partnerEvidenceKinds = map[string]bool{
 	EvBothPartnersTagged: true, EvReciprocal: true, EvRegistryMatch: true,
@@ -461,7 +461,7 @@ var partnerEvidenceKinds = map[string]bool{
 // Maximum positive points achievable in each family — used to normalize the
 // two display sub-scores. The action gate itself uses the raw combined total.
 const (
-	maxEngagementPoints = 75.0 // 40 language + 15 vendor + 10 visual + 10 recent
+	maxEngagementPoints = 115.0 // 40 language + 15 vendor + 10 visual + 10 recent + 20 relationship + 20 wedding website
 	maxPartnerPoints    = 60.0 // 25 both-tagged + 10 reciprocal + 15 registry + 10 repeated co-occurrence
 )
 

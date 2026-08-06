@@ -63,7 +63,8 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 		        COALESCE(wedding_website_url,''), COALESCE(wedding_website_platform,''),
 		        wedding_website_date, COALESCE(wedding_venue_name,''),
 		        COALESCE(wedding_venue_city,''), COALESCE(wedding_venue_state,''),
-		        COALESCE(registry_urls,'[]')
+		        COALESCE(registry_urls,'[]'),
+			        COALESCE(social_wedding_prediction,''), COALESCE(social_wedding_confidence,0)
 		 FROM couples ORDER BY created_at ASC, id ASC`)
 	if err != nil {
 		return nil, err
@@ -82,7 +83,8 @@ func (s *Store) ListCouples() ([]ontology.Couple, error) {
 			&c.PrenupIntentScore, &c.PrenupIntentReason, &signalsJSON,
 			&c.RelationshipStrengthScore, &c.RelationshipStrengthCategory, &rsSignalsJSON, &c.RelationshipStrengthRationale,
 			&c.WeddingWebsiteURL, &c.WeddingWebsitePlatform, &wwDate,
-			&c.WeddingVenueName, &c.WeddingVenueCity, &c.WeddingVenueState, &registryJSON); err != nil {
+			&c.WeddingVenueName, &c.WeddingVenueCity, &c.WeddingVenueState, &registryJSON,
+			&c.SocialWeddingPrediction, &c.SocialWeddingConfidence); err != nil {
 			return nil, err
 		}
 		if signalsJSON != "" && signalsJSON != "[]" {
@@ -145,7 +147,8 @@ func (s *Store) GetCouple(id string) (ontology.Couple, error) {
 		        COALESCE(wedding_website_url,''), COALESCE(wedding_website_platform,''),
 		        wedding_website_date, COALESCE(wedding_venue_name,''),
 		        COALESCE(wedding_venue_city,''), COALESCE(wedding_venue_state,''),
-		        COALESCE(registry_urls,'[]')
+		        COALESCE(registry_urls,'[]'),
+			        COALESCE(social_wedding_prediction,''), COALESCE(social_wedding_confidence,0)
 		 FROM couples WHERE id = $1`, id,
 	).Scan(&c.ID, &c.PersonAID, &c.PersonBID, &c.CreatedAt,
 		&c.InferredCity, &c.InferredRegion, &lat, &lng, &c.LocationSource,
@@ -154,7 +157,8 @@ func (s *Store) GetCouple(id string) (ontology.Couple, error) {
 		&c.PrenupIntentScore, &c.PrenupIntentReason, &signalsJSON,
 		&c.RelationshipStrengthScore, &c.RelationshipStrengthCategory, &rsSignalsJSON, &c.RelationshipStrengthRationale,
 		&c.WeddingWebsiteURL, &c.WeddingWebsitePlatform, &wwDate,
-		&c.WeddingVenueName, &c.WeddingVenueCity, &c.WeddingVenueState, &registryJSON)
+		&c.WeddingVenueName, &c.WeddingVenueCity, &c.WeddingVenueState, &registryJSON,
+		&c.SocialWeddingPrediction, &c.SocialWeddingConfidence)
 	if err != nil {
 		return c, err
 	}
